@@ -1,3 +1,4 @@
+<!DOCTYPE html> 
  <style>
      /* Set height to 100% for body and html to enable the background image to cover the whole page: */
     body, html {
@@ -21,6 +22,24 @@
         font-family: "Courier New", Courier, monospace;
         /* Set the font-size to 25 pixels */
         font-size: 25px;
+    }
+
+    /* Overlay gelap */
+    .bgimg::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.65); /* 0.4 = 40% gelap */
+        z-index: 0;
+    }
+
+    /* Pastikan isi halaman ada di atas overlay */
+    .bgimg > * {
+        position: relative;
+        z-index: 1;
     }
 
     /* Position text in the top-left corner */
