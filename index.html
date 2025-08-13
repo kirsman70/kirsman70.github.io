@@ -1,1 +1,83 @@
-<h1>Hello World</h1>
+ <style>
+     /* Set height to 100% for body and html to enable the background image to cover the whole page: */
+    body, html {
+    height: 100%
+    }
+
+    .bgimg {
+        /* Background image */
+        background-image: url('https://i.imgur.com/Hb0Vh4K.jpeg');
+        /* Full-screen */
+        height: 100%;
+        /* Center the background image */
+        background-position: center;
+        /* Scale and zoom in the image */
+        background-size: cover;
+        /* Add position: relative to enable absolutely positioned elements inside the image (place text) */
+        position: relative;
+        /* Add a white text color to all elements inside the .bgimg container */
+        color: white;
+        /* Add a font */
+        font-family: "Courier New", Courier, monospace;
+        /* Set the font-size to 25 pixels */
+        font-size: 25px;
+    }
+
+    /* Position text in the top-left corner */
+    .topleft {
+    position: absolute;
+    top: 12;
+    left: 16px;
+    }
+
+    .topleft2 {
+        font-size: 20px;
+        position: absolute;
+        top: 5;
+        left: 86px;
+    }
+
+    /* Position text in the bottom-left corner */
+    .bottomleft {
+    position: absolute;
+    bottom: 0;
+    left: 16px;
+    }
+
+    /* Position text in the middle */
+    .middle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    }
+    
+    .logo {
+    width: 50px;       /* ukuran gambar */
+    height: 50px;      /* pastikan lebar & tinggi sama */
+    border-radius: 45%; /* bikin bulat */
+    object-fit: cover;  /* pastikan gambar tidak gepeng */
+    }
+
+    /* Style the <hr> element */
+    hr {
+    margin: auto;
+    width: 40%;
+    } 
+
+</style>
+ 
+ <div class="bgimg">
+  <div class="topleft">
+    <img src="https://avatars.githubusercontent.com/u/224996646?s=200&v=4" alt="Logo KIR SMAN 70" class="logo">
+  </div>
+  <div class="topleft2">
+    <p>KIR SMAN 70 JAKARTA</p>
+  </div>
+  <div class="middle">
+    <h1>Lagi Dibuat</h1>
+    <hr>
+    <p>(klo g males)</p>
+  </div>
+</div> 
