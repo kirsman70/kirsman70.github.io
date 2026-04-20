@@ -1,0 +1,234 @@
+/* =============================================
+   KIR SMAN 70 JAKARTA — UI/UX Stylesheet
+   (Animasi dihandle sepenuhnya di animations.js)
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+/* === RESET & BASE === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-accent:     #f5c842;
+  --color-accent-dim: rgba(245, 200, 66, 0.15);
+  --color-white:      #ffffff;
+  --color-white-dim:  rgba(255, 255, 255, 0.6);
+  --color-overlay:    rgba(0, 0, 0, 0.65);
+  --font-display:     'Syne', sans-serif;
+  --font-mono:        'Space Mono', monospace;
+}
+
+/* === BODY & HTML === */
+body, html {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* === BACKGROUND CONTAINER === */
+.bgimg {
+  background-image: url('https://i.imgur.com/4yYS8TT.jpeg');
+  height: 100%;
+  background-position: center;
+  background-size: cover;
+  position: relative;
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: 25px;
+}
+
+/* === DARK OVERLAY === */
+.bgimg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-overlay);
+  z-index: 0;
+}
+
+/* === SCAN LINE TEXTURE === */
+.bgimg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === ALL CHILDREN ABOVE OVERLAYS === */
+.bgimg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* === TOP-LEFT: LOGO WRAPPER === */
+.topleft {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* === TOP-LEFT: LABEL === */
+.topleft2 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  position: absolute;
+  top: 20px;
+  left: 76px;
+}
+
+/* === LOGO IMAGE === */
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-accent-dim);
+  transition: box-shadow 0.3s ease;
+}
+
+.logo:hover {
+  box-shadow: 0 0 0 8px var(--color-accent-dim), 0 0 20px rgba(245, 200, 66, 0.3);
+}
+
+/* === BOTTOM-LEFT === */
+.bottomleft {
+  position: absolute;
+  bottom: 20px;
+  left: 16px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+/* === CENTER CONTENT === */
+.middle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 90%;
+  max-width: 600px;
+}
+
+/* === MAIN HEADING === */
+.middle h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 4.1vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+/* === SUBTITLE === */
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: clamp(0.75rem, 2vw, 0.95rem);
+  color: var(--color-white-dim);
+  margin-top: 10px;
+}
+
+/* === DIVIDER === */
+hr {
+  margin: 20px auto;
+  width: 60px;
+  border: none;
+  border-top: 2px solid var(--color-accent);
+}
+
+/* === REDIRECT CARD === */
+.redirect-card {
+  margin-top: 28px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 28px 32px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.redirect-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+
+.redirect-dest {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-white);
+  margin-bottom: 20px;
+  opacity: 0.85;
+  word-break: break-all;
+}
+
+/* === PROGRESS BAR === */
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 99px;
+  width: 0%;
+  box-shadow: 0 0 8px rgba(245, 200, 66, 0.6);
+}
+
+/* === COUNTDOWN TEXT === */
+.countdown-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-white-dim);
+}
+
+.countdown-text span {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* === CANCEL BUTTON === */
+.cancel-link {
+  display: inline-block;
+  margin-top: 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cancel-link:hover {
+  color: var(--color-white-dim);
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
