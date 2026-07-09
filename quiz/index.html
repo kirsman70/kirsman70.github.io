@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CPTI — Command Persuasion Type Index | KIR SMAN 70</title>
+  <meta name="description" content="A high-pressure briefing that maps how you argue, adapt, and win rooms — and where you fit in Debate or MUN." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <div class="chrome-header">
+    <span>KIR SMAN 70 <span class="divider-dot">·</span> RECRUITMENT DIVISION</span>
+    <span>CPTI-04</span>
+  </div>
+
+  <!-- ============ WELCOME VIEW ============ -->
+  <section id="view-welcome" class="view">
+    <span class="dossier-tag">Classified · Personnel Evaluation</span>
+    <h1 class="welcome-title">You've been called in for a high-pressure briefing.</h1>
+    <p class="welcome-body">
+      Twelve scenarios. No time to overthink. Answer on instinct and we'll compile your
+      <strong>Command Persuasion Type Index</strong> — a four-letter read on how you argue,
+      how you take pressure, and whether you belong on the <strong>Debate</strong> floor,
+      in the <strong>MUN</strong> committee room, or both.
+    </p>
+
+    <div class="brief-card">
+      <label class="field-label" for="name-input">Recruit Name</label>
+      <input id="name-input" class="name-input" type="text" placeholder="Enter your name" autocomplete="off" />
+      <button id="begin-btn" class="begin-btn" type="button">
+        Begin Briefing <span class="arrow">→</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ VIEW ============ -->
+  <section id="view-quiz" class="view" hidden>
+    <div class="clearance-wrap">
+      <div class="clearance-labels">
+        <span>Clearance Progress</span>
+        <span class="file-count">FILE <span id="file-current">01</span> / <span id="file-total">12</span></span>
+      </div>
+      <div class="clearance-track">
+        <div class="clearance-fill" id="clearance-fill"></div>
+        <div class="clearance-ticks" id="clearance-ticks"></div>
+      </div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="file-meta">
+        <span>Scenario Response Required</span>
+        <span class="stress-flag" id="stress-flag" hidden>Stress Test</span>
+      </div>
+      <p class="scenario-text" id="scenario-text"></p>
+      <div class="likert-row" id="likert-row"></div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS VIEW ============ -->
+  <section id="view-results" class="view results-wrap" hidden>
+    <div class="results-card" id="results-card">
+      <div class="stamp" id="stamp">Evaluated</div>
+      <p class="results-eyebrow" id="results-eyebrow"></p>
+      <h2 class="results-code" id="results-code"></h2>
+      <p class="results-archetype" id="results-archetype"></p>
+      <span class="results-track" id="results-track"></span>
+      <p class="results-breakdown-text" id="results-breakdown-text"></p>
+
+      <div class="trait-meters" id="trait-meters"></div>
+
+      <a class="cta-btn" id="cta-btn" href="#" target="_blank" rel="noopener">Join the Discord →</a>
+      <button class="retake-link" id="retake-btn" type="button">Retake the briefing</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
