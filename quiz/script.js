@@ -316,6 +316,7 @@ function startQuiz() {
   scores = { V:0, A:0, C:0, D:0, I:0, S:0, P:0, E:0 };
   stressUsed = { delivery: false, engagement: false, adaptation: false, motivator: false };
   confidence = { delivery: 0, engagement: 0, adaptation: 0, motivator: 0 };
+  followupsUsed = { delivery: 0, engagement: 0, adaptation: 0, motivator: 0 };
   extraAnswers = {};
   extrasInjected = false;
   maxSeenLength = queue.length;
@@ -353,6 +354,15 @@ function renderQuestion() {
     questionHTML += ` <span class="example-tip" tabindex="0">e<span class="example-tip-bubble"><strong>Example:</strong> ${q.example}</span></span>`;
   }
   els.scenarioText.innerHTML = questionHTML;
+
+  els.scenarioText.querySelectorAll('.example-tip, .term-tip').forEach(tip => {
+    tip.addEventListener('click', (e) => {
+      e.preventDefault();
+      tip.classList.toggle('active');
+    });
+  });
+
+  els.likertRow.innerHTML = '';
 
   els.likertRow.innerHTML = '';
   LIKERT_OPTIONS.forEach(opt => {
@@ -464,6 +474,7 @@ function renderCheckpoint() {
 function handleCheckpointClick(val, btn) {
   if (val === 2) { 
     if (checkpointState === 0) {
+      els.likertRow.querySelectorAll('.likert-option').forEach(b => b.disabled = true);
       fadeAudio.play().catch(()=>{});
       btn.classList.add('fade-bounce');
       setTimeout(() => {
@@ -483,6 +494,7 @@ function handleCheckpointClick(val, btn) {
       checkpointState = 1;
       renderCheckpoint();
     } else {
+      els.likertRow.querySelectorAll('.likert-option').forEach(b => b.disabled = true);
       fadeAudio.play().catch(()=>{});
       btn.classList.add('fade-bounce');
       setTimeout(() => {
@@ -897,6 +909,7 @@ function triggerTrollSequence(btn) {
 }
 
 function startBonus() {
+  if (tookBonus) return;
   document.querySelectorAll('.physics-clone').forEach(el => el.remove());
   document.querySelectorAll('.troll-clone').forEach(el => el.remove());
   tookBonus = true;
@@ -907,7 +920,8 @@ function startBonus() {
 }
 
 function injectExtraQuestions() {
-  EXTRA_QUESTIONS.forEach(eq => {
+  const shuffledExtras = shuffle([...EXTRA_QUESTIONS]);
+  shuffledExtras.forEach(eq => {
     queue.push({
       isExtra: true,
       extraId: eq.id,
