@@ -392,8 +392,15 @@ body {
   border: 5px solid transparent;
   border-top-color: var(--ink);
 }
-.example-tip:hover .example-tip-bubble,
-.example-tip:focus-visible .example-tip-bubble {
+@media (hover: hover) {
+  .example-tip:hover .example-tip-bubble {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.example-tip:focus-visible .example-tip-bubble,
+.example-tip.active .example-tip-bubble {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
@@ -436,8 +443,15 @@ body {
   border: 5px solid transparent;
   border-top-color: var(--ink);
 }
-.term-tip:hover .term-tip-bubble,
-.term-tip:focus-visible .term-tip-bubble {
+@media (hover: hover) {
+  .term-tip:hover .term-tip-bubble {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.term-tip:focus-visible .term-tip-bubble,
+.term-tip.active .term-tip-bubble {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
