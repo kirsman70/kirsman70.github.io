@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Masuk atau Daftar</title>
+
+<script src="js/auth.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<section class="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-sm">
+
+    <a href="index.html" class="flex flex-col items-center mb-8">
+      <div class="w-11 h-11 rounded-xl bg-accent-gradient flex items-center justify-center font-display font-bold text-lg shadow-glow-sm mb-4">K</div>
+      <h1 class="font-display text-2xl font-semibold tracking-tight bg-gradient-to-r from-white via-white to-accent-300 bg-clip-text text-transparent">KIR</h1>
+      <p class="text-zinc-500 text-sm mt-1">Manajemen klub dalam satu tempat</p>
+    </a>
+
+    <div class="glass rounded-2xl p-7 shadow-2xl">
+
+      <!-- Tabs -->
+      <div class="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10 mb-6">
+        <button type="button" id="tab-register" onclick="setAuthTab('register')"
+          class="flex-1 text-sm font-medium py-2 rounded-md transition">Daftar</button>
+        <button type="button" id="tab-login" onclick="setAuthTab('login')"
+          class="flex-1 text-sm font-medium py-2 rounded-md transition">Masuk</button>
+      </div>
+
+      <!-- Register form -->
+      <div id="panel-register">
+        <h2 class="font-display text-lg font-semibold mb-1">Buat akun kamu</h2>
+        <p id="reg-subtitle" class="text-zinc-400 text-sm mb-4">Langkah 1 dari 3: Kredensial</p>
+        
+        <p id="register-error" class="hidden text-xs text-accent-300 mb-4 p-2 rounded bg-accent-15 border border-accent-30"></p>
+
+        <form onsubmit="return false;">
+          
+          <!-- Step 1: Kredensial -->
+          <div id="reg-step-1" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">EMAIL</label>
+              <input id="reg-email" type="email" placeholder="kamu@sekolah.ac.id"
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">KATA SANDI</label>
+              <input id="reg-password" type="password" placeholder="••••••••"
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+            </div>
+            <button type="button" onclick="goToRegStep(2)"
+              class="w-full mt-2 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 active:brightness-95 shadow-glow-sm transition">
+              Selanjutnya
+            </button>
+          </div>
+
+          <!-- Step 2: Data Diri -->
+          <div id="reg-step-2" class="space-y-4 hidden">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">NAMA LENGKAP</label>
+              <input id="reg-name" type="text" placeholder="Budi Santoso"
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+              <p class="text-[10px] text-zinc-500 mt-1.5">Gunakan huruf kapital di awal setiap kata. Karakter khusus (') dan (-) diizinkan.</p>
+            </div>
+            
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">KELAS</label>
+              <div class="flex gap-3">
+                <select id="reg-kelas-tingkat" class="glass-input flex-1 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 transition appearance-none cursor-pointer">
+                  <option value="" disabled selected>Tingkat</option>
+                  <option value="X">X</option>
+                  <option value="XI">XI</option>
+                </select>
+                <select id="reg-kelas-huruf" class="glass-input flex-1 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 transition appearance-none cursor-pointer">
+                  <option value="" disabled selected>Urutan</option>
+                  <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                  <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+                  <option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">EKSTRAKURIKULER LAIN (OPSIONAL)</label>
+              <input id="reg-ekskul" type="text" placeholder="Pramuka, PMR..."
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <button type="button" onclick="goToRegStep(1)" class="rounded-lg px-4 py-2.5 font-semibold text-sm text-zinc-300 bg-white/5 hover:bg-white/10 transition">Kembali</button>
+              <button type="button" onclick="goToRegStep(3)" class="flex-1 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 active:brightness-95 shadow-glow-sm transition">Selanjutnya</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Latar Belakang & Cabang -->
+          <div id="reg-step-3" class="space-y-4 hidden">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">LATAR BELAKANG SMP (OPSIONAL)</label>
+              <input id="reg-smp" type="text" placeholder="Anggota MPK/OSIS, Mengikuti OSN..."
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+            </div>
+            
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">PRESTASI (OPSIONAL)</label>
+              <textarea id="reg-prestasi" rows="2" placeholder="Kosongkan jika tidak ada..."
+                class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition resize-none"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">TERTARIK DENGAN LOMBA</label>
+              <div class="grid grid-cols-2 gap-2 text-sm text-zinc-300">
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Informatika"> Informatika / Robotika</label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Matematika"> Matematika</label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Fisika"> Fisika</label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Kimia"> Kimia</label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Biologi"> Biologi</label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="accent-theme" value="Lainnya"> Yang lain</label>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">CABANG</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="cabang-robotik" onclick="toggleCabang('robotik')" class="cabang-chip px-3 py-2">
+                  <span class="text-sm font-semibold block text-center">Robotik</span>
+                </button>
+                <button type="button" id="cabang-sains" onclick="toggleCabang('sains')" class="cabang-chip px-3 py-2">
+                  <span class="text-sm font-semibold block text-center">Sains</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <button type="button" onclick="goToRegStep(2)" class="rounded-lg px-4 py-2.5 font-semibold text-sm text-zinc-300 bg-white/5 hover:bg-white/10 transition">Kembali</button>
+              <button type="button" onclick="handleRegister()" class="flex-1 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 active:brightness-95 shadow-glow-sm transition">Daftar</button>
+            </div>
+            <p class="text-[11px] leading-relaxed text-zinc-500 text-center px-2 mt-2">
+              Akun kamu memerlukan verifikasi admin setelah pendaftaran.
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <!-- Login form -->
+      <div id="panel-login" class="hidden">
+        <h2 class="font-display text-lg font-semibold mb-1">Selamat datang kembali</h2>
+        <p class="text-zinc-400 text-sm mb-6">Masuk untuk melanjutkan ke dasbor kamu.</p>
+
+        <form onsubmit="return false;" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">EMAIL</label>
+            <input id="login-email" type="email" placeholder="kamu@sekolah.ac.id"
+              class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">KATA SANDI</label>
+            <input id="login-password" type="password" placeholder="••••••••"
+              class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" />
+          </div>
+
+          <p id="login-error" class="hidden text-xs text-accent-300 -mt-1">Isi email dan kata sandi terlebih dahulu.</p>
+
+          <button type="button" onclick="handleLogin()"
+            class="w-full mt-2 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 active:brightness-95 shadow-glow-sm transition">
+            Masuk
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <p class="text-center text-xs text-zinc-600 mt-6">
+      <a href="index.html" class="hover:text-zinc-400 transition">&larr; Kembali ke beranda</a>
+    </p>
+  </div>
+</section>
+
+<script>
+  // Which cabang chips are selected on the register form.
+  const selectedCabang = new Set();
+
+  function toggleCabang(which) {
+    if (selectedCabang.has(which)) {
+      selectedCabang.delete(which);
+    } else {
+      selectedCabang.add(which);
+    }
+    document.getElementById('cabang-robotik').classList.toggle('selected', selectedCabang.has('robotik'));
+    document.getElementById('cabang-sains').classList.toggle('selected', selectedCabang.has('sains'));
+  }
+
+  function resolveCabangValue() {
+    if (selectedCabang.has('robotik') && selectedCabang.has('sains')) return 'both';
+    if (selectedCabang.has('sains')) return 'sains';
+    return 'robotik'; // default / robotik-only
+  }
+
+  function setAuthTab(which) {
+    const isRegister = which === 'register';
+    document.getElementById('panel-register').classList.toggle('hidden', !isRegister);
+    document.getElementById('panel-login').classList.toggle('hidden', isRegister);
+
+    document.getElementById('tab-register').className =
+      'flex-1 text-sm font-medium py-2 rounded-md transition ' +
+      (isRegister ? 'bg-accent-gradient text-white shadow-glow-sm' : 'text-zinc-400 hover:text-zinc-200');
+    document.getElementById('tab-login').className =
+      'flex-1 text-sm font-medium py-2 rounded-md transition ' +
+      (!isRegister ? 'bg-accent-gradient text-white shadow-glow-sm' : 'text-zinc-400 hover:text-zinc-200');
+  }
+
+  function shakeCard() {
+    const card = document.querySelector('.glass.rounded-2xl');
+    card.classList.remove('shake');
+    void card.offsetWidth;
+    card.classList.add('shake');
+  }
+
+  function showAuthError(msg) {
+    const errorEl = document.getElementById('register-error');
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+    shakeCard();
+  }
+
+  function goToRegStep(targetStep) {
+    document.getElementById('register-error').classList.add('hidden');
+
+    if (targetStep === 2) {
+      const email = document.getElementById('reg-email').value.trim();
+      const pass = document.getElementById('reg-password').value.trim();
+      if (!email || !pass) {
+        showAuthError('Isi email dan kata sandi terlebih dahulu.');
+        return;
+      }
+    }
+
+    if (targetStep === 3) {
+      const name = document.getElementById('reg-name').value.trim();
+      const nameRegex = /^[A-Z][A-Za-z'-]*(?:\s+[A-Z][A-Za-z'-]*)*$/;
+      if (!name || !nameRegex.test(name)) {
+        showAuthError('Nama harus diawali huruf kapital tiap kata, tanpa angka atau karakter ilegal.');
+        return;
+      }
+      
+      const tingkat = document.getElementById('reg-kelas-tingkat').value;
+      const huruf = document.getElementById('reg-kelas-huruf').value;
+      if (!tingkat || !huruf) {
+        showAuthError('Pilih tingkat dan grup kelas kamu.');
+        return;
+      }
+    }
+
+    document.getElementById('reg-step-1').classList.add('hidden');
+    document.getElementById('reg-step-2').classList.add('hidden');
+    document.getElementById('reg-step-3').classList.add('hidden');
+    document.getElementById(`reg-step-${targetStep}`).classList.remove('hidden');
+
+    const titles = ['Kredensial', 'Data Diri', 'Latar Belakang & Cabang'];
+    document.getElementById('reg-subtitle').textContent = `Langkah ${targetStep} dari 3: ${titles[targetStep - 1]}`;
+  }
+
+  function handleRegister() {
+    if (selectedCabang.size === 0) {
+      showAuthError('Pilih minimal satu cabang KIR.');
+      return;
+    }
+    
+    document.getElementById('register-error').classList.add('hidden');
+    const name = document.getElementById('reg-name').value.trim();
+    kirLogin(name, resolveCabangValue());
+    window.location.href = 'dashboard.html';
+  }
+
+  function handleLogin() {
+    // TODO(real auth): verify credentials against your API instead
+    // of just checking they're non-empty.
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const errorEl = document.getElementById('login-error');
+
+    if (!email || !password) {
+      errorEl.classList.remove('hidden');
+      shakeCard();
+      return;
+    }
+    errorEl.classList.add('hidden');
+    kirLogin(email.split('@')[0]);
+    window.location.href = 'dashboard.html';
+  }
+
+  setAuthTab('register');
+  toggleCabang('robotik');
+</script>
+</body>
+</html>

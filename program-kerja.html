@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Program Kerja</title>
+
+<script src="js/auth.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<!-- Top bar (shared public nav) -->
+<header class="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-6 flex items-center justify-between gap-4">
+  <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+    <div class="w-9 h-9 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold shadow-glow-sm">O</div>
+    <div>
+      <div class="flex items-center gap-1.5">
+        <span class="font-display font-semibold text-lg block leading-none tracking-wider">orbit.io</span>
+        <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
+    </div>
+  </a>
+  <nav class="hidden md:flex items-center gap-7">
+    <a href="index.html" class="public-nav-link" data-i18n="nav_beranda">Beranda</a>
+    <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
+    <a href="program-kerja.html" class="public-nav-link active" data-i18n="nav_proker">Program Kerja</a>
+  </nav>
+  <nav class="flex items-center gap-3 shrink-0">
+    <a href="auth.html" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="auth.html" id="nav-cta-link" class="text-sm font-semibold px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+  </nav>
+</header>
+
+<main class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 pb-24">
+
+  <!-- Hero -->
+  <div class="pt-6 pb-16 max-w-2xl">
+    <p class="text-accent-300 text-xs font-medium tracking-widest uppercase mb-3" data-i18n="proker_eyebrow">Tahun Ajaran 2025/2026</p>
+    <h1 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight mb-4" data-i18n="proker_title">Program Kerja</h1>
+    <p class="text-zinc-500 text-sm sm:text-base" data-i18n="proker_desc">
+      Rencana kerja cabang Robotik dan Sains untuk tahun ajaran ini — dari latihan rutin sampai kompetisi.
+    </p>
+  </div>
+
+  <!-- Orbit rail wraps both program sections -->
+  <div class="orbit-rail-wrap">
+    <svg class="orbit-rail-svg" id="orbit-rail-svg" viewBox="0 0 40 100" preserveAspectRatio="none">
+      <line x1="20" y1="0" x2="20" y2="100" stroke="var(--glass-border)" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+    </svg>
+    <div class="absolute z-10 rounded-full bg-accent-gradient shadow-glow-sm" id="orbit-traveler" style="width:14px;height:14px;left:50%;top:0;transform:translate(-50%,-50%);"></div>
+
+    <!-- Robotik section -->
+    <section class="relative py-10">
+      <h2 class="font-display text-xl sm:text-2xl font-semibold mb-6 reveal flex items-center gap-3">
+        <span class="text-[11px] px-2.5 py-0.5 rounded-full badge-robotik" data-i18n="proker_robotik_label">Cabang Robotik</span>
+      </h2>
+
+      <div class="space-y-4">
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">01</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Latihan Rutin Robotika</h3>
+            <span class="proker-tag">Rutin &middot; Mingguan</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Dasar pemrograman mikrokontroler dan elektronika untuk seluruh anggota, baru maupun lama.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">02</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Workshop Mikrokontroler</h3>
+            <span class="proker-tag">Pelatihan &middot; Semester Ganjil</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Sesi hands-on Arduino dan ESP32, mulai dari sensor sampai aktuator sederhana.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">03</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Kompetisi Robotik Regional</h3>
+            <span class="proker-tag">Kompetisi &middot; Semester Genap</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Pembentukan tim, latihan intensif, dan keikutsertaan pada lomba tingkat regional.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">04</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Proyek Robot Tahunan</h3>
+            <span class="proker-tag">Proyek &middot; Sepanjang Tahun</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Membangun satu robot showcase yang dipamerkan di acara akhir tahun ajaran.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sains section -->
+    <section class="relative py-10">
+      <h2 class="font-display text-xl sm:text-2xl font-semibold mb-6 reveal flex items-center gap-3">
+        <span class="text-[11px] px-2.5 py-0.5 rounded-full badge-sains" data-i18n="proker_sains_label">Cabang Sains</span>
+      </h2>
+
+      <div class="space-y-4">
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">01</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Kelompok Riset Mini</h3>
+            <span class="proker-tag">Rutin &middot; Sepanjang Tahun</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Kelompok kecil menjalankan proyek penelitian berkelanjutan dengan bimbingan pengurus.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">02</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Lomba Karya Tulis Ilmiah</h3>
+            <span class="proker-tag">Kompetisi &middot; Semester Ganjil</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Pembinaan menyusun karya ilmiah remaja, dari perumusan masalah sampai naskah akhir.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">03</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Kunjungan Laboratorium</h3>
+            <span class="proker-tag">Kunjungan &middot; Semester Genap</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Kunjungan ke laboratorium universitas atau mitra industri untuk melihat riset secara langsung.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 proker-card reveal">
+          <p class="proker-index mb-2">04</p>
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <h3 class="font-display font-semibold text-lg">Seminar &amp; Diskusi Sains</h3>
+            <span class="proker-tag">Rutin &middot; Bulanan</span>
+          </div>
+          <p class="text-zinc-500 text-sm">Sesi berbagi bulanan bersama pemateri tamu seputar topik sains terkini.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- CTA -->
+  <div class="glass rounded-2xl p-8 mt-10 text-center reveal">
+    <h2 class="font-display text-xl font-semibold mb-2" data-i18n="proker_cta_title">Tertarik ikut program ini?</h2>
+    <p class="text-zinc-500 text-sm mb-5 max-w-md mx-auto" data-i18n="proker_cta_desc">Daftar sebagai anggota dan pilih cabang yang kamu minati — dasbor kamu otomatis menyesuaikan.</p>
+    <a href="auth.html" class="inline-block rounded-lg px-6 py-3 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="proker_cta_btn">Daftar Sekarang</a>
+  </div>
+</main>
+
+<script>
+  kirApplyTranslations();
+  if (kirIsLoggedIn()) {
+    const authLink = document.getElementById('nav-auth-link');
+    const ctaLink = document.getElementById('nav-cta-link');
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    authLink.textContent = I18N[lang].idx_dashboard;
+    authLink.removeAttribute('data-i18n');
+    authLink.href = 'dashboard.html';
+    ctaLink.textContent = I18N[lang].idx_open_dashboard;
+    ctaLink.removeAttribute('data-i18n');
+    ctaLink.href = 'dashboard.html';
+  }
+
+  // Scroll-reveal for each card/section heading
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+  revealEls.forEach(el => io.observe(el));
+
+  // Orbit traveler: moves down the rail as you scroll through it
+  const rail = document.querySelector('.orbit-rail-wrap');
+  const traveler = document.getElementById('orbit-traveler');
+  function updateTraveler() {
+    const rect = rail.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const total = rect.height - viewportH * 0.4;
+    const traveled = (viewportH * 0.5) - rect.top;
+    const progress = Math.min(1, Math.max(0, total > 0 ? traveled / total : 0));
+    traveler.style.top = (progress * 100) + '%';
+  }
+  window.addEventListener('scroll', updateTraveler, { passive: true });
+  window.addEventListener('resize', updateTraveler);
+  updateTraveler();
+</script>
+</body>
+</html>

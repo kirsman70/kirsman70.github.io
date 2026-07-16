@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tugas</title>
+
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<div class="relative z-10 min-h-screen lg:flex">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
+      <span class="font-display font-semibold">KIR</span>
+    </a>
+    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <div class="mb-7">
+      <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="tugas">Tugas</h1>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="tasks_desc">Semua yang ditugaskan ke klub saat ini.</p>
+    </div>
+
+    <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Individual</button>
+      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">Ekstrakurikuler</button>
+      <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Kelompok</button>
+      
+      <div class="w-px h-6 bg-white/10 mx-2"></div>
+      
+      <button onclick="setCabangFilter('robotik')" id="filter-cabang-robotik" class="px-3 py-1 rounded-full badge-robotik opacity-50 transition">Robotik</button>
+      <button onclick="setCabangFilter('sains')" id="filter-cabang-sains" class="px-3 py-1 rounded-full badge-sains opacity-50 transition">Sains</button>
+    </div>
+
+    <div id="task-list" class="space-y-3"><!-- filled by script below --></div>
+  </main>
+</div>
+
+<!-- Task detail / submission modal -->
+<div id="task-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeTaskModal()">
+  <div class="modal-card p-6">
+    <div class="flex items-start justify-between gap-4 mb-1">
+      <h2 id="modal-title" class="font-display text-lg font-semibold"></h2>
+      <button onclick="closeTaskModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 -mt-1 -mr-1 p-1">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <p id="modal-meta" class="text-zinc-500 text-xs mb-4"></p>
+    <span id="modal-status" class="inline-block text-xs font-medium px-3 py-1 rounded-full mb-4"></span>
+
+    <div class="glass rounded-lg p-4 mb-5">
+      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Deskripsi tugas</p>
+      <p id="modal-description" class="text-sm text-zinc-300 leading-relaxed"></p>
+    </div>
+
+    <div>
+      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="modal_ans">Jawaban kamu</p>
+      <div id="modal-submission-status" class="text-sm mb-3"></div>
+
+      <label for="modal-file-input" class="glass-input flex items-center gap-3 rounded-lg px-4 py-3 text-sm cursor-pointer hover:bg-white/5 transition">
+        <svg class="w-4 h-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        <span id="modal-file-label" class="text-zinc-400" data-i18n="modal_upload">Klik untuk unggah file jawaban&hellip;</span>
+      </label>
+      <input id="modal-file-input" type="file" class="hidden" onchange="handleSubmissionFile(event)" />
+
+      <p class="text-[11px] text-zinc-600 mt-2" data-i18n="modal_proto">Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TASKS = [
+    { id: 't1', title: 'Desain Flyer Acara', type: 'ekskul', cabang: 'both', assignee: 'Alex', due: '18 Jul', status: 'progress',
+      description: 'Buat flyer untuk Rapat Umum minggu ini. Gunakan palet warna cabang kamu, sertakan tanggal, jam, dan lokasi. Format akhir: PNG atau PDF, ukuran poster A3.' },
+    { id: 't2', title: 'Email Penjangkauan Sponsor', type: 'ekskul', cabang: 'sains', assignee: 'Priya', due: '20 Jul', status: 'progress',
+      description: 'Susun draf email penjangkauan untuk 5 calon sponsor lokal. Sertakan proposal singkat kegiatan klub dan manfaat kemitraan.' },
+    { id: 't3', title: 'Draf Anggaran Pertunjukan Musim Gugur', type: 'kelompok', cabang: 'robotik', assignee: 'Marcus', due: '22 Jul', status: 'review',
+      description: 'Rincikan estimasi biaya untuk Latihan Pertunjukan Musim Gugur: sewa tempat, konsumsi, dan perlengkapan. Unggah dalam bentuk spreadsheet.' },
+    { id: 't4', title: 'Konfirmasi Pemesanan Tempat', type: 'individual', cabang: 'both', assignee: 'Alex', due: '14 Jul', status: 'late',
+      description: 'Hubungi pengelola Ruang 214 untuk konfirmasi ketersediaan tanggal Rapat Umum dan Malam Pemilihan Pengurus.' },
+    { id: 't5', title: 'Postingan Rekap Media Sosial', type: 'ekskul', cabang: 'both', assignee: 'Priya', due: '25 Jul', status: 'todo',
+      description: 'Buat rekap foto dan highlight dari acara bulan ini untuk diposting di Instagram klub.' },
+    { id: 't6', title: 'Surat Suara Pemilihan Pengurus', type: 'individual', cabang: 'sains', assignee: 'Marcus', due: '30 Jul', status: 'done',
+      description: 'Desain dan cetak surat suara untuk Malam Pemilihan Pengurus, termasuk daftar kandidat yang sudah dikonfirmasi.' },
+  ];
+
+  let currentTaskFilter = 'ekskul';
+  let currentCabangFilter = 'all';
+
+  const STATUS_META = {
+    progress: { i18n: 'status_progress', label: 'Sedang Dikerjakan', cls: 'bg-accent-15 text-accent-300 border border-accent-30' },
+    review:   { i18n: 'status_review', label: 'Menunggu Peninjauan', cls: 'bg-accent-gradient text-white shadow-glow-sm' },
+    late:     { i18n: 'status_late', label: 'Terlambat', cls: 'bg-white/5 text-zinc-500 border border-white/10' },
+    todo:     { i18n: 'status_todo', label: 'Belum Dimulai', cls: 'bg-zinc-800/60 text-zinc-400 border border-white/10' },
+    done:     { i18n: 'status_done', label: 'Selesai', cls: 'bg-accent-10 text-accent-200 border border-accent-20' },
+  };
+
+  function submissionKey(taskId) { return 'kir_submission_' + taskId; }
+
+  function renderTaskList() {
+    const list = document.getElementById('task-list');
+    list.innerHTML = TASKS.map(t => {
+      const meta = STATUS_META[t.status];
+      const submitted = localStorage.getItem(submissionKey(t.id));
+      return `
+        <button onclick="openTaskModal('${t.id}')" class="glass rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full text-left hover:bg-white/5 transition">
+          <div class="min-w-0">
+            <p class="font-medium text-zinc-100">${t.title}</p>
+            <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee} &middot; <span data-i18n="due">Tenggat:</span> ${t.due}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
+          </div>
+          <span class="self-start sm:self-center shrink-0 text-xs font-medium px-3 py-1 rounded-full ${meta.cls}" data-i18n="${meta.i18n}">${meta.label}</span>
+        </button>`;
+    }).join('');
+  }
+
+  let currentTaskId = null;
+
+  function openTaskModal(taskId) {
+    const task = TASKS.find(t => t.id === taskId);
+    if (!task) return;
+    currentTaskId = taskId;
+    const meta = STATUS_META[task.status];
+
+    document.getElementById('modal-title').textContent = task.title;
+    document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">Ditugaskan ke</span> ${task.assignee} &middot; <span data-i18n="due">Tenggat:</span> ${task.due}`;
+    const statusEl = document.getElementById('modal-status');
+    statusEl.textContent = meta.label;
+    statusEl.setAttribute('data-i18n', meta.i18n);
+    statusEl.className = 'inline-block text-xs font-medium px-3 py-1 rounded-full mb-4 ' + meta.cls;
+    document.getElementById('modal-description').textContent = task.description;
+
+    renderSubmissionStatus();
+    document.getElementById('task-modal').classList.remove('hidden');
+    kirApplyTranslations();
+  }
+
+  function closeTaskModal() {
+    document.getElementById('task-modal').classList.add('hidden');
+    currentTaskId = null;
+  }
+
+  function renderSubmissionStatus() {
+    const el = document.getElementById('modal-submission-status');
+    const saved = localStorage.getItem(submissionKey(currentTaskId));
+    if (saved) {
+      const data = JSON.parse(saved);
+      el.innerHTML = `<span class="text-accent-300">&#10003; Terkirim:</span> <span class="text-zinc-300">${data.fileName}</span> <button onclick="clearSubmission()" class="text-zinc-600 hover:text-zinc-400 text-xs ml-2 underline">hapus</button>`;
+    } else {
+      el.innerHTML = `<span class="text-zinc-500">Belum ada jawaban dikirim.</span>`;
+    }
+  }
+
+  function handleSubmissionFile(event) {
+    const file = event.target.files[0];
+    if (!file || !currentTaskId) return;
+    localStorage.setItem(submissionKey(currentTaskId), JSON.stringify({ fileName: file.name, submittedAt: Date.now() }));
+    renderSubmissionStatus();
+    renderTaskList();
+    event.target.value = '';
+  }
+
+  function clearSubmission() {
+    if (!currentTaskId) return;
+    localStorage.removeItem(submissionKey(currentTaskId));
+    renderSubmissionStatus();
+    renderTaskList();
+  }
+
+  renderTaskList();
+  kirInjectSidebar('tasks');
+</script>
+</body>
+</html>
