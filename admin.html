@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Panel</title>
+
+<script src="js/auth.js"></script>
+<script>
+  kirRequireAuth();
+  if (kirCurrentUserName() !== 'Admin') {
+    window.location.href = 'dashboard.html';
+  }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+
+<!-- MathJax, for the live math preview on the Voyages question editor -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+  /* ==========================================================
+     Admin-panel-only styling: calendar date picker, math
+     symbol toolbar, and the Voyages options builder. Everything
+     here reuses the site's CSS variables so it re-colors and
+     re-themes exactly like every other glass/accent element.
+     ========================================================== */
+  .kir-datepicker { position: relative; }
+  .kir-calendar-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+    background: var(--bg-color); border: 1px solid var(--glass-border);
+    border-radius: 0.85rem; padding: 0.9rem; width: 272px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  }
+  .kir-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+  .kir-cal-nav-btn {
+    width: 1.85rem; height: 1.85rem; border-radius: 0.5rem; display: flex; align-items: center;
+    justify-content: center; color: var(--muted-500); cursor: pointer; background: none; border: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .kir-cal-nav-btn:hover { background: rgba(128,128,128,0.12); color: var(--text-color); }
+  .kir-cal-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; text-transform: capitalize; }
+  .kir-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .kir-cal-weekday { font-size: 0.63rem; text-align: center; color: var(--muted-500); padding: 0.2rem 0 0.4rem; font-weight: 600; text-transform: uppercase; }
+  .kir-cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.78rem;
+    border-radius: 0.5rem; cursor: pointer; color: var(--text-color); border: 1px solid transparent;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .kir-cal-day:hover { background: rgba(128,128,128,0.12); }
+  .kir-cal-day.empty { visibility: hidden; cursor: default; }
+  .kir-cal-day.today { border-color: rgba(var(--accent-rgb), 0.55); font-weight: 600; }
+  .kir-cal-day.selected { background: rgb(var(--accent-rgb)); color: #fff; font-weight: 600; }
+  .kir-cal-footer { display: flex; justify-content: space-between; margin-top: 0.65rem; padding-top: 0.6rem; border-top: 1px solid var(--glass-border); }
+  .kir-cal-quick-btn { font-size: 0.72rem; font-weight: 600; color: rgb(var(--accent-light-rgb)); background: none; border: none; cursor: pointer; padding: 0; }
+  .kir-cal-quick-btn:hover { text-decoration: underline; }
+
+  .kir-math-toolbar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
+  .kir-math-btn {
+    min-width: 2.1rem; height: 2.1rem; padding: 0 0.55rem; border-radius: 0.55rem;
+    background: var(--glass-input-bg); border: 1px solid var(--glass-border); color: var(--text-color);
+    font-size: 0.85rem; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .kir-math-btn:hover { border-color: rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.1); color: rgb(var(--accent-light-rgb)); }
+  .kir-math-popover { position: relative; display: inline-block; }
+  .kir-math-greek-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; background: var(--bg-color);
+    border: 1px solid var(--glass-border); border-radius: 0.7rem; padding: 0.5rem; display: grid;
+    grid-template-columns: repeat(6, 1fr); gap: 2px; box-shadow: 0 12px 28px rgba(0,0,0,0.35); width: 216px;
+  }
+  .kir-math-greek-panel button {
+    width: 2rem; height: 2rem; border-radius: 0.4rem; font-size: 0.9rem; background: transparent;
+    border: none; color: var(--text-color); cursor: pointer; transition: background 0.12s ease, color 0.12s ease;
+  }
+  .kir-math-greek-panel button:hover { background: rgba(var(--accent-rgb), 0.14); color: rgb(var(--accent-light-rgb)); }
+  .kir-math-preview {
+    border: 1px solid var(--glass-border); background: rgba(128,128,128,0.05); border-radius: 0.6rem;
+    padding: 0.65rem 0.85rem; font-size: 0.85rem; min-height: 2.6rem; display: flex; align-items: center;
+  }
+
+  .voyage-option-row { display: flex; align-items: center; gap: 0.65rem; }
+  .voyage-option-dot-btn { background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0; display: flex; }
+  .voyage-option-dot-btn .voyage-option-dot { width: 20px; height: 20px; }
+  .voyage-option-dot-btn.selected .voyage-option-dot { border-color: rgb(var(--accent-rgb)); }
+  .voyage-option-dot-btn.selected .voyage-option-dot::after {
+    content: ''; position: absolute; inset: 3px; border-radius: 999px; background: rgb(var(--accent-rgb));
+  }
+
+  @keyframes admin-fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .admin-tab-fade { animation: admin-fade-in 0.38s cubic-bezier(.2,.8,.2,1) both; }
+</style>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<div class="relative z-10 min-h-screen lg:flex">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
+      <span class="font-display font-semibold">KIR</span>
+    </a>
+    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-4xl w-full mx-auto">
+    <div class="mb-7 flex items-center justify-between flex-wrap gap-4 animate-stagger-in" style="animation-delay: 0ms">
+      <div>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="admin_title">Admin Panel</h1>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="admin_desc">Tambahkan entri data baru ke sistem.</p>
+      </div>
+    </div>
+
+    <!-- Admin Tabs -->
+    <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2 animate-stagger-in" style="animation-delay: 45ms">
+      <button onclick="setAdminTab('tasks')" id="tab-tasks" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm transition" data-i18n="admin_tab_tasks">Tugas</button>
+      <button onclick="setAdminTab('schedule')" id="tab-schedule" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_tab_schedule">Jadwal</button>
+      <button onclick="setAdminTab('materials')" id="tab-materials" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_tab_materials">Materi</button>
+      <button onclick="setAdminTab('voyages')" id="tab-voyages" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_tab_voyages">Voyages</button>
+    </div>
+
+    <div class="glass rounded-2xl p-6 animate-stagger-in" style="animation-delay: 90ms">
+
+      <!-- Tasks Form -->
+      <form id="form-tasks" class="space-y-4 admin-tab-fade" onsubmit="handleTaskSubmit(event)">
+        <h2 class="font-display text-lg font-semibold mb-4" data-i18n="admin_tab_tasks">Tugas</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_task_title_label">JUDUL TUGAS</label>
+            <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_task_title_placeholder" placeholder="Masukkan judul..." />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_due_label">TENGGAT WAKTU (DUE)</label>
+            <div class="kir-datepicker" onclick="event.stopPropagation()">
+              <button type="button" id="dp-task-due-trigger" class="kir-select-trigger placeholder" onclick="kirDpToggle('dp-task-due')">
+                <span class="kir-select-trigger-label" id="dp-task-due-label" data-i18n="admin_pick_date">Pilih tanggal</span>
+                <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </button>
+              <div id="dp-task-due-panel" class="kir-calendar-panel hidden"></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_type_label">TIPE</label>
+            <select id="task-type-select">
+              <option value="ekskul" data-i18n="admin_type_ekskul">Ekstrakurikuler</option>
+              <option value="individual" data-i18n="admin_type_individual">Individual</option>
+              <option value="kelompok" data-i18n="admin_type_kelompok">Kelompok</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_cabang_label">CABANG</label>
+            <select id="task-cabang-select">
+              <option value="both" data-i18n="admin_cabang_both">Robotik & Sains</option>
+              <option value="robotik" data-i18n="robotik">Robotik</option>
+              <option value="sains" data-i18n="sains">Sains</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_assignee_label">PENERIMA (ASSIGNEE)</label>
+            <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_assignee_placeholder" placeholder="Nama anggota..." />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_desc_label">DESKRIPSI</label>
+          <textarea rows="3" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm resize-none" data-i18n-placeholder="admin_desc_placeholder" placeholder="Jelaskan detail tugas..."></textarea>
+        </div>
+        <div class="pt-2">
+          <button type="submit" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="admin_save_task">Simpan Tugas</button>
+        </div>
+      </form>
+
+      <!-- Schedule Form -->
+      <form id="form-schedule" class="space-y-4 hidden" onsubmit="handleScheduleSubmit(event)">
+        <h2 class="font-display text-lg font-semibold mb-4" data-i18n="admin_tab_schedule">Jadwal</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_event_name_label">NAMA ACARA</label>
+            <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_event_name_placeholder" placeholder="Masukkan nama acara..." />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_datetime_label">WAKTU & TANGGAL</label>
+            <div class="flex items-center gap-2">
+              <div class="kir-datepicker flex-1" onclick="event.stopPropagation()">
+                <button type="button" id="dp-schedule-date-trigger" class="kir-select-trigger placeholder" onclick="kirDpToggle('dp-schedule-date')">
+                  <span class="kir-select-trigger-label" id="dp-schedule-date-label" data-i18n="admin_pick_date">Pilih tanggal</span>
+                  <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </button>
+                <div id="dp-schedule-date-panel" class="kir-calendar-panel hidden"></div>
+              </div>
+              <input type="time" id="schedule-time-input" value="18:00" class="glass-input accent-theme rounded-lg px-3 py-2.5 text-sm w-28 shrink-0" aria-label="Jam" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_location_label">LOKASI</label>
+          <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_location_placeholder" placeholder="Ruang 214, Student Union" />
+        </div>
+        <div class="pt-2">
+          <button type="submit" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="admin_save_schedule">Simpan Jadwal</button>
+        </div>
+      </form>
+
+      <!-- Materials Form -->
+      <form id="form-materials" class="space-y-4 hidden" onsubmit="handleMaterialSubmit(event)">
+        <h2 class="font-display text-lg font-semibold mb-4" data-i18n="admin_tab_materials">Materi</h2>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_material_title_label">JUDUL MATERI</label>
+          <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_material_title_placeholder" placeholder="Masukkan judul..." />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_material_desc_label">DESKRIPSI SINGKAT</label>
+          <textarea rows="2" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm resize-none" data-i18n-placeholder="admin_material_desc_placeholder" placeholder="Ringkasan materi..."></textarea>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_action_type_label">JENIS TINDAKAN</label>
+            <select id="material-action-select">
+              <option value="download" data-i18n="admin_action_download">Unduh PDF</option>
+              <option value="link" data-i18n="admin_action_link">Buka Tautan</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_url_label">TAUTAN / URL FILE</label>
+            <input type="url" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="pt-2">
+          <button type="submit" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="admin_save_material">Simpan Materi</button>
+        </div>
+      </form>
+
+      <!-- Voyages Form -->
+      <form id="form-voyages" class="space-y-4 hidden" onsubmit="handleVoyageSubmit(event)">
+        <h2 class="font-display text-lg font-semibold mb-4" data-i18n="admin_tab_voyages">Voyages</h2>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_subject_label">SUBJEK</label>
+            <select id="voyage-subject-select">
+              <option value="math" data-i18n="admin_subject_math">Matematika</option>
+              <option value="physics" data-i18n="admin_subject_physics">Fisika</option>
+              <option value="chemistry" data-i18n="admin_subject_chemistry">Kimia</option>
+              <option value="biology" data-i18n="admin_subject_biology">Biologi</option>
+              <option value="coding" data-i18n="admin_subject_coding">Koding</option>
+            </select>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-medium text-zinc-400 tracking-wide" data-i18n="admin_difficulty_label">TINGKAT KESULITAN</label>
+              <span id="voyage-diff-badge" class="diff-badge diff-medium"></span>
+            </div>
+            <div class="relative h-9 flex items-center w-full">
+              <div class="absolute left-0 right-0 h-1 bg-white/10 rounded-full"></div>
+              <div id="voyage-diff-fill" class="absolute left-0 h-1 diff-track-fill rounded-full" style="width: 44%"></div>
+              <input type="range" id="voyage-diff-range" min="1" max="10" value="5" step="1" oninput="updateVoyageDiffPreview()"
+                class="kir-range absolute left-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_question_type_label">TIPE SOAL</label>
+            <select id="voyage-type-select">
+              <option value="mc" data-i18n="admin_type_mc">Pilihan Ganda</option>
+              <option value="dropdown" data-i18n="admin_type_dropdown">Dropdown</option>
+              <option value="essay" data-i18n="admin_type_essay">Esai</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_question_title_label">JUDUL SOAL</label>
+          <input type="text" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_question_title_placeholder" placeholder="Masukkan judul pertanyaan..." />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_question_text_label">TEKS SOAL</label>
+
+          <div class="kir-math-toolbar">
+            <button type="button" class="kir-math-btn" title="Pecahan" onclick="kirMathInsert('vform-question','$\\frac{','}{b}$','a')">a/b</button>
+            <button type="button" class="kir-math-btn" title="Pangkat" onclick="kirMathInsert('vform-question','$x^{','}$','2')">x²</button>
+            <button type="button" class="kir-math-btn" title="Subskrip" onclick="kirMathInsert('vform-question','$x_{','}$','n')">x<sub>n</sub></button>
+            <button type="button" class="kir-math-btn" title="Akar" onclick="kirMathInsert('vform-question','$\\sqrt{','}$','x')">√</button>
+            <button type="button" class="kir-math-btn" title="Pi" onclick="kirMathInsertSymbol('vform-question','\\pi')">π</button>
+            <button type="button" class="kir-math-btn" title="Tak hingga" onclick="kirMathInsertSymbol('vform-question','\\infty')">∞</button>
+            <button type="button" class="kir-math-btn" title="Derajat" onclick="kirMathInsertSymbol('vform-question','^\\circ')">°</button>
+            <button type="button" class="kir-math-btn" title="Kali" onclick="kirMathInsertSymbol('vform-question','\\times')">×</button>
+            <button type="button" class="kir-math-btn" title="Bagi" onclick="kirMathInsertSymbol('vform-question','\\div')">÷</button>
+            <button type="button" class="kir-math-btn" title="Plus minus" onclick="kirMathInsertSymbol('vform-question','\\pm')">±</button>
+            <button type="button" class="kir-math-btn" title="Kurang dari sama dengan" onclick="kirMathInsertSymbol('vform-question','\\leq')">≤</button>
+            <button type="button" class="kir-math-btn" title="Lebih dari sama dengan" onclick="kirMathInsertSymbol('vform-question','\\geq')">≥</button>
+            <button type="button" class="kir-math-btn" title="Tidak sama dengan" onclick="kirMathInsertSymbol('vform-question','\\neq')">≠</button>
+            <button type="button" class="kir-math-btn" title="Sigma" onclick="kirMathInsertSymbol('vform-question','\\sum')">Σ</button>
+            <button type="button" class="kir-math-btn" title="Integral" onclick="kirMathInsertSymbol('vform-question','\\int')">∫</button>
+            <div class="kir-math-popover" onclick="event.stopPropagation()">
+              <button type="button" class="kir-math-btn" title="Huruf Yunani" data-i18n="admin_math_greek" onclick="kirToggleGreekPanel()">αβ</button>
+              <div id="kir-greek-panel" class="kir-math-greek-panel hidden"></div>
+            </div>
+          </div>
+
+          <textarea id="vform-question" rows="3" required class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm resize-none"
+            data-i18n-placeholder="admin_question_text_placeholder" placeholder="Tuliskan pertanyaan lengkap..."
+            oninput="kirUpdateMathPreview('vform-question','vform-question-preview')"></textarea>
+          <p class="text-[11px] text-zinc-500 mt-1.5" data-i18n="admin_math_hint">Gunakan tombol di atas untuk menyisipkan simbol matematika tanpa mengetik LaTeX secara manual.</p>
+
+          <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mt-3 mb-1.5" data-i18n="admin_preview_label">Pratinjau</p>
+          <div id="vform-question-preview" class="kir-math-preview"><span class="text-zinc-600">—</span></div>
+        </div>
+
+        <!-- Options builder (Google Forms style) — shown for MC / Dropdown -->
+        <div id="voyage-options-wrap">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-medium text-zinc-400 tracking-wide" data-i18n="admin_options_label">OPSI JAWABAN</label>
+          </div>
+          <p class="text-[11px] text-zinc-500 mb-3" data-i18n="admin_options_hint">Tandai lingkaran di samping opsi untuk menjadikannya jawaban benar.</p>
+          <div id="voyage-options-list" class="space-y-2.5"></div>
+          <button type="button" onclick="kirAddVoyageOption()" class="mt-3 flex items-center gap-1.5 text-sm font-medium text-accent-300 hover:brightness-110 transition">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            <span data-i18n="admin_add_option">Tambah Opsi</span>
+          </button>
+        </div>
+
+        <!-- Reference answer — shown for Essay -->
+        <div id="voyage-essay-ref-wrap" class="hidden">
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide" data-i18n="admin_essay_ref_label">JAWABAN REFERENSI (OPSIONAL)</label>
+          <textarea rows="3" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm resize-none" data-i18n-placeholder="admin_essay_ref_placeholder" placeholder="Tulis kunci jawaban atau poin-poin penting untuk peninjauan pengurus..."></textarea>
+        </div>
+
+        <div class="pt-2">
+          <button type="submit" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="admin_save_voyage">Simpan Voyage</button>
+        </div>
+      </form>
+
+    </div>
+  </main>
+</div>
+
+<!-- Reusing toast for success notifications -->
+<div id="admin-toast" class="deltas-toast">
+  <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+  <span id="admin-toast-text"></span>
+</div>
+
+<script>
+  /* ----------------------------------------------------------
+     Tabs
+     ---------------------------------------------------------- */
+  function setAdminTab(tabName) {
+    const tabs = ['tasks', 'schedule', 'materials', 'voyages'];
+    tabs.forEach(t => {
+      const btn = document.getElementById(`tab-${t}`);
+      const form = document.getElementById(`form-${t}`);
+      if (t === tabName) {
+        btn.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm transition';
+        form.classList.remove('hidden');
+        form.classList.remove('admin-tab-fade');
+        void form.offsetWidth; // force reflow so the animation replays every switch
+        form.classList.add('admin-tab-fade');
+      } else {
+        btn.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition';
+        form.classList.add('hidden');
+      }
+    });
+    kirCloseAllCustomSelects();
+    kirDpCloseAll();
+  }
+
+  function kirShakeElement(el) {
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+  }
+
+  function showAdminToast(message) {
+    const toast = document.getElementById('admin-toast');
+    document.getElementById('admin-toast-text').textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  /* ----------------------------------------------------------
+     Calendar date picker — reusable across the Tasks "due" field
+     and the Schedule "date" field. Panels are keyed by a
+     "dp-<id>" prefix that matches the -trigger/-label/-panel
+     element ids next to each field.
+     ---------------------------------------------------------- */
+  const KIR_DP_STATE = {};
+  const KIR_DP_HOOKS = {};
+
+  function kirDpInit(id) {
+    const now = new Date();
+    KIR_DP_STATE[id] = { selected: null, viewYear: now.getFullYear(), viewMonth: now.getMonth() };
+  }
+
+  function kirDpCloseAll() {
+    document.querySelectorAll('.kir-calendar-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.kir-datepicker .kir-select-trigger').forEach(t => t.classList.remove('open'));
+  }
+
+  function kirDpToggle(id) {
+    const panel = document.getElementById(id + '-panel');
+    const trigger = document.getElementById(id + '-trigger');
+    const willOpen = panel.classList.contains('hidden');
+    kirDpCloseAll();
+    kirCloseAllCustomSelects();
+    const gp = document.getElementById('kir-greek-panel');
+    if (gp) gp.classList.add('hidden');
+    if (willOpen) {
+      panel.classList.remove('hidden');
+      trigger.classList.add('open');
+      kirDpRender(id);
+    }
+  }
+
+  function kirDpRender(id) {
+    const state = KIR_DP_STATE[id];
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const locale = lang === 'id' ? 'id-ID' : 'en-US';
+    const panel = document.getElementById(id + '-panel');
+
+    const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(state.viewYear, state.viewMonth, 1));
+    const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
+    const startOffset = firstOfMonth.getDay();
+    const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
+    const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'narrow' });
+    const weekdayLabels = [];
+    for (let i = 0; i < 7; i++) weekdayLabels.push(weekdayFmt.format(new Date(1970, 0, 4 + i)));
+
+    let cells = '';
+    for (let i = 0; i < startOffset; i++) cells += `<div class="kir-cal-day empty"></div>`;
+    const today = new Date();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday = today.getFullYear() === state.viewYear && today.getMonth() === state.viewMonth && today.getDate() === d;
+      const isSelected = state.selected && state.selected.getFullYear() === state.viewYear && state.selected.getMonth() === state.viewMonth && state.selected.getDate() === d;
+      cells += `<div class="kir-cal-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" onclick="kirDpSelect('${id}', ${state.viewYear}, ${state.viewMonth}, ${d})">${d}</div>`;
+    }
+
+    panel.innerHTML = `
+      <div class="kir-cal-header">
+        <button type="button" class="kir-cal-nav-btn" onclick="kirDpNav('${id}', -1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+        <span class="kir-cal-title">${monthLabel}</span>
+        <button type="button" class="kir-cal-nav-btn" onclick="kirDpNav('${id}', 1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <div class="kir-cal-grid">
+        ${weekdayLabels.map(w => `<div class="kir-cal-weekday">${w}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="kir-cal-footer">
+        <button type="button" class="kir-cal-quick-btn" onclick="kirDpSelectToday('${id}')">${I18N[lang].admin_cal_today}</button>
+        <button type="button" class="kir-cal-quick-btn" onclick="kirDpClear('${id}')">${I18N[lang].admin_cal_clear}</button>
+      </div>`;
+  }
+
+  function kirDpNav(id, delta) {
+    const state = KIR_DP_STATE[id];
+    state.viewMonth += delta;
+    if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
+    if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+    kirDpRender(id);
+  }
+
+  function kirDpFormat(id, date, lang) {
+    const locale = lang === 'id' ? 'id-ID' : 'en-US';
+    if (id === 'dp-schedule-date') {
+      return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
+    }
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date);
+  }
+
+  function kirDpApplySelection(id) {
+    const state = KIR_DP_STATE[id];
+    const label = document.getElementById(id + '-label');
+    const trigger = document.getElementById(id + '-trigger');
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    if (state.selected) {
+      label.textContent = kirDpFormat(id, state.selected, lang);
+      trigger.classList.remove('placeholder');
+    } else {
+      label.textContent = I18N[lang].admin_pick_date;
+      trigger.classList.add('placeholder');
+    }
+    if (KIR_DP_HOOKS[id]) KIR_DP_HOOKS[id]();
+  }
+
+  function kirDpSelect(id, y, m, d) {
+    KIR_DP_STATE[id].selected = new Date(y, m, d);
+    kirDpApplySelection(id);
+    document.getElementById(id + '-panel').classList.add('hidden');
+    document.getElementById(id + '-trigger').classList.remove('open');
+  }
+
+  function kirDpSelectToday(id) {
+    const now = new Date();
+    KIR_DP_STATE[id].viewYear = now.getFullYear();
+    KIR_DP_STATE[id].viewMonth = now.getMonth();
+    kirDpSelect(id, now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  function kirDpClear(id) {
+    KIR_DP_STATE[id].selected = null;
+    kirDpApplySelection(id);
+    document.getElementById(id + '-panel').classList.add('hidden');
+    document.getElementById(id + '-trigger').classList.remove('open');
+  }
+
+  /* ----------------------------------------------------------
+     Math symbol toolbar + live preview (Voyages question text)
+     ---------------------------------------------------------- */
+  const KIR_GREEK = [
+    ['\\alpha', 'α'], ['\\beta', 'β'], ['\\gamma', 'γ'], ['\\delta', 'δ'], ['\\epsilon', 'ε'], ['\\theta', 'θ'],
+    ['\\lambda', 'λ'], ['\\mu', 'μ'], ['\\rho', 'ρ'], ['\\sigma', 'σ'], ['\\phi', 'φ'], ['\\omega', 'ω'],
+    ['\\Delta', 'Δ'], ['\\Sigma', 'Σ'], ['\\Omega', 'Ω'], ['\\Phi', 'Φ'], ['\\Pi', 'Π'], ['\\Theta', 'Θ'],
+  ];
+
+  function kirBuildGreekPanel() {
+    const panel = document.getElementById('kir-greek-panel');
+    if (!panel) return;
+    panel.innerHTML = KIR_GREEK.map(([latex, disp]) =>
+      `<button type="button" onclick="kirInsertGreek('vform-question','${latex}')">${disp}</button>`
+    ).join('');
+  }
+
+  function kirToggleGreekPanel() {
+    kirDpCloseAll();
+    kirCloseAllCustomSelects();
+    document.getElementById('kir-greek-panel').classList.toggle('hidden');
+  }
+
+  function kirInsertGreek(textareaId, latex) {
+    kirMathInsertSymbol(textareaId, latex);
+    document.getElementById('kir-greek-panel').classList.add('hidden');
+  }
+
+  function kirMathInsert(textareaId, before, after, placeholder) {
+    const ta = document.getElementById(textareaId);
+    if (!ta) return;
+    ta.focus();
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    const selected = ta.value.slice(start, end) || placeholder;
+    const insertText = before + selected + after;
+    ta.value = ta.value.slice(0, start) + insertText + ta.value.slice(end);
+    const newStart = start + before.length;
+    const newEnd = newStart + selected.length;
+    ta.setSelectionRange(newStart, newEnd);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function kirMathInsertSymbol(textareaId, latex) {
+    kirMathInsert(textareaId, '$', '$', latex);
+  }
+
+  const kirMathPreviewTimers = {};
+  function kirUpdateMathPreview(taId, previewId) {
+    clearTimeout(kirMathPreviewTimers[previewId]);
+    kirMathPreviewTimers[previewId] = setTimeout(() => {
+      const ta = document.getElementById(taId);
+      const preview = document.getElementById(previewId);
+      if (!ta || !preview) return;
+      if (window.MathJax && window.MathJax.typesetClear) window.MathJax.typesetClear([preview]);
+      if (!ta.value.trim()) {
+        preview.innerHTML = '<span class="text-zinc-600">—</span>';
+        return;
+      }
+      preview.textContent = ta.value;
+      if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([preview]);
+    }, 300);
+  }
+
+  /* ----------------------------------------------------------
+     Voyages: difficulty slider preview (reuses the same badge
+     classes/star icon as the Voyages page itself)
+     ---------------------------------------------------------- */
+  const KIR_DIFF_STAR_SVG = '<svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.59 5.25 5.79.84-4.19 4.08.99 5.77L10 14.77l-5.18 2.67.99-5.77L1.62 7.59l5.79-.84L10 1.5z"/></svg>';
+  function difficultyBadgeClass(d) {
+    if (d >= 10) return 'diff-osn';
+    if (d >= 7) return 'diff-hard';
+    if (d >= 4) return 'diff-medium';
+    return 'diff-easy';
+  }
+  function updateVoyageDiffPreview() {
+    const range = document.getElementById('voyage-diff-range');
+    const v = parseInt(range.value, 10);
+    const badge = document.getElementById('voyage-diff-badge');
+    badge.className = 'diff-badge ' + difficultyBadgeClass(v);
+    badge.innerHTML = KIR_DIFF_STAR_SVG + `<span>${v}</span>`;
+    document.getElementById('voyage-diff-fill').style.width = (((v - 1) / 9) * 100) + '%';
+  }
+
+  /* ----------------------------------------------------------
+     Voyages: real options builder (Google Forms style) — add,
+     remove, edit, and mark-correct, replacing the old
+     comma-separated text field.
+     ---------------------------------------------------------- */
+  let voyageOptions = [];
+  let voyageCorrectId = null;
+
+  function kirGenOptionId() {
+    return 'o' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function kirResetVoyageOptions() {
+    voyageOptions = [{ id: kirGenOptionId(), text: '' }, { id: kirGenOptionId(), text: '' }];
+    voyageCorrectId = null;
+    kirRenderVoyageOptions();
+  }
+
+  function kirRenderVoyageOptions() {
+    const list = document.getElementById('voyage-options-list');
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    list.innerHTML = voyageOptions.map((o, i) => `
+      <div class="voyage-option-row animate-stagger-in" style="animation-delay: ${i * 40}ms" data-id="${o.id}">
+        <button type="button" class="voyage-option-dot-btn${voyageCorrectId === o.id ? ' selected' : ''}" onclick="kirSetVoyageCorrect('${o.id}')" aria-label="Tandai benar">
+          <span class="voyage-option-dot"></span>
+        </button>
+        <input type="text" class="glass-input flex-1 rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="admin_option_placeholder" placeholder="${I18N[lang].admin_option_placeholder}" value="${kirEscapeHtml(o.text)}" oninput="kirUpdateVoyageOptionText('${o.id}', this.value)" />
+        <button type="button" onclick="kirRemoveVoyageOption('${o.id}')" class="text-zinc-500 hover:text-red-400 p-1.5 shrink-0 transition"${voyageOptions.length <= 2 ? ' disabled style="opacity:.3;cursor:not-allowed;"' : ''} aria-label="Hapus opsi">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>`).join('');
+  }
+
+  function kirUpdateVoyageOptionText(id, value) {
+    const o = voyageOptions.find(x => x.id === id);
+    if (o) o.text = value;
+  }
+
+  function kirSetVoyageCorrect(id) {
+    voyageCorrectId = id;
+    kirRenderVoyageOptions();
+  }
+
+  function kirRemoveVoyageOption(id) {
+    if (voyageOptions.length <= 2) return;
+    voyageOptions = voyageOptions.filter(o => o.id !== id);
+    if (voyageCorrectId === id) voyageCorrectId = null;
+    kirRenderVoyageOptions();
+  }
+
+  function kirAddVoyageOption() {
+    voyageOptions.push({ id: kirGenOptionId(), text: '' });
+    kirRenderVoyageOptions();
+    requestAnimationFrame(() => {
+      const rows = document.querySelectorAll('#voyage-options-list .voyage-option-row');
+      const last = rows[rows.length - 1];
+      if (last) last.querySelector('input').focus();
+    });
+  }
+
+  function kirOnVoyageTypeChange() {
+    const type = document.getElementById('voyage-type-select').value;
+    document.getElementById('voyage-options-wrap').classList.toggle('hidden', type === 'essay');
+    document.getElementById('voyage-essay-ref-wrap').classList.toggle('hidden', type !== 'essay');
+  }
+
+  /* ----------------------------------------------------------
+     Form submit handlers — each validates its own custom
+     widgets (date picker / options builder), then resets
+     everything (native fields + custom widgets) and toasts.
+     ---------------------------------------------------------- */
+  function handleTaskSubmit(e) {
+    e.preventDefault();
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    if (!KIR_DP_STATE['dp-task-due'].selected) {
+      kirShakeElement(document.getElementById('dp-task-due-trigger'));
+      return;
+    }
+    e.target.reset();
+    kirDpClear('dp-task-due');
+    kirRefreshCustomSelect('task-type-select');
+    kirRefreshCustomSelect('task-cabang-select');
+    showAdminToast(I18N[lang].admin_toast_tasks);
+  }
+
+  function handleScheduleSubmit(e) {
+    e.preventDefault();
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    if (!KIR_DP_STATE['dp-schedule-date'].selected) {
+      kirShakeElement(document.getElementById('dp-schedule-date-trigger'));
+      return;
+    }
+    e.target.reset();
+    kirDpClear('dp-schedule-date');
+    document.getElementById('schedule-time-input').value = '18:00';
+    showAdminToast(I18N[lang].admin_toast_schedule);
+  }
+
+  function handleMaterialSubmit(e) {
+    e.preventDefault();
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    e.target.reset();
+    kirRefreshCustomSelect('material-action-select');
+    showAdminToast(I18N[lang].admin_toast_materials);
+  }
+
+  function handleVoyageSubmit(e) {
+    e.preventDefault();
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const type = document.getElementById('voyage-type-select').value;
+
+    if (type !== 'essay') {
+      const filled = voyageOptions.filter(o => o.text.trim() !== '');
+      if (filled.length < 2) {
+        kirShakeElement(document.getElementById('voyage-options-list'));
+        showAdminToast(I18N[lang].admin_error_need_2_options);
+        return;
+      }
+      const correct = voyageOptions.find(o => o.id === voyageCorrectId);
+      if (!correct || correct.text.trim() === '') {
+        kirShakeElement(document.getElementById('voyage-options-list'));
+        showAdminToast(I18N[lang].admin_error_need_correct);
+        return;
+      }
+    }
+
+    e.target.reset();
+    document.getElementById('voyage-diff-range').value = 5;
+    updateVoyageDiffPreview();
+    kirResetVoyageOptions();
+    document.getElementById('vform-question-preview').innerHTML = '<span class="text-zinc-600">—</span>';
+    kirRefreshCustomSelect('voyage-subject-select');
+    kirRefreshCustomSelect('voyage-type-select');
+    kirOnVoyageTypeChange();
+    showAdminToast(I18N[lang].admin_toast_voyages);
+  }
+
+  /* ----------------------------------------------------------
+     Global click / escape handling for the calendar + greek
+     symbol popovers (custom selects already have their own
+     listener in auth.js).
+     ---------------------------------------------------------- */
+  document.addEventListener('click', () => {
+    kirDpCloseAll();
+    const gp = document.getElementById('kir-greek-panel');
+    if (gp) gp.classList.add('hidden');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      kirDpCloseAll();
+      const gp = document.getElementById('kir-greek-panel');
+      if (gp) gp.classList.add('hidden');
+    }
+  });
+
+  /* Keep every custom dropdown + calendar/options-builder copy in
+     sync if the admin flips the language mid-session. */
+  const kirAdminOriginalLangToggle = window.handleLanguageToggle;
+  window.handleLanguageToggle = function () {
+    kirAdminOriginalLangToggle();
+    ['task-type-select', 'task-cabang-select', 'material-action-select', 'voyage-subject-select', 'voyage-type-select'].forEach(kirRefreshCustomSelect);
+    kirRenderVoyageOptions();
+    updateVoyageDiffPreview();
+    kirDpCloseAll();
+  };
+
+  /* ----------------------------------------------------------
+     Init
+     ---------------------------------------------------------- */
+  kirDpInit('dp-task-due');
+  kirDpInit('dp-schedule-date');
+  kirBuildGreekPanel();
+  kirResetVoyageOptions();
+  updateVoyageDiffPreview();
+
+  document.getElementById('voyage-type-select').addEventListener('change', kirOnVoyageTypeChange);
+
+  kirRefreshCustomSelect('task-type-select');
+  kirRefreshCustomSelect('task-cabang-select');
+  kirRefreshCustomSelect('material-action-select');
+  kirRefreshCustomSelect('voyage-subject-select');
+  kirRefreshCustomSelect('voyage-type-select');
+  kirOnVoyageTypeChange();
+
+  kirInjectSidebar('admin');
+</script>
+</body>
+</html>

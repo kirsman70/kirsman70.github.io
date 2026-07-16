@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voyages</title>
+
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+
+<!-- MathJax for rendering LaTeX -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<div class="relative z-10 min-h-screen lg:flex">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
+      <span class="font-display font-semibold">KIR</span>
+    </a>
+    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <div class="mb-7 flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="voyages_title">Voyages</h1>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="voyages_desc">Latihan soal MIPA dan koding. Selesaikan soal-soal ini untuk mengumpulkan deltas.</p>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+          <svg id="voyages-streak-flame" viewBox="0 0 24 24" class="w-5 h-5" style="filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.5));">
+            <defs>
+              <clipPath id="voyages-flame-clip">
+                <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
+              </clipPath>
+              <linearGradient id="voyages-flame-gradient" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" style="stop-color: rgb(var(--accent-2-rgb))" />
+                <stop offset="100%" style="stop-color: rgb(var(--accent-light-rgb))" />
+              </linearGradient>
+            </defs>
+            <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
+            <g clip-path="url(#voyages-flame-clip)">
+              <g id="voyages-flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
+                <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#voyages-flame-gradient)" class="flame-wave" />
+              </g>
+            </g>
+          </svg>
+          <span class="font-display font-semibold text-lg" id="voyages-streak-count">6</span>
+          <span class="text-zinc-500 text-xs" data-i18n="streak_days">hari beruntun</span>
+        </div>
+        <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+          <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+          <span class="font-display font-semibold text-lg" id="voyages-deltas-total">0</span>
+          <span class="text-zinc-500 text-xs" data-i18n="deltas_points">deltas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters + search -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-6 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-end gap-6 w-full sm:w-[calc(50%-0.5rem)]">
+        <div class="w-full sm:w-2/5 shrink-0">
+          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_filter_all">SUBJEK</label>
+          <select id="filter-subject-select" multiple class="hidden">
+            <option value="math" selected>Matematika</option>
+            <option value="physics" selected>Fisika</option>
+            <option value="chemistry" selected>Kimia</option>
+            <option value="biology" selected>Biologi</option>
+            <option value="coding" selected>Koding</option>
+          </select>
+        </div>
+
+        <div class="w-full sm:flex-1 shrink-0">
+        <div class="flex items-center justify-between text-xs font-medium text-zinc-400 mb-2 tracking-wide">
+          <span data-i18n="voyages_difficulty">RATING</span>
+          <span class="relative">
+            <span id="diff-label" class="text-accent-300 font-semibold cursor-pointer hover:brightness-125 transition" onclick="openDiffInput()" title="Klik untuk mengetik, mis. 3 atau 3-6">1 - 10</span>
+            <input id="diff-input" type="text" inputmode="numeric" autocomplete="off"
+              class="hidden diff-inline-input" placeholder="3 atau 3-6"
+              oninput="liveDiffInput()" onkeydown="handleDiffInputKey(event)" onblur="cancelDiffInput()" />
+          </span>
+        </div>
+        <div class="relative h-6 flex items-center w-full cursor-pointer" onmousedown="handleTrackClick(event)">
+          <!-- Ticks -->
+          <div class="absolute inset-0 flex justify-between items-center px-1 pointer-events-none">
+            <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
+            <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
+            <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
+            <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
+            <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
+          </div>
+          <!-- Track -->
+          <div class="absolute left-0 right-0 h-1 bg-white/10 rounded-full"></div>
+          <div id="diff-track" class="absolute h-1 diff-track-fill rounded-full" style="left: 0%; right: 0%;"></div>
+          <!-- Inputs -->
+          <!-- Inputs -->
+          <input type="range" id="diff-min" min="1" max="10" value="1" step="1" oninput="updateDiffFilter()" class="kir-range absolute left-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full" />
+          <input type="range" id="diff-max" min="1" max="10" value="10" step="1" oninput="updateDiffFilter()" class="kir-range absolute left-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full" />
+        </div>
+      </div>
+      </div>
+
+      <div class="w-full sm:w-[calc(50%-0.5rem)] shrink-0">
+        <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_search_label">CARI</label>
+        <div class="relative">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+            style="color:#71717a">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+          </svg>
+          <input
+            id="voyage-search"
+            type="text"
+            class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
+            oninput="handleVoyageSearchChange()"
+            data-i18n-placeholder="voyages_search_placeholder"
+            placeholder="Cari soal…"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div id="voyage-list" class="grid sm:grid-cols-2 gap-4"><!-- filled by script --></div>
+  </main>
+</div>
+
+<!-- Voyage question modal -->
+<div id="voyage-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeVoyageModal()">
+  <div class="modal-card p-6">
+    <div class="flex items-start justify-between gap-4 mb-2">
+      <h2 id="vm-title" class="font-display text-lg font-semibold"></h2>
+      <button onclick="closeVoyageModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 -mt-1 -mr-1 p-1">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap mb-5">
+      <span id="vm-subject-badge" class="subject-badge"></span>
+      <span id="vm-diff-badge" class="diff-badge"></span>
+      <span id="vm-type-pill" class="type-pill"></span>
+    </div>
+
+    <div class="glass rounded-lg p-4 mb-5">
+      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Soal</p>
+      <p id="vm-question" class="text-sm text-zinc-200 leading-relaxed"></p>
+    </div>
+
+    <!-- Multiple choice -->
+    <div id="vm-mc-wrap" class="hidden">
+      <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_answer">Pilih salah satu jawaban di bawah.</p>
+      <div id="vm-mc-options" class="space-y-2.5 mb-5"></div>
+    </div>
+
+    <!-- Dropdown -->
+    <div id="vm-dropdown-wrap" class="hidden">
+      <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_dropdown">Pilih jawaban dari menu di bawah.</p>
+      <select id="vm-dropdown-select" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5"></select>
+    </div>
+
+    <!-- Essay -->
+    <div id="vm-essay-wrap" class="hidden">
+      <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">Jawaban esai kamu</label>
+      <textarea id="vm-essay-textarea" rows="5" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5" data-i18n-placeholder="voyages_essay_placeholder" placeholder="Tulis jawaban esai kamu di sini…"></textarea>
+    </div>
+
+    <div id="vm-feedback" class="hidden text-sm font-medium rounded-lg px-4 py-3 mb-4"></div>
+
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-xs text-zinc-500">
+        <span data-i18n="voyages_reward">Ganjaran</span>:
+        <span id="vm-reward-amount" class="text-accent-300 font-semibold">0</span>
+        <span data-i18n="deltas_points">deltas</span>
+      </p>
+      <button id="vm-submit-btn" onclick="submitVoyageAnswer()" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="voyages_submit">Kirim Jawaban</button>
+    </div>
+
+    <div class="border-t border-white/10 mt-5 pt-5" id="voyage-comments-root"><!-- filled by kirRenderCommentSection --></div>
+  </div>
+</div>
+
+<div id="deltas-toast" class="deltas-toast">
+  <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+  <span id="deltas-toast-text"></span>
+</div>
+
+<script>
+  const VOYAGES = [
+    {
+      id: 'v1',
+      title: 'Limit Fungsi Aljabar',
+      subject: 'math',
+      difficulty: 3,
+      type: 'mc',
+      question: 'Nilai dari $\\lim_{x \\to 2} \\frac{x^2 - 4}{x - 2}$ adalah …',
+      options: ['0', '2', '4', 'Tidak terdefinisi'],
+      correctIndex: 2,
+    },
+    {
+      id: 'v2',
+      title: 'Hukum Newton II',
+      subject: 'physics',
+      difficulty: 4,
+      type: 'dropdown',
+      question: 'Sebuah benda bermassa $4 \\text{ kg}$ didorong dengan gaya konstan $20 \\text{ N}$ di atas bidang datar tanpa gesekan. Percepatan benda tersebut adalah ___ $\\text{m/s}^2$.',
+      options: ['2', '4', '5', '8'],
+      correctIndex: 2,
+    },
+    {
+      id: 'v3',
+      title: 'Analisis Kompleksitas Big-O',
+      subject: 'coding',
+      difficulty: 6,
+      type: 'essay',
+      question: 'Jelaskan kompleksitas waktu (Big-O) dari algoritma pencarian biner (binary search) pada array terurut berukuran $n$, serta jelaskan secara singkat alasannya.',
+    },
+    {
+      id: 'v4',
+      title: 'Latihan 01 OSN Informatika',
+      subject: 'coding',
+      difficulty: 10,
+      type: 'mc',
+      question: 'Diberikan array integer yang sudah terurut menaik sepanjang $n$ ($1 \\le n \\le 10^6$). Untuk menemukan sepasang indeks $(i, j)$ sehingga $a[i] + a[j] = \\text{target}$ dengan kompleksitas waktu paling optimal, pendekatan mana yang tepat?',
+      options: [
+        'Brute force dua nested loop, $O(n^2)$',
+        'Two pointer dari kedua ujung array, $O(n)$',
+        'Rekursi penuh tanpa memoization',
+        'Mengurutkan ulang array di setiap iterasi'
+      ],
+      correctIndex: 1,
+    },
+    {
+      id: 'v5',
+      title: 'Konsep Mol dan Stoikiometri',
+      subject: 'chemistry',
+      difficulty: 3,
+      type: 'mc',
+      question: 'Berapa jumlah mol yang terkandung dalam $22 \\text{ gram}$ $\\text{CO}_2$? ($\\text{Ar C} = 12$, $\\text{O} = 16$)',
+      options: ['$0,25 \\text{ mol}$', '$0,5 \\text{ mol}$', '$1 \\text{ mol}$', '$2 \\text{ mol}$'],
+      correctIndex: 1,
+    },
+    {
+      id: 'v6',
+      title: 'Laju Reaksi Kimia',
+      subject: 'chemistry',
+      difficulty: 5,
+      type: 'dropdown',
+      question: 'Menaikkan suhu reaksi sebesar $10^\\circ\\text{C}$ umumnya menyebabkan laju reaksi meningkat sekitar ___ kali lipat, sesuai aturan Van\'t Hoff.',
+      options: ['1', '2', '5', '10'],
+      correctIndex: 1,
+    },
+    {
+      id: 'v7',
+      title: 'Kesetimbangan Asam Basa OSN Kimia',
+      subject: 'chemistry',
+      difficulty: 10,
+      type: 'essay',
+      question: 'Jelaskan bagaimana larutan penyangga (buffer) mempertahankan pH-nya ketika ditambahkan sedikit asam kuat atau basa kuat. Sertakan contoh pasangan asam basa konjugasi.',
+    },
+    {
+      id: 'v8',
+      title: 'Struktur dan Fungsi Sel',
+      subject: 'biology',
+      difficulty: 2,
+      type: 'mc',
+      question: 'Organel sel yang berperan sebagai tempat utama respirasi seluler dan produksi $\\text{ATP}$ adalah …',
+      options: ['Ribosom', 'Mitokondria', 'Badan Golgi', 'Lisosom'],
+      correctIndex: 1,
+    },
+    {
+      id: 'v9',
+      title: 'Genetika Mendel',
+      subject: 'biology',
+      difficulty: 5,
+      type: 'dropdown',
+      question: 'Pada persilangan monohibrid dominan penuh ($Aa \\times Aa$), rasio fenotipe keturunan $F_2$ yang dihasilkan adalah $3 : \\text{\\_\\_\\_}$.',
+      options: ['1', '2', '3', '4'],
+      correctIndex: 0,
+    },
+    {
+      id: 'v10',
+      title: 'Fisiologi Tumbuhan OSN Biologi',
+      subject: 'biology',
+      difficulty: 10,
+      type: 'essay',
+      question: 'Jelaskan mekanisme membuka dan menutupnya stomata pada daun, serta kaitannya dengan pergerakan ion kalium ($\\text{K}^+$) pada sel penjaga (guard cell).',
+    },
+  ];
+
+  const SUBJECT_META = {
+    math:      { label: 'Matematika', icon: '∑' },
+    physics:   { label: 'Fisika', icon: '⚛' },
+    chemistry: { label: 'Kimia', icon: '⚗' },
+    biology:   { label: 'Biologi', icon: '🧬' },
+    coding:    { label: 'Koding', icon: '⌘' },
+  };
+
+  const TYPE_META = {
+    mc: { i18n: 'voyages_type_mc', label: 'Pilihan Ganda' },
+    dropdown: { i18n: 'voyages_type_dropdown', label: 'Dropdown' },
+    essay: { i18n: 'voyages_type_essay', label: 'Esai' },
+  };
+
+  function deltaReward(difficulty) {
+    return difficulty * 25 + (difficulty >= 10 ? 50 : 0);
+  }
+
+  function difficultyBadgeClass(d) {
+    if (d >= 10) return 'diff-osn';
+    if (d >= 7) return 'diff-hard';
+    if (d >= 4) return 'diff-medium';
+    return 'diff-easy';
+  }
+
+  function difficultyLabel(d) {
+    return `${d}`;
+  }
+
+  const DIFF_STAR_SVG = '<svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.59 5.25 5.79.84-4.19 4.08.99 5.77L10 14.77l-5.18 2.67.99-5.77L1.62 7.59l5.79-.84L10 1.5z"/></svg>';
+
+  function diffBadgeHtml(d) {
+    return `${DIFF_STAR_SVG}<span>${difficultyLabel(d)}</span>`;
+  }
+
+  let currentSubjectFilter = new Set(['math', 'physics', 'chemistry', 'biology', 'coding']);
+  let currentVoyageId = null;
+  let selectedMcIndex = null;
+  let diffMin = 1;
+  let diffMax = 10;
+  let voyageSearchQuery = '';
+
+  function handleVoyageSearchChange() {
+    voyageSearchQuery = document.getElementById('voyage-search').value.trim().toLowerCase();
+    renderVoyageList();
+  }
+
+  function handleSubjectFilterChange() {
+    const select = document.getElementById('filter-subject-select');
+    currentSubjectFilter = new Set(Array.from(select.selectedOptions).map(o => o.value));
+    renderVoyageList();
+  }
+
+  function spawnDiffStars() {
+    const container = document.getElementById('diff-track').parentElement;
+    const star = document.createElement('div');
+    star.className = 'diff-star-particle w-3 h-3';
+    star.innerHTML = DIFF_STAR_SVG;
+    
+    const tx = (Math.random() - 0.5) * 80 + 'px';
+    const ty = -(20 + Math.random() * 40) + 'px';
+    
+    // Calculate random spin: between 180 and 540 degrees, random direction (1 or -1)
+    const rotEnd = (Math.random() > 0.5 ? 1 : -1) * (180 + Math.random() * 360) + 'deg';
+    
+    star.style.setProperty('--tx', tx);
+    star.style.setProperty('--ty', ty);
+    star.style.setProperty('--rot-end', rotEnd);
+    
+    // Pick a random color from the active theme's accent palette
+    const colorVars = ['--accent-rgb', '--accent-light-rgb', '--accent-2-rgb', '--accent-lighter-rgb'];
+    const randomColor = colorVars[Math.floor(Math.random() * colorVars.length)];
+    star.style.color = `rgb(var(${randomColor}))`;
+    
+    // Calculate the active track zone from input values directly
+    const minVal = parseInt(document.getElementById('diff-min').value, 10);
+    const maxVal = parseInt(document.getElementById('diff-max').value, 10);
+    const trueMin = Math.min(minVal, maxVal);
+    const trueMax = Math.max(minVal, maxVal);
+    
+    const leftPercent = ((trueMin - 1) / 9) * 100;
+    const widthPercent = ((trueMax - trueMin) / 9) * 100;
+    const randomPos = leftPercent + (Math.random() * widthPercent);
+    
+    star.style.left = `${randomPos}%`;
+    star.style.top = '50%';
+    
+    container.appendChild(star);
+    setTimeout(() => star.remove(), 1200);
+  }
+
+  function handleTrackClick(e) {
+    if (e.target.tagName.toLowerCase() === 'input') return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    const targetVal = Math.max(1, Math.min(10, Math.round((percent * 9) + 1)));
+
+    const minInput = document.getElementById('diff-min');
+    const maxInput = document.getElementById('diff-max');
+    const currentMin = parseInt(minInput.value, 10);
+    const currentMax = parseInt(maxInput.value, 10);
+
+    if (Math.abs(targetVal - currentMin) < Math.abs(targetVal - currentMax)) {
+      minInput.value = targetVal;
+    } else {
+      maxInput.value = targetVal;
+    }
+    
+    updateDiffFilter();
+  }
+
+  function updateDiffFilter(skipStars = false) {
+    if (!skipStars && Math.random() > 0.4) spawnDiffStars();
+    
+    let minVal = parseInt(document.getElementById('diff-min').value, 10);
+    let maxVal = parseInt(document.getElementById('diff-max').value, 10);
+    
+    if (minVal > maxVal) {
+      const tmp = minVal;
+      minVal = maxVal;
+      maxVal = tmp;
+    }
+    
+    diffMin = minVal;
+    diffMax = maxVal;
+    
+    document.getElementById('diff-label').textContent = diffMin + ' - ' + diffMax;
+    
+    const track = document.getElementById('diff-track');
+    const leftPercent = ((minVal - 1) / 9) * 100;
+    const rightPercent = 100 - (((maxVal - 1) / 9) * 100);
+    
+    // Adjust visual bar positioning to account for thumb width mapping
+    track.style.left = 'calc(' + leftPercent + '% + ' + (8 - (leftPercent * 0.16)) + 'px)';
+    track.style.right = 'calc(' + rightPercent + '% + ' + (8 - (rightPercent * 0.16)) + 'px)';
+    
+    renderVoyageList();
+  }
+
+  function openDiffInput() {
+    const label = document.getElementById('diff-label');
+    const input = document.getElementById('diff-input');
+    input.value = diffMin === diffMax ? `${diffMin}` : `${diffMin}-${diffMax}`;
+    label.classList.add('hidden');
+    input.classList.remove('hidden');
+    input.focus();
+    input.select();
+  }
+
+  function handleDiffInputKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur ? input.blur() : document.getElementById('diff-input').blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); document.getElementById('diff-input').value = ''; cancelDiffInput(); }
+  }
+
+  function cancelDiffInput() {
+    // diffMin/diffMax already reflect the last valid value typed (or the
+    // range from before editing started, if nothing valid was typed) —
+    // so just hiding the input naturally "reverts" an emptied field.
+    document.getElementById('diff-input').classList.add('hidden');
+    document.getElementById('diff-label').classList.remove('hidden');
+  }
+
+  function shakeDiffInput() {
+    const input = document.getElementById('diff-input');
+    input.classList.add('shake');
+    setTimeout(() => input.classList.remove('shake'), 400);
+  }
+
+  function liveDiffInput() {
+    const input = document.getElementById('diff-input');
+
+    // Block anything that isn't a digit or a dash as it's typed, and
+    // collapse any extra dashes down to one.
+    let cleaned = input.value.replace(/[^0-9-]/g, '');
+    const firstDash = cleaned.indexOf('-');
+    if (firstDash !== -1) {
+      cleaned = cleaned.slice(0, firstDash + 1) + cleaned.slice(firstDash + 1).replace(/-/g, '');
+    }
+    if (cleaned !== input.value) input.value = cleaned;
+
+    if (cleaned === '') return; // leave diffMin/diffMax as they were
+
+    const match = cleaned.match(/^(\d{1,2})-(\d{1,2})$|^(\d{1,2})-?$/);
+    if (!match) { shakeDiffInput(); return; }
+
+    if (match[3] !== undefined) {
+      if (cleaned.endsWith('-')) return; // still typing the second number
+      const n = parseInt(match[3], 10);
+      if (n >= 1 && n <= 10) {
+        document.getElementById('diff-min').value = n;
+        document.getElementById('diff-max').value = n;
+        updateDiffFilter();
+      } else {
+        shakeDiffInput();
+      }
+      return;
+    }
+
+    const a = parseInt(match[1], 10);
+    const b = parseInt(match[2], 10);
+    if (a >= 1 && a <= 10 && b >= 1 && b <= 10) {
+      document.getElementById('diff-min').value = Math.min(a, b);
+      document.getElementById('diff-max').value = Math.max(a, b);
+      updateDiffFilter();
+    } else {
+      shakeDiffInput();
+    }
+  }
+
+  function renderVoyageList() {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const filtered = VOYAGES.filter(v => 
+      currentSubjectFilter.has(v.subject) &&
+      (v.difficulty >= diffMin && v.difficulty <= diffMax) &&
+      (voyageSearchQuery === '' || v.title.toLowerCase().includes(voyageSearchQuery) || v.question.toLowerCase().includes(voyageSearchQuery))
+    );
+    document.getElementById('voyage-list').innerHTML = filtered.map((v, i) => {
+      const meta = SUBJECT_META[v.subject];
+      const type = TYPE_META[v.type];
+      const done = kirVoyageCompletion(v.id);
+      const reward = deltaReward(v.difficulty);
+      return `
+        <button onclick="openVoyageModal('${v.id}')" style="animation-delay: ${i * 45}ms" class="glass rounded-2xl p-5 text-left voyage-card ${done ? 'completed' : ''} relative overflow-hidden">
+          ${v.difficulty >= 10 ? '<div class="glow-blob w-32 h-32 -top-8 -right-8" style="background: rgba(236,72,153,0.18);"></div>' : ''}
+          <div class="relative">
+            <div class="flex items-center gap-2 flex-wrap mb-3">
+              <span class="subject-badge">${meta.icon} ${meta.label}</span>
+              <span class="diff-badge ${difficultyBadgeClass(v.difficulty)}">${diffBadgeHtml(v.difficulty)}</span>
+            </div>
+            <h3 class="font-display font-semibold text-base mb-1.5">${v.title}</h3>
+            <p class="text-zinc-500 text-xs mb-4 line-clamp-2">${v.question}</p>
+            <div class="flex items-center justify-between">
+              <span class="type-pill">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <span data-i18n="${type.i18n}">${type.label}</span>
+              </span>
+              ${done
+                ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-accent-10 text-accent-200 border border-accent-20 flex items-center gap-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> +${done.deltas}</span>`
+                : `<span class="text-xs font-semibold text-accent-300 flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>+${reward}</span>`
+              }
+            </div>
+          </div>
+        </button>`;
+    }).join('');
+    kirApplyTranslations();
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }
+
+  function refreshDeltasHeader() {
+    document.getElementById('voyages-deltas-total').textContent = kirDeltasTotal().toLocaleString('id-ID');
+  }
+
+  function openVoyageModal(id) {
+    const v = VOYAGES.find(x => x.id === id);
+    if (!v) return;
+    currentVoyageId = id;
+    selectedMcIndex = null;
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const meta = SUBJECT_META[v.subject];
+    const type = TYPE_META[v.type];
+
+    document.getElementById('vm-title').textContent = v.title;
+    document.getElementById('vm-subject-badge').textContent = `${meta.icon} ${meta.label}`;
+    const diffBadge = document.getElementById('vm-diff-badge');
+    diffBadge.innerHTML = diffBadgeHtml(v.difficulty);
+    diffBadge.className = 'diff-badge ' + difficultyBadgeClass(v.difficulty);
+    const typePill = document.getElementById('vm-type-pill');
+    typePill.innerHTML = `<svg class="w-3.5 h-3.5 inline -mt-0.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>` + I18N[lang][type.i18n];
+    document.getElementById('vm-question').textContent = v.question;
+    document.getElementById('vm-reward-amount').textContent = deltaReward(v.difficulty);
+
+    document.getElementById('vm-mc-wrap').classList.toggle('hidden', v.type !== 'mc');
+    document.getElementById('vm-dropdown-wrap').classList.toggle('hidden', v.type !== 'dropdown');
+    document.getElementById('vm-essay-wrap').classList.toggle('hidden', v.type !== 'essay');
+
+    if (v.type === 'mc') {
+      document.getElementById('vm-mc-options').innerHTML = v.options.map((opt, i) => `
+        <div class="voyage-option" id="vm-opt-${i}" onclick="selectMcOption(${i})">
+          <span class="voyage-option-dot"></span>
+          <span>${opt}</span>
+        </div>`).join('');
+    }
+    if (v.type === 'dropdown') {
+      const select = document.getElementById('vm-dropdown-select');
+      select.innerHTML = `<option value="" disabled selected>${I18N[lang].voyages_pick_placeholder}</option>` +
+        v.options.map((opt, i) => `<option value="${i}">${opt}</option>`).join('');
+      kirRefreshCustomSelect('vm-dropdown-select');
+    }
+    if (v.type === 'essay') {
+      document.getElementById('vm-essay-textarea').value = '';
+    }
+
+    const feedback = document.getElementById('vm-feedback');
+    feedback.classList.add('hidden');
+    feedback.textContent = '';
+
+    const submitBtn = document.getElementById('vm-submit-btn');
+    const done = kirVoyageCompletion(v.id);
+    submitBtn.disabled = false;
+    submitBtn.textContent = I18N[lang].voyages_submit;
+    submitBtn.removeAttribute('data-i18n');
+
+    if (done && v.type !== 'essay') {
+      // Already solved before — show state, still let them review but no re-earning.
+      feedback.classList.remove('hidden');
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+      feedback.textContent = I18N[lang].voyages_already_done;
+    }
+
+    document.getElementById('voyage-modal').classList.remove('hidden');
+    kirRenderCommentSection('voyage-comments-root', 'voyage', id);
+    kirApplyTranslations();
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }
+
+  function closeVoyageModal() {
+    document.getElementById('voyage-modal').classList.add('hidden');
+    currentVoyageId = null;
+  }
+
+  function selectMcOption(i) {
+    selectedMcIndex = i;
+    document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el, idx) => {
+      el.classList.toggle('selected', idx === i);
+    });
+  }
+
+  function showDeltasToast(amount) {
+    const toast = document.getElementById('deltas-toast');
+    document.getElementById('deltas-toast-text').textContent = `+${amount} deltas!`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function submitVoyageAnswer() {
+    const v = VOYAGES.find(x => x.id === currentVoyageId);
+    if (!v) return;
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const feedback = document.getElementById('vm-feedback');
+    const reward = deltaReward(v.difficulty);
+    const alreadyDone = kirVoyageCompletion(v.id);
+
+    if (v.type === 'essay') {
+      const text = document.getElementById('vm-essay-textarea').value.trim();
+      if (!text) return;
+      feedback.classList.remove('hidden');
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-15 text-accent-300 border border-accent-30';
+      feedback.textContent = I18N[lang].voyages_essay_sent;
+      if (!alreadyDone) {
+        kirMarkVoyageCompleted(v.id, 0);
+        renderVoyageList();
+      }
+      document.getElementById('vm-submit-btn').disabled = true;
+      return;
+    }
+
+    let isCorrect = false;
+    if (v.type === 'mc') {
+      if (selectedMcIndex === null) return;
+      isCorrect = selectedMcIndex === v.correctIndex;
+      document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el, idx) => {
+        el.classList.remove('selected');
+        if (idx === v.correctIndex) el.classList.add('correct');
+        else if (idx === selectedMcIndex) el.classList.add('incorrect');
+      });
+    } else if (v.type === 'dropdown') {
+      const select = document.getElementById('vm-dropdown-select');
+      if (select.value === '') return;
+      isCorrect = parseInt(select.value, 10) === v.correctIndex;
+    }
+
+    feedback.classList.remove('hidden');
+    if (isCorrect) {
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+      feedback.textContent = I18N[lang].voyages_correct + (alreadyDone ? '' : ` +${reward} ${I18N[lang].voyages_earned}`);
+      if (!alreadyDone) {
+        kirMarkVoyageCompleted(v.id, reward);
+        kirAddDeltas(reward);
+        refreshDeltasHeader();
+        showDeltasToast(reward);
+        renderVoyageList();
+      }
+      document.getElementById('vm-submit-btn').disabled = true;
+    } else {
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
+      feedback.textContent = I18N[lang].voyages_incorrect;
+    }
+  }
+
+  const VOYAGES_STREAK_DAYS = 6;
+  const VOYAGES_STREAK_FILL_GOAL = 10; // days for a visually "full" flame — cosmetic only, matches dashboard
+
+  function renderVoyagesStreak() {
+    document.getElementById('voyages-streak-count').textContent = VOYAGES_STREAK_DAYS;
+    const pct = Math.min(VOYAGES_STREAK_DAYS / VOYAGES_STREAK_FILL_GOAL, 1);
+    const flameTop = 2, flameBottom = 21; // approx vertical bounds of the flame path
+    const currentY = flameBottom - ((flameBottom - flameTop) * pct);
+    document.getElementById('voyages-flame-fill-group').setAttribute('transform', `translate(0, ${currentY})`);
+  }
+
+  document.getElementById('filter-subject-select').addEventListener('change', handleSubjectFilterChange);
+  kirRefreshMultiSelect('filter-subject-select');
+  updateDiffFilter(true);
+  refreshDeltasHeader();
+  renderVoyagesStreak();
+  kirInjectSidebar('voyages');
+</script>
+</body>
+</html>

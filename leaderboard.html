@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Peringkat</title>
+
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<div class="relative z-10 min-h-screen lg:flex">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
+      <span class="font-display font-semibold">KIR</span>
+    </a>
+    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-4xl w-full mx-auto">
+    <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="leaderboard_title">Peringkat</h1>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="leaderboard_desc">Peringkat deltas seluruh anggota KIR.</p>
+      </div>
+      <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+        <span class="text-zinc-500 text-xs" data-i18n="leaderboard_your_rank">Peringkat kamu</span>
+        <span id="your-rank-value" class="font-display font-semibold text-lg text-accent-300">#—</span>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="relative mb-4">
+      <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+      </svg>
+      <input
+        id="lb-search"
+        type="text"
+        class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
+        data-i18n-placeholder="leaderboard_search_placeholder"
+        placeholder="Cari anggota…"
+        oninput="handleFilterChange()"
+      />
+    </div>
+
+    <!-- Filters -->
+    <div class="flex items-center gap-2 mb-7 overflow-x-auto pb-1">
+      <button class="lb-chip" id="lb-range-all" onclick="setRangeFilter('all')" data-i18n="leaderboard_range_all">Sepanjang Waktu</button>
+      <button class="lb-chip" id="lb-range-month" onclick="setRangeFilter('month')" data-i18n="leaderboard_range_month">Bulan Ini</button>
+      <button class="lb-chip" id="lb-range-week" onclick="setRangeFilter('week')" data-i18n="leaderboard_range_week">Minggu Ini</button>
+      <span class="lb-chip-divider"></span>
+      <button class="lb-chip" id="lb-branch-all" onclick="setBranchFilter('all')" data-i18n="leaderboard_branch_all">Semua Cabang</button>
+      <button class="lb-chip" id="lb-branch-robotik" onclick="setBranchFilter('robotik')" data-i18n="robotik">Robotik</button>
+      <button class="lb-chip" id="lb-branch-sains" onclick="setBranchFilter('sains')" data-i18n="sains">Sains</button>
+    </div>
+
+    <!-- Podium -->
+    <div id="podium" class="grid grid-cols-3 gap-3 sm:gap-5 items-end mb-10"><!-- filled by script --></div>
+
+    <!-- Full list -->
+    <div class="glass rounded-2xl p-3 sm:p-4">
+      <div id="leaderboard-list" class="space-y-1"><!-- filled by script --></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Static roster for the prototype — same club, dummy point totals
+  // across three windows (all-time / this month / this week).
+  // "You" (the logged-in user) is inserted using the real deltas
+  // total from js/auth.js so the leaderboard reacts to Voyages.
+  const LEADERBOARD_STATIC = [
+    { name: 'Alex Pratama',    cabang: 'both',    deltas: 2150, monthGain: 420, weekGain: 180 },
+    { name: 'Priya Anand',     cabang: 'sains',   deltas: 1890, monthGain: 360, weekGain: 145 },
+    { name: 'Marcus Wijaya',   cabang: 'robotik', deltas: 1675, monthGain: 260, weekGain: 95  },
+    { name: 'Kayla Amelia',    cabang: 'both',    deltas: 1420, monthGain: 300, weekGain: 110 },
+    { name: 'Dinda Larasati',  cabang: 'sains',   deltas: 1310, monthGain: 150, weekGain: 60  },
+    { name: 'Reza Firmansyah', cabang: 'robotik', deltas: 980,  monthGain: 110, weekGain: 40  },
+  ];
+
+  let rangeFilter = 'all';   // 'all' | 'month' | 'week'
+  let branchFilter = 'all';  // 'all' | 'robotik' | 'sains'
+
+  function cabangBadgeHtml(cabang) {
+    if (cabang === 'both') {
+      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains">Sains</span>`;
+    }
+    const cls = cabang === 'sains' ? 'badge-sains' : 'badge-robotik';
+    const label = cabang === 'sains' ? 'Sains' : 'Robotik';
+    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
+  }
+
+  function buildRoster() {
+    const gainSinceBaseline = Math.max(0, kirDeltasTotal() - 1240); // earned via Voyages this session
+    const you = {
+      name: kirCurrentUserName(),
+      cabang: kirCurrentUserCabang(),
+      deltas: kirDeltasTotal(),
+      monthGain: gainSinceBaseline,
+      weekGain: gainSinceBaseline,
+      isYou: true,
+    };
+    return [you, ...LEADERBOARD_STATIC];
+  }
+
+  function rangeValue(m) {
+    if (rangeFilter === 'month') return m.monthGain;
+    if (rangeFilter === 'week') return m.weekGain;
+    return m.deltas;
+  }
+
+  function matchesBranch(m) {
+    if (branchFilter === 'all') return true;
+    return m.cabang === branchFilter || m.cabang === 'both';
+  }
+
+  function matchesSearch(m, query) {
+    if (!query) return true;
+    return m.name.toLowerCase().includes(query.toLowerCase());
+  }
+
+  function setRangeFilter(range) {
+    rangeFilter = range;
+    updateFilterChipsUI();
+    renderLeaderboard();
+  }
+
+  function setBranchFilter(branch) {
+    branchFilter = branch;
+    updateFilterChipsUI();
+    renderLeaderboard();
+  }
+
+  function handleFilterChange() {
+    renderLeaderboard();
+  }
+
+  function updateFilterChipsUI() {
+    ['all', 'month', 'week'].forEach(r => {
+      document.getElementById('lb-range-' + r).classList.toggle('active', rangeFilter === r);
+    });
+    ['all', 'robotik', 'sains'].forEach(b => {
+      document.getElementById('lb-branch-' + b).classList.toggle('active', branchFilter === b);
+    });
+  }
+
+  function rankIconSvg(rank) {
+    if (rank === 1) {
+      return `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" />
+      </svg>`;
+    }
+    return `<span>${rank}</span>`;
+  }
+
+  function renderPodium(sorted) {
+    const podiumEl = document.getElementById('podium');
+    if (sorted.length < 3) {
+      podiumEl.innerHTML = '';
+      return;
+    }
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const top3 = sorted.slice(0, 3);
+    // Visual order: 2nd, 1st, 3rd
+    const order = [
+      { m: top3[1], rank: 2 },
+      { m: top3[0], rank: 1 },
+      { m: top3[2], rank: 3 },
+    ];
+    const rankClass = ['rank-2', 'rank-1', 'rank-3'];
+    const badgeCls = ['rank-badge-2', 'rank-badge-1', 'rank-badge-3'];
+    const bgTint = [
+      'background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2);',
+      'background: rgba(250,204,21,0.10); border: 1px solid rgba(250,204,21,0.3);',
+      'background: rgba(180,83,9,0.08); border: 1px solid rgba(180,83,9,0.22);',
+    ];
+
+    podiumEl.innerHTML = order.map(({ m, rank }, i) => `
+      <div class="podium-place ${rankClass[i]} glass" style="${bgTint[i]}">
+        <span class="podium-rank-icon ${badgeCls[i]}">${rankIconSvg(rank)}</span>
+        <div class="podium-avatar bg-accent-gradient">${m.name.charAt(0).toUpperCase()}</div>
+        <p class="podium-name">${m.name}${m.isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</p>
+        <p class="font-display font-bold text-lg mt-1">${rangeValue(m).toLocaleString('id-ID')}</p>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 ${badgeCls[i]}">#${rank}</span>
+      </div>`).join('');
+  }
+
+  function renderList(sorted) {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const listEl = document.getElementById('leaderboard-list');
+
+    if (sorted.length === 0) {
+      listEl.innerHTML = `<p class="text-zinc-500 text-sm text-center py-8">${I18N[lang].leaderboard_no_results}</p>`;
+      return;
+    }
+
+    listEl.innerHTML = sorted.map((m, i) => {
+      const rank = i + 1;
+      const rankMarkup = rank <= 3
+        ? `<span class="leaderboard-rank-num rank-badge-${rank}" style="width:1.6rem;height:1.6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;">${rank}</span>`
+        : `<span class="leaderboard-rank-num">${rank}</span>`;
+      return `
+        <div class="leaderboard-row animate-stagger-in ${m.isYou ? 'you' : ''}" style="animation-delay: ${i * 45}ms">
+          ${rankMarkup}
+          <div class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm shrink-0">
+            ${m.name.charAt(0).toUpperCase()}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-sm text-zinc-100 truncate">${m.name}${m.isYou ? ` <span class="text-accent-300 text-xs">(${I18N[lang].leaderboard_you})</span>` : ''}</p>
+            <div class="flex items-center gap-1.5 mt-1">${cabangBadgeHtml(m.cabang)}</div>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="font-display font-semibold text-sm">${rangeValue(m).toLocaleString('id-ID')}</p>
+            <p class="text-[11px] text-zinc-500 mt-0.5" data-i18n="deltas_points">deltas</p>
+          </div>
+        </div>`;
+    }).join('');
+    kirApplyTranslations();
+  }
+
+  function renderLeaderboard() {
+    const roster = buildRoster();
+    const query = document.getElementById('lb-search').value.trim();
+    const filtered = roster.filter(m => matchesBranch(m) && matchesSearch(m, query));
+    const sorted = filtered.slice().sort((a, b) => rangeValue(b) - rangeValue(a));
+
+    renderPodium(sorted);
+    renderList(sorted);
+
+    const yourIndex = sorted.findIndex(m => m.isYou);
+    document.getElementById('your-rank-value').textContent = yourIndex === -1 ? '—' : '#' + (yourIndex + 1);
+  }
+
+  updateFilterChipsUI();
+  renderLeaderboard();
+  kirApplyTranslations();
+  kirInjectSidebar('leaderboard');
+</script>
+</body>
+</html>

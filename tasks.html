@@ -15,6 +15,17 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+
+<!-- MathJax for rendering LaTeX -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -89,6 +100,8 @@
 
       <p class="text-[11px] text-zinc-600 mt-2" data-i18n="modal_proto">Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.</p>
     </div>
+
+    <div class="border-t border-white/10 mt-5 pt-5" id="task-comments-root"><!-- filled by kirRenderCommentSection --></div>
   </div>
 </div>
 
@@ -123,11 +136,11 @@
 
   function renderTaskList() {
     const list = document.getElementById('task-list');
-    list.innerHTML = TASKS.map(t => {
+    list.innerHTML = TASKS.map((t, i) => {
       const meta = STATUS_META[t.status];
       const submitted = localStorage.getItem(submissionKey(t.id));
       return `
-        <button onclick="openTaskModal('${t.id}')" class="glass rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full text-left hover:bg-white/5 transition">
+        <button onclick="openTaskModal('${t.id}')" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full text-left hover:bg-white/5 transition">
           <div class="min-w-0">
             <p class="font-medium text-zinc-100">${t.title}</p>
             <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee} &middot; <span data-i18n="due">Tenggat:</span> ${t.due}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
@@ -135,6 +148,10 @@
           <span class="self-start sm:self-center shrink-0 text-xs font-medium px-3 py-1 rounded-full ${meta.cls}" data-i18n="${meta.i18n}">${meta.label}</span>
         </button>`;
     }).join('');
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
   }
 
   let currentTaskId = null;
@@ -154,8 +171,13 @@
     document.getElementById('modal-description').textContent = task.description;
 
     renderSubmissionStatus();
+    kirRenderCommentSection('task-comments-root', 'task', taskId);
     document.getElementById('task-modal').classList.remove('hidden');
     kirApplyTranslations();
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
   }
 
   function closeTaskModal() {

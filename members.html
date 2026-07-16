@@ -15,6 +15,88 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+
+<style>
+  #chart-viewport {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    background-position: 0px 0px;
+  }
+  #chart-viewport.dragging { cursor: grabbing; }
+
+  /* Cards get a slightly less translucent backing than the default
+     .glass so the viewport's dot-grid texture doesn't visibly bleed
+     through the card surface — it should stay confined to the empty
+     space behind/around the chart, not show through the UI. Kept
+     subtle so cards still read as "glass", not solid black. */
+  #chart-viewport .org-card {
+    background: rgba(24, 24, 27, 0.4);
+  }
+  [data-theme="light"] #chart-viewport .org-card {
+    background: rgba(255, 255, 255, 0.65);
+  }
+
+  #chart-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .org-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .org-card {
+    width: 12rem;
+    flex-shrink: 0;
+  }
+
+  /* Members block: rendered as an explicit stack of rows capped at
+     5 cards each (see chunkArray in the script below) rather than
+     relying on CSS flex-wrap max-width math, which is fragile to
+     border/box-sizing rounding. */
+  .org-row-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .org-line {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.4);
+    stroke-width: 1.5;
+  }
+
+  .chart-ctrl-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+  }
+  .chart-ctrl-btn:hover { background: rgba(128,128,128,0.12); }
+  .chart-ctrl-btn:active { transform: scale(0.94); }
+
+  .chart-hint {
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -51,32 +133,83 @@
       </div>
     </div>
 
-    <div id="member-list" class="grid sm:grid-cols-2 gap-4"><!-- filled by script --></div>
+    <!-- Pannable/zoomable org chart -->
+    <div id="chart-viewport" class="glass rounded-2xl relative overflow-hidden" style="height: 66vh; min-height: 460px;">
+
+      <div class="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
+        <button onclick="chartZoom(1.15)" class="chart-ctrl-btn" title="Perbesar">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+        </button>
+        <button onclick="chartZoom(1/1.15)" class="chart-ctrl-btn" title="Perkecil">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15" /></svg>
+        </button>
+        <button onclick="chartResetView()" class="chart-ctrl-btn" title="Reset tampilan">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-5M20 15a8 8 0 01-14 5" /></svg>
+        </button>
+      </div>
+
+      <p class="chart-hint absolute bottom-3 left-4 z-20 text-[11px] text-zinc-500" data-i18n="members_drag_hint">Geser untuk menjelajah struktur</p>
+
+      <div id="chart-canvas">
+        <svg id="chart-lines" style="position:absolute; top:0; left:0; overflow:visible;"></svg>
+        <div id="member-list" class="flex flex-col items-center px-16 py-16"><!-- filled by script --></div>
+      </div>
+    </div>
   </main>
 </div>
 
 <script>
   const MEMBERS = [
-    { name: 'Alex Pratama', role: 'Ketua Ekstrakurikuler', cabang: 'both' },
+    { name: 'Alex Pratama', role: 'Ketua Klub', cabang: 'both' },
     { name: 'Priya Anand', role: 'Wakil Ketua', cabang: 'sains' },
+    { name: 'Budi Santoso', role: 'Sekretaris', cabang: 'robotik' },
     { name: 'Marcus Wijaya', role: 'Bendahara', cabang: 'robotik' },
-    { name: 'Dinda Larasati', role: 'Anggota', cabang: 'sains' },
-    { name: 'Reza Firmansyah', role: 'Anggota', cabang: 'robotik' },
+    { name: 'Reza Firmansyah', role: 'PJ Robotika', cabang: 'robotik' },
+    { name: 'Dinda Larasati', role: 'PJ Sains', cabang: 'sains' },
     { name: 'Kayla Amelia', role: 'Anggota', cabang: 'both' },
+    { name: 'Fajar Ramadhan', role: 'Anggota', cabang: 'robotik' },
+    { name: 'Nabila Putri', role: 'Anggota', cabang: 'sains' },
+    { name: 'Yusuf Hakim', role: 'Anggota', cabang: 'robotik' },
+    { name: 'Clara Situmorang', role: 'Anggota', cabang: 'sains' },
+    { name: 'Bayu Setiawan', role: 'Anggota', cabang: 'robotik' },
+    { name: 'Intan Maharani', role: 'Anggota', cabang: 'both' },
+    { name: 'Rangga Saputra', role: 'Anggota', cabang: 'robotik' },
+    { name: 'Salsabila Putri', role: 'Anggota', cabang: 'sains' },
+    { name: 'Hendra Gunawan', role: 'Anggota', cabang: 'robotik' },
   ];
 
   function cabangBadges(cabang) {
     if (cabang === 'both') {
-      return `<span class="text-[11px] px-2.5 py-0.5 rounded-full badge-robotik">Robotik</span><span class="text-[11px] px-2.5 py-0.5 rounded-full badge-sains">Sains</span>`;
+      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains">Sains</span>`;
     }
     const cls = cabang === 'sains' ? 'badge-sains' : 'badge-robotik';
     const label = cabang === 'sains' ? 'Sains' : 'Robotik';
-    return `<span class="text-[11px] px-2.5 py-0.5 rounded-full ${cls}">${label}</span>`;
+    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
   }
 
   function getRoleI18n(role) {
-    const map = { 'Ketua Klub': 'role_ketua', 'Wakil Ketua': 'role_wakil', 'Bendahara': 'role_bendahara', 'Anggota': 'role_anggota' };
+    const map = { 'Ketua Klub': 'role_ketua', 'Wakil Ketua': 'role_wakil', 'Sekretaris': 'role_sekretaris', 'Bendahara': 'role_bendahara', 'PJ Robotika': 'role_pj_robotika', 'PJ Sains': 'role_pj_sains', 'Anggota': 'role_anggota' };
     return map[role] || 'role_anggota';
+  }
+
+  function buildCard(m) {
+    return `
+      <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg">
+        <div class="w-12 h-12 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold shrink-0 shadow-glow-sm">
+          ${m.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="min-w-0 w-full">
+          <p class="font-medium text-zinc-100 text-sm truncate">${m.name}${m.isYou ? ' <span class="text-accent-300" data-i18n="you">(kamu)</span>' : ''}</p>
+          <p class="text-zinc-500 text-[11px] mt-0.5" data-i18n="${getRoleI18n(m.role)}">${m.role}</p>
+        </div>
+        <div class="flex items-center justify-center gap-1 mt-1">${cabangBadges(m.cabang)}</div>
+      </div>`;
+  }
+
+  function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
   }
 
   function renderMembers() {
@@ -84,23 +217,201 @@
     const yourCabang = kirCurrentUserCabang();
     const all = [{ name: you, isYou: true, role: 'Anggota', cabang: yourCabang }, ...MEMBERS];
 
-    const roleWeights = { 'Ketua Klub': 1, 'Wakil Ketua': 2, 'Sekretaris': 3, 'Bendahara': 4, 'Anggota': 5 };
-    all.sort((a, b) => (roleWeights[a.role] || 6) - (roleWeights[b.role] || 6));
+    const ketua = all.filter(m => m.role === 'Ketua Klub');
+    const wakil = all.filter(m => m.role === 'Wakil Ketua');
+    const inti = all.filter(m => m.role === 'Sekretaris' || m.role === 'Bendahara' || m.role === 'PJ Robotika' || m.role === 'PJ Sains');
+    const anggota = all.filter(m => m.role === 'Anggota');
 
-    document.getElementById('member-list').innerHTML = all.map(m => `
-      <div class="glass rounded-xl p-5 flex items-center gap-4">
-        <div class="w-11 h-11 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold shrink-0">
-          ${m.name.charAt(0).toUpperCase()}
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="font-medium text-zinc-100 truncate">${m.name}${m.isYou ? ' <span data-i18n="you">(kamu)</span>' : ''}</p>
-          <p class="text-zinc-500 text-xs mt-0.5" data-i18n="${getRoleI18n(m.role)}">${m.role}</p>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">${cabangBadges(m.cabang)}</div>
-      </div>`).join('');
+    const anggotaRows = chunkArray(anggota, 5)
+      .map(row => `<div class="org-row">${row.map(buildCard).join('')}</div>`)
+      .join('');
+
+    document.getElementById('member-list').innerHTML = `
+      <div class="org-row" data-row="1">
+        ${ketua.map(buildCard).join('')}
+        ${wakil.map(buildCard).join('')}
+      </div>
+
+      <div class="org-row mt-24" data-row="2">
+        ${inti.map(buildCard).join('')}
+      </div>
+
+      <div class="org-row-group mt-24" data-row="3">
+        ${anggotaRows}
+      </div>
+    `;
+    kirApplyTranslations();
+  }
+
+  /* ---------- Connector lines ----------
+     Computed from real layout (offsetLeft/offsetTop relative to
+     #chart-canvas), so they stay correctly attached to each card
+     regardless of how many people are in a row or how it wraps —
+     and independent of the current pan/zoom transform. */
+  function cardRect(el) {
+    return {
+      left: el.offsetLeft,
+      right: el.offsetLeft + el.offsetWidth,
+      top: el.offsetTop,
+      bottom: el.offsetTop + el.offsetHeight,
+      centerX: el.offsetLeft + el.offsetWidth / 2,
+    };
+  }
+
+  function drawConnectors() {
+    const canvas = document.getElementById('chart-canvas');
+    const svg = document.getElementById('chart-lines');
+
+    const rows = [1, 2, 3].map(n =>
+      Array.from(document.querySelectorAll(`[data-row="${n}"] .org-card`))
+    );
+
+    let paths = '';
+
+    for (let i = 0; i < rows.length - 1; i++) {
+      const parents = rows[i];
+      const children = rows[i + 1];
+      if (!parents.length || !children.length) continue;
+
+      const parentRects = parents.map(cardRect);
+      const childRects = children.map(cardRect);
+
+      const parentCenterX = (Math.min(...parentRects.map(r => r.left)) + Math.max(...parentRects.map(r => r.right))) / 2;
+      const parentBottomY = Math.max(...parentRects.map(r => r.bottom));
+      const childTopY = Math.min(...childRects.map(r => r.top));
+      const busY = parentBottomY + (childTopY - parentBottomY) / 2;
+
+      // If the children wrapped onto multiple visual lines (e.g. a
+      // big members block), only connect to the top-most line with
+      // proper per-card drops, same as any other level — the
+      // overflow lines below are the same tier, just wrapped for
+      // space, so they don't need their own branch.
+      const topRow = childRects.filter(r => Math.abs(r.top - childTopY) < 1);
+
+      // trunk from parent group down to the bus
+      paths += `<path class="org-line" d="M ${parentCenterX} ${parentBottomY} L ${parentCenterX} ${busY}" />`;
+
+      // horizontal bus — spans every child-in-top-row center plus the
+      // trunk point, so the trunk always lands exactly on the bus line
+      const childXs = topRow.map(r => r.centerX);
+      const busMinX = Math.min(parentCenterX, ...childXs);
+      const busMaxX = Math.max(parentCenterX, ...childXs);
+      if (busMaxX - busMinX > 0.5) {
+        paths += `<path class="org-line" d="M ${busMinX} ${busY} L ${busMaxX} ${busY}" />`;
+      }
+
+      // drops from bus down to each top-row child's top
+      topRow.forEach(r => {
+        paths += `<path class="org-line" d="M ${r.centerX} ${busY} L ${r.centerX} ${r.top}" />`;
+      });
+    }
+
+    svg.innerHTML = paths;
+    svg.setAttribute('width', canvas.offsetWidth);
+    svg.setAttribute('height', canvas.offsetHeight);
+  }
+
+  /* ---------- Pan & zoom ---------- */
+  let panX = 0, panY = 0, scale = 1;
+  let isDragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+  let didDrag = false;
+
+  function applyTransform() {
+    document.getElementById('chart-canvas').style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    const viewport = document.getElementById('chart-viewport');
+    viewport.style.backgroundPosition = `${panX}px ${panY}px`;
+    viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+  }
+
+  function chartZoom(factor) {
+    scale = Math.min(1.6, Math.max(0.45, scale * factor));
+    applyTransform();
+  }
+
+  function centerCanvas() {
+    const viewport = document.getElementById('chart-viewport');
+    const canvas = document.getElementById('chart-canvas');
+    scale = 1;
+    const vw = viewport.clientWidth, vh = viewport.clientHeight;
+    const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+    panX = Math.max(16, (vw - cw) / 2);
+    panY = Math.max(16, (vh - ch) / 2);
+    applyTransform();
+  }
+
+  function chartResetView() {
+    centerCanvas();
+  }
+
+  function pointFromEvent(e) {
+    return e.touches && e.touches.length ? e.touches[0] : e;
+  }
+
+  function chartPointerDown(e) {
+    if (e.target.closest('.chart-ctrl-btn')) return;
+    isDragging = true;
+    didDrag = false;
+    const p = pointFromEvent(e);
+    dragStartX = p.clientX;
+    dragStartY = p.clientY;
+    panStartX = panX;
+    panStartY = panY;
+    document.getElementById('chart-viewport').classList.add('dragging');
+  }
+
+  function chartPointerMove(e) {
+    if (!isDragging) return;
+    const p = pointFromEvent(e);
+    const dx = p.clientX - dragStartX;
+    const dy = p.clientY - dragStartY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+    panX = panStartX + dx;
+    panY = panStartY + dy;
+    applyTransform();
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function chartPointerUp() {
+    isDragging = false;
+    document.getElementById('chart-viewport').classList.remove('dragging');
+  }
+
+  function initChartInteractions() {
+    const viewport = document.getElementById('chart-viewport');
+    viewport.addEventListener('mousedown', chartPointerDown);
+    window.addEventListener('mousemove', chartPointerMove);
+    window.addEventListener('mouseup', chartPointerUp);
+
+    viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
+    viewport.addEventListener('touchmove', chartPointerMove, { passive: false });
+    viewport.addEventListener('touchend', chartPointerUp);
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      chartZoom(e.deltaY < 0 ? 1.08 : 1 / 1.08);
+    }, { passive: false });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        drawConnectors();
+        centerCanvas();
+      }, 150);
+    });
   }
 
   renderMembers();
+  initChartInteractions();
+
+  // Wait a frame so layout has settled (fonts, DOM) before measuring.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      drawConnectors();
+      centerCanvas();
+    });
+  });
+
   kirInjectSidebar('members');
 </script>
 </body>

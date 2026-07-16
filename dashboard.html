@@ -50,7 +50,7 @@
     </div>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-2 gap-5 mb-8">
-      <div class="glass rounded-2xl p-6 relative overflow-hidden">
+      <div class="glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 0ms">
         <div class="glow-blob w-40 h-40 bg-accent-20 -top-10 -right-10"></div>
         <div class="relative">
           <div class="flex items-center justify-between mb-4">
@@ -64,7 +64,7 @@
         </div>
       </div>
 
-      <div class="glass rounded-2xl p-6 relative overflow-hidden">
+      <div class="glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 45ms">
         <div class="glow-blob w-40 h-40 bg-accent-20 -bottom-10 -left-10"></div>
         <div class="relative">
           <div class="flex items-center justify-between mb-4">
@@ -81,7 +81,7 @@
 
 <div class="grid sm:grid-cols-4 gap-5 mb-8">
       <!-- Deltas — 3/4 width -->
-      <div class="sm:col-span-3 glass rounded-2xl p-6 relative overflow-hidden">
+      <div class="sm:col-span-3 glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 90ms">
         <div class="glow-blob w-48 h-48 bg-accent-20 -top-16 -right-16"></div>
         <div class="relative">
           <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
@@ -107,7 +107,7 @@
       </div>
 
       <!-- Streak — 1/4 width -->
-      <div class="glass rounded-2xl p-5 relative overflow-hidden flex flex-col items-center justify-center text-center">
+      <div class="glass rounded-2xl p-5 relative overflow-hidden flex flex-col items-center justify-center text-center animate-stagger-in" style="animation-delay: 135ms">
         <div class="glow-blob w-32 h-32 bg-accent-20 -bottom-10 -left-10"></div>
         <div class="relative flex flex-col items-center">
           <p class="text-zinc-400 text-xs font-medium mb-2 uppercase tracking-wide" data-i18n="streak_label">Streak</p>
@@ -134,7 +134,7 @@
       </div>
     </div>
 
-    <div class="glass rounded-2xl p-6">
+    <div class="glass rounded-2xl p-6 animate-stagger-in" style="animation-delay: 180ms">
       <h2 class="font-display text-base font-semibold mb-4" data-i18n="recent_activity">Aktivitas terbaru</h2>
       <ul id="activity-list" class="space-y-4 text-sm"><!-- filled by script below --></ul>
     </div>
