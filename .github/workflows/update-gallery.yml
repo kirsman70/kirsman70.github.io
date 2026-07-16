@@ -1,0 +1,32 @@
+name: Update Gallery Manifest
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'gallery/**'
+      - 'generate-manifest.js'
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run manifest generator
+        run: node generate-manifest.js
+
+      - name: Commit manifest changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-generate gallery manifest.json"
+          file_pattern: gallery/manifest.json
