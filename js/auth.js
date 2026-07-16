@@ -1,5 +1,5 @@
 /* ==========================================================
-   KIR (Karya Ilmiah Remaja) - prototype auth + theme
+   KIR (Karya Ilmiah Remaja) : prototype auth + theme
    --------------------------------------------------------
    There is no backend yet, so "being logged in" is just a
    flag in localStorage. This is NOT secure and stores
