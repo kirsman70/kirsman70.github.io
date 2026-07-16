@@ -198,7 +198,7 @@ function kirInjectSidebar(activeTab) {
     <a href="index.html" class="hidden lg:flex items-center gap-2.5 px-2 mb-8 overflow-hidden">
       <!-- Removed bg-zinc-900, shadow-glow-sm, and border -->
       <div class="w-9 h-9 shrink-0 flex items-center justify-center">
-        <img src="assets/KIR_light_heavy.png" alt="Orbit Logo" class="w-8 h-8 object-contain" />
+        <img src="assets/KIR_light_heavy.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
       </div>
       <div class="sidebar-header-text shrink-0">
         <div class="flex items-center gap-1.5">
