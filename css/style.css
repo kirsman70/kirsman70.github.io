@@ -1,0 +1,550 @@
+/* ==========================================================
+   KIR (Karya Ilmiah Remaja) - shared design system
+   Used by every page. Keep this file the single source of
+   truth for the glass/glow look so pages stay consistent.
+
+   THEME SYSTEM
+   --------------------------------------------------------
+   Two independent things are controlled by attributes on
+   <html>, both set by js/theme.js before the page paints:
+
+   1. data-cabang="robotik" | "sains" | "both"
+      Sets the --accent-* CSS variables (red / blue / purple).
+      This is the user's club branch, chosen at register and
+      editable later on the Settings page.
+
+   2. data-theme="dark" | "light"
+      Sets background/text/glass variables. Dark is default.
+
+   Every "accent" utility class below (bg-accent, text-accent-300,
+   shadow-glow, etc.) reads from these variables instead of a
+   fixed hex, so the whole site re-colors itself automatically —
+   no per-page CSS needed.
+   ========================================================== */
+
+html { scroll-behavior: smooth; }
+
+:root {
+  /* Default Orbit Accent (Premium Slate) */
+  --accent-rgb: 148, 163, 184;
+  --accent-2-rgb: 71, 85, 105;
+  --accent-light-rgb: 203, 213, 225;
+  --accent-lighter-rgb: 226, 232, 240;
+
+  /* Dark theme (default) */
+  --bg-color: #09090b;
+  --text-color: #f4f4f5;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-input-bg: rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --glow-opacity: 1;
+  --muted-500: #71717a;
+  --muted-600: #52525b;
+}
+
+html[data-cabang="robotik"] {
+  --accent-rgb: 224, 70, 95; /* #e0465f */
+  --accent-2-rgb: 190, 18, 60;
+  --accent-light-rgb: 251, 113, 133;
+  --accent-lighter-rgb: 255, 228, 230;
+}
+
+html[data-cabang="sains"] {
+  --accent-rgb: 6, 182, 212; /* Cyan/Blue blend */
+  --accent-2-rgb: 2, 132, 199;
+  --accent-light-rgb: 103, 232, 249;
+  --accent-lighter-rgb: 207, 250, 254;
+}
+
+html[data-cabang="both"] {
+  --accent-rgb: 139, 92, 246;
+  --accent-2-rgb: 109, 40, 217;
+  --accent-light-rgb: 196, 181, 253;
+  --accent-lighter-rgb: 221, 214, 254;
+}
+
+html[data-theme="light"] {
+  --bg-color: #ffffff;
+  --text-color: #0f172a;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.15);
+  --glass-input-bg: rgba(15, 23, 42, 0.05);
+  --scrollbar-thumb: rgba(15, 23, 42, 0.2);
+  --glow-opacity: 1;
+  --muted-500: #64748b;
+  --muted-600: #94a3b8;
+}
+
+html[data-theme="light"] .glow-blob {
+  mix-blend-mode: multiply;
+  filter: blur(80px);
+}
+
+/* Enforce high-contrast dark text over low-contrast elements in light mode */
+html[data-theme="light"] .text-zinc-100 { color: #0f172a !important; }
+html[data-theme="light"] .text-zinc-200 { color: #1e293b !important; }
+html[data-theme="light"] .text-zinc-300 { color: #334155 !important; }
+html[data-theme="light"] .text-zinc-400 { color: #475569 !important; }
+html[data-theme="light"] .text-zinc-500 { color: #64748b !important; }
+html[data-theme="light"] .text-zinc-600 { color: #475569 !important; }
+
+/* Force white text inside the active navigation wash for high legibility */
+html[data-theme="light"] .nav-link.active {
+  background: rgb(var(--accent-rgb)) !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] .nav-link.active svg {
+  color: #ffffff !important;
+}
+
+/* Sidebar collapse structural override mechanics */
+#sidebar {
+  white-space: nowrap;
+  transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
+  z-index: 40;
+}
+
+.sidebar-collapsed {
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.sidebar-collapsed .sidebar-header-text,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed p.uppercase,
+.sidebar-collapsed .min-w-0 {
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease, width 0.3s ease;
+}
+
+.sidebar-header-text, .nav-label, p.uppercase, .min-w-0 {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease 0.1s, width 0.3s ease;
+}
+
+.collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-collapsed .collapse-icon {
+  transform: rotate(180deg);
+}
+
+.sidebar-collapsed > a:first-of-type,
+.sidebar-collapsed .nav-link,
+.sidebar-collapsed .mt-auto > a,
+.sidebar-collapsed button[onclick="kirLogout()"] {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  gap: 0 !important;
+  width: 100% !important;
+}
+
+.sidebar-collapsed > a:first-of-type > div:first-child,
+.sidebar-collapsed [data-kir="avatar-wrapper"] {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  font-size: 0.875rem !important;
+}
+
+.sidebar-collapsed .nav-link svg,
+.sidebar-collapsed button[onclick="kirLogout()"] svg {
+  margin: 0 !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-display { font-family: 'Space Grotesk', sans-serif; }
+
+/* ambient glow blobs — the site's signature visual motif */
+.glow-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--glow-opacity);
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-input {
+  background: var(--glass-input-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  color: var(--text-color);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+  background: var(--glass-input-bg);
+}
+.glass-input::placeholder { color: var(--muted-600); }
+
+.nav-link {
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  opacity: 0.75;
+}
+.nav-link.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  color: var(--text-color);
+  opacity: 1;
+  box-shadow: 0 0 24px -8px rgba(var(--accent-rgb), 0.5);
+}
+.nav-link:not(.active):hover {
+  background: rgba(128, 128, 128, 0.08);
+  opacity: 1;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+
+.timeline-line {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.6), rgba(var(--accent-rgb), 0));
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0); }
+}
+.pulse { animation: pulse-dot 2.2s infinite; }
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); }
+  40%, 60% { transform: translateX(3px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+@keyframes flame-wave-flow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-12px); }
+}
+.flame-wave {
+  animation: flame-wave-flow 1.5s linear infinite;
+}
+.flame-fill-group {
+  transition: transform 0.5s ease;
+}
+
+/* prevents a flash of protected content before auth.js can redirect */
+.auth-gate-hidden { display: none !important; }
+
+/* ==========================================================
+   Accent utility classes — these replace Tailwind's old
+   bg-accent/*, text-accent-*, border-accent/* classes so the
+   whole palette can move between red / blue / purple and
+   dark / light via the CSS variables above.
+   ========================================================== */
+.bg-accent { background-color: rgb(var(--accent-rgb)); }
+.bg-accent-gradient { background-image: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%); }
+.bg-accent-10 { background-color: rgba(var(--accent-rgb), 0.10); }
+.bg-accent-15 { background-color: rgba(var(--accent-rgb), 0.15); }
+.bg-accent-20 { background-color: rgba(var(--accent-rgb), 0.20); }
+.bg-accent-25 { background-color: rgba(var(--accent-rgb), 0.25); }
+
+.border-accent-20 { border-color: rgba(var(--accent-rgb), 0.20); }
+.border-accent-30 { border-color: rgba(var(--accent-rgb), 0.30); }
+.border-accent-40 { border-color: rgba(var(--accent-rgb), 0.40); }
+
+.text-accent-200 { color: rgb(var(--accent-lighter-rgb)); }
+.text-accent-300 { color: rgb(var(--accent-light-rgb)); }
+
+.to-accent-300 { --tw-gradient-to: rgb(var(--accent-light-rgb)); }
+
+.shadow-glow { box-shadow: 0 0 40px -5px rgba(var(--accent-rgb), 0.45); }
+.shadow-glow-sm { box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.35); }
+
+.hero-gradient {
+  background-image: linear-gradient(to right, #ffffff, #ffffff, rgb(var(--accent-light-rgb)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .hero-gradient {
+  background-image: linear-gradient(to right, #0f172a, #1e293b, rgb(var(--accent-2-rgb)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Cabang badges — small pills used on the Members page, user
+   chip, and Settings, always showing their OWN fixed color
+   regardless of the active theme, so you can tell branches
+   apart even when your own accent is purple ("both"). */
+.badge-robotik { background: rgba(224, 70, 95, 0.15); color: #ee8fa0; border: 1px solid rgba(224, 70, 95, 0.35); }
+.badge-sains   { background: rgba(56, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(56, 130, 246, 0.35); }
+
+.accent-theme {
+  accent-color: rgb(var(--accent-rgb));
+}
+
+/* Settings: toggle switch */
+.toggle-track {
+  width: 44px; height: 24px; border-radius: 999px;
+  background: rgba(128,128,128,0.25);
+  position: relative; transition: background 0.2s ease; cursor: pointer; flex-shrink: 0;
+}
+.toggle-track.on { background: rgb(var(--accent-rgb)); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: 999px; background: #fff; transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-track.on .toggle-thumb { transform: translateX(20px); }
+
+/* Cabang picker chip (register + settings) */
+.cabang-chip {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  border-radius: 0.75rem;
+  padding: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.cabang-chip.selected {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+}
+
+/* Modal overlay (task detail window) */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px); z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.modal-card {
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  max-width: 32rem; width: 100%; max-height: 88vh; overflow-y: auto;
+  border-radius: 1rem;
+}
+
+/* ==========================================================
+   Public marketing nav — shared by index.html, gallery.html,
+   program-kerja.html (guest-facing pages, no sidebar/app-shell).
+   ========================================================== */
+.public-nav-link {
+  color: var(--text-color);
+  opacity: 0.65;
+  transition: opacity 0.15s ease;
+  font-size: 0.875rem;
+}
+.public-nav-link:hover { opacity: 1; }
+.public-nav-link.active { opacity: 1; color: rgb(var(--accent-light-rgb)); }
+
+/* ==========================================================
+   Gallery — Finder-esque folder browser
+   ========================================================== */
+.finder-window {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.finder-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(128,128,128,0.04);
+}
+.finder-dot { width: 11px; height: 11px; border-radius: 999px; background: rgba(var(--accent-rgb), 0.4); }
+.finder-dot:nth-child(2) { background: rgba(var(--accent-rgb), 0.25); }
+.finder-dot:nth-child(3) { background: rgba(var(--accent-rgb), 0.15); }
+.finder-pathbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.8rem;
+}
+.finder-crumb {
+  color: var(--muted-500);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.finder-crumb:hover { background: rgba(128,128,128,0.1); color: var(--text-color); }
+.finder-crumb.current { color: var(--text-color); font-weight: 600; cursor: default; }
+.finder-crumb.current:hover { background: none; }
+.finder-sep { color: var(--muted-600); font-size: 0.7rem; }
+
+.finder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 0.5rem;
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .finder-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+}
+
+.finder-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0.4rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-align: center;
+}
+.finder-tile:hover { background: rgba(128,128,128,0.08); border-color: var(--glass-border); }
+.finder-tile:active { transform: scale(0.98); }
+.finder-tile-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.85;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 100%;
+}
+.finder-tile-sub { font-size: 0.65rem; color: var(--muted-500); }
+
+.folder-icon {
+  width: 52px; height: 42px;
+  filter: drop-shadow(0 4px 10px rgba(var(--accent-rgb), 0.25));
+}
+.folder-icon-up { opacity: 0.55; }
+
+.photo-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.photo-thumb svg { width: 22px; height: 22px; opacity: 0.85; color: #fff; }
+
+.lightbox-photo {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-photo svg { width: 40px; height: 40px; color: rgba(255,255,255,0.9); }
+
+.finder-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted-500);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================
+   Program Kerja — scroll-reveal + orbit rail
+   ========================================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.in-view { opacity: 1; transform: translateY(0); }
+.reveal-delay-1.in-view { transition-delay: 0.08s; }
+.reveal-delay-2.in-view { transition-delay: 0.16s; }
+.reveal-delay-3.in-view { transition-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  #orbit-traveler { display: none !important; }
+}
+
+.orbit-rail-wrap {
+  position: relative;
+}
+.orbit-rail-svg {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  height: 100%;
+  width: 40px;
+  overflow: visible;
+}
+#orbit-traveler {
+  offset-rotate: 0deg;
+  will-change: offset-distance;
+}
+
+.proker-card {
+  position: relative;
+}
+.proker-index {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: rgb(var(--accent-light-rgb));
+  opacity: 0.8;
+}
+.proker-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: rgb(var(--accent-light-rgb));
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+}
+
+/* Avatar upload ring */
+.avatar-upload {
+  position: relative; width: 5.5rem; height: 5.5rem; border-radius: 999px;
+  cursor: pointer; overflow: hidden;
+}
+.avatar-upload .avatar-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s ease; color: #fff; font-size: 11px; text-align: center;
+}
+.avatar-upload:hover .avatar-overlay { opacity: 1; }
