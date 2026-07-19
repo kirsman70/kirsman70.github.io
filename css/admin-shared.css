@@ -1,0 +1,706 @@
+/* ==========================================================
+   Shared inline admin system — CSS
+   --------------------------------------------------------
+   Generic, page-agnostic building blocks for "click to add /
+   hover to edit / click to delete" admin affordances. Nothing
+   in this file assumes a specific page or data type — it only
+   knows about buttons, a modal shell, a confirm dialog, and a
+   toast. Pairs with js/admin-shared.js.
+
+   Not wired into any page yet. Include this stylesheet (after
+   css/style.css) and js/admin-shared.js (after js/auth.js) on
+   a page before using any of the kirAdmin* helpers.
+   ========================================================== */
+
+/* ----------------------------------------------------------
+   Floating "+" action button
+   ---------------------------------------------------------- */
+.admin-fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 40;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.admin-fab:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.admin-fab:active { transform: translateY(0); }
+.admin-fab svg { width: 1.5rem; height: 1.5rem; }
+
+/* Room for a bottom nav / mobile chrome — pages can opt into this
+   variant with an extra class if the fab would otherwise overlap. */
+.admin-fab.admin-fab-raised { bottom: 5.5rem; }
+
+/* Secondary/tertiary stacked circular actions — sit directly above
+   the main "+" fab (same right alignment), icon-only, smaller and
+   quieter (glass instead of the accent gradient) so they read as
+   secondary. e.g. on Voyages: Ekspedisi (primary slot) -> Tambah
+   voyage (secondary) -> Impor JSON (tertiary), stacked bottom to top. */
+.admin-fab-secondary, .admin-fab-tertiary {
+  position: fixed;
+  right: 1.5rem;
+  z-index: 40;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.admin-fab-secondary { bottom: 5.5rem; }
+.admin-fab-tertiary { bottom: 9rem; }
+.admin-fab-secondary:hover, .admin-fab-tertiary:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.admin-fab-secondary:active, .admin-fab-tertiary:active { transform: translateY(0); }
+.admin-fab-secondary svg, .admin-fab-tertiary svg { width: 1.15rem; height: 1.15rem; }
+
+/* ----------------------------------------------------------
+   Per-item edit / delete buttons
+   --------------------------------------------------------
+   Meant to sit inside a relatively-positioned card. Wrap both
+   in .admin-item-actions to pin them to a corner; or use the
+   button classes standalone (e.g. inside a table row).
+   ---------------------------------------------------------- */
+.admin-item-actions {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.admin-icon-btn {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  backdrop-filter: blur(8px);
+  color: var(--text-color);
+  opacity: 0.85;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.admin-icon-btn:hover { opacity: 1; }
+.admin-icon-btn svg { width: 0.9rem; height: 0.9rem; }
+
+.admin-edit-btn:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: rgb(var(--accent-light-rgb));
+}
+.admin-delete-btn:hover {
+  border-color: rgba(224, 70, 95, 0.5);
+  color: #ee8fa0;
+}
+
+/* ----------------------------------------------------------
+   Hover-reveal quick actions (admin only)
+   --------------------------------------------------------
+   .admin-quick-wrap keeps the card's ORIGINAL footprint in the
+   grid/list — nothing around it ever reflows. Inside it:
+
+   - .admin-quick-card is the real card. On hover/focus of the
+     wrapper it gains a right margin, so it visually shrinks in
+     from the right edge.
+   - .admin-quick-actions is a vertical edit/delete stack,
+     absolutely positioned at the wrapper's right edge, sitting
+     translated further right + invisible by default. On hover
+     it slides into the space the card just gave up and fades in.
+
+   Net effect: the buttons look like they live "outside" the
+   card, but they're still fully inside the wrapper's original
+   width, so layout never jumps.
+   ---------------------------------------------------------- */
+.admin-quick-wrap {
+  position: relative;
+  height: 100%;
+}
+.admin-quick-card {
+  width: 100%;
+  height: 100%;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.admin-quick-wrap:hover .admin-quick-card,
+.admin-quick-wrap:focus-within .admin-quick-card {
+  /* !important guards against the Tailwind CDN's injected
+     utility stylesheet (e.g. w-full) landing later in the
+     cascade and winning on equal specificity. */
+  width: calc(100% - 3.1rem) !important;
+}
+.admin-quick-actions {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transform: translate(10px, -50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.admin-quick-wrap:hover .admin-quick-actions,
+.admin-quick-wrap:focus-within .admin-quick-actions {
+  transform: translate(0, -50%);
+  opacity: 1;
+  pointer-events: auto;
+}
+.admin-quick-actions .admin-icon-btn {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.45);
+}
+.admin-quick-actions .admin-icon-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+/* Stagger the two buttons in slightly so the stack doesn't pop
+   in as one flat block. */
+.admin-quick-actions .admin-icon-btn:nth-child(1) { transition-delay: 0s; }
+.admin-quick-actions .admin-icon-btn:nth-child(2) { transition-delay: 0.03s; }
+
+/* ----------------------------------------------------------
+   Shared create/edit modal
+   --------------------------------------------------------
+   Reuses the site's existing .modal-overlay / .modal-card look
+   (see css/style.css) so admin forms feel native to the rest
+   of the app, just with its own root/ids so it never collides
+   with a page's own detail modal.
+   ---------------------------------------------------------- */
+#admin-modal-root .modal-card {
+  max-width: 34rem;
+}
+#admin-modal-root .modal-card.admin-modal-wide {
+  max-width: 46rem;
+}
+#admin-json-import-root .modal-card {
+  max-width: 40rem;
+}
+
+/* ----------------------------------------------------------
+   Horizontal field rows — fields sharing a `row` key sit side
+   by side on desktop, stack on mobile. Standard layout now
+   instead of everything stacking one-per-line.
+   ---------------------------------------------------------- */
+.admin-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+@media (min-width: 640px) {
+  .admin-field-row { flex-direction: row; }
+  .admin-field-row > .admin-field-group { flex: 1 1 0%; min-width: 0; }
+}
+
+/* Conditionally-visible fields (showIf) fade/collapse instead of
+   just popping in and out. Only fields that are ever conditional
+   get the clipping treatment — plain fields stay overflow-visible
+   so their dropdown/date-picker panels aren't clipped. */
+.admin-field-group[data-required] { position: relative; }
+.admin-field-group.admin-field-hidden,
+.admin-field-group:not(.admin-field-hidden) {
+  transition: opacity 0.2s ease;
+}
+.admin-field-group.admin-field-hidden {
+  overflow: hidden;
+  max-height: 0 !important;
+  opacity: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none;
+}
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+}
+.admin-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin: -0.25rem -0.25rem 0 0;
+}
+.admin-modal-json-btn {
+  color: var(--muted-500);
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  display: flex;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.admin-modal-json-btn:hover { color: var(--text-color); border-color: var(--glass-border); }
+.admin-modal-json-btn.active {
+  color: rgb(var(--accent-light-rgb));
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* ----------------------------------------------------------
+   In-modal JSON editor (kirAdminToggleJsonMode)
+   ---------------------------------------------------------- */
+.admin-json-textarea {
+  font-family: 'Space Mono', 'Courier New', ui-monospace, monospace;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 14rem;
+  white-space: pre;
+}
+.admin-json-error {
+  font-size: 0.72rem;
+  color: #ee8fa0;
+}
+.admin-json-error.hidden { display: none; }
+
+/* ----------------------------------------------------------
+   JSON bulk import modal (kirOpenJsonImportModal)
+   --------------------------------------------------------
+   Uses the admin-modal-wide class (see the create/edit modal
+   above) for its width, since the textarea wants the room.
+   ---------------------------------------------------------- */
+#admin-json-import-root.modal-overlay { z-index: 65; }
+.admin-json-import-filerow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-json-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.admin-json-file-btn:hover { border-color: rgba(var(--accent-rgb), 0.5); }
+.admin-json-ai-context-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.admin-json-ai-context-btn:hover { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.14); }
+.admin-json-ai-context-btn.is-copied {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+.admin-json-import-summary {
+  margin-top: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(128, 128, 128, 0.06);
+}
+.admin-json-import-count { font-size: 0.85rem; }
+.admin-json-import-errors {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+.admin-json-import-errors li { font-size: 0.72rem; color: var(--muted-500); line-height: 1.4; }
+.admin-json-import-errors li strong { color: #ee8fa0; font-weight: 600; }
+
+.admin-modal-close {
+  color: var(--muted-500);
+  flex-shrink: 0;
+  padding: 0.4rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 0.15s ease;
+}
+.admin-modal-close:hover { color: var(--text-color); }
+.admin-modal-body {
+  padding: 1.25rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.admin-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.admin-field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.admin-field-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted-500);
+  text-transform: uppercase;
+}
+.admin-field-hint { font-size: 0.7rem; color: var(--muted-600); margin-top: -0.15rem; }
+.admin-field-error {
+  font-size: 0.72rem;
+  color: #ee8fa0;
+  display: none;
+}
+.admin-field-group.has-error .admin-field-error { display: block; }
+.admin-field-group.has-error .glass-input,
+.admin-field-group.has-error .kir-select-trigger {
+  border-color: rgba(224, 70, 95, 0.6);
+}
+
+.admin-checkbox-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.admin-checkbox-row .admin-field-label { text-transform: none; font-size: 0.85rem; color: var(--text-color); letter-spacing: normal; }
+
+/* "checkboxes" field type — e.g. a coding voyage's allowed languages */
+.admin-checkboxes-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.admin-checkboxes-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.75rem; border-radius: 0.5rem;
+  border: 1px solid var(--glass-border); background: var(--glass-input-bg);
+  font-size: 0.82rem; cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.admin-checkboxes-row:hover { border-color: rgba(var(--accent-rgb), 0.4); }
+.admin-checkboxes-row.selected { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.12); }
+.admin-checkboxes-box {
+  width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+  border: 1.5px solid var(--glass-border); position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.admin-checkboxes-row.selected .admin-checkboxes-box,
+.admin-testcase-hidden-toggle input:checked + .admin-checkboxes-box {
+  background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb));
+}
+.admin-checkboxes-row.selected .admin-checkboxes-box::after,
+.admin-testcase-hidden-toggle input:checked + .admin-checkboxes-box::after {
+  content: ''; position: absolute; left: 3px; top: 0px; width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+/* "testcases" field type — repeatable input/expected_output/is_hidden rows */
+.admin-testcase-row {
+  border: 1px solid var(--glass-border); border-radius: 0.65rem; padding: 0.75rem;
+  background: rgba(128,128,128,0.04); display: flex; flex-direction: column; gap: 0.6rem;
+}
+.admin-testcase-row-header { display: flex; align-items: center; gap: 0.75rem; }
+.admin-testcase-row-index { font-size: 0.78rem; font-weight: 600; color: var(--muted-500); flex: 1; }
+.admin-testcase-hidden-toggle {
+  display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--muted-600); cursor: pointer;
+}
+.admin-testcase-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+@media (max-width: 640px) { .admin-testcase-row-grid { grid-template-columns: 1fr; } }
+.admin-testcase-subfield-label { font-size: 0.68rem; color: var(--muted-600); margin-bottom: 0.25rem; display: block; }
+
+.admin-btn-primary {
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.admin-btn-primary:hover { filter: brightness(1.1); }
+.admin-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
+.admin-btn-primary.admin-btn-danger { background: #dc3f5c; }
+
+.admin-btn-secondary {
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--muted-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.admin-btn-secondary:hover { color: var(--text-color); }
+
+/* ----------------------------------------------------------
+   Shared confirmation dialog
+   --------------------------------------------------------
+   Deliberately smaller/simpler than the create/edit modal, and
+   layered on its own z-index so it can stack on top of it (e.g.
+   "delete this?" opened from within an open edit modal).
+   ---------------------------------------------------------- */
+#admin-confirm-root.modal-overlay { z-index: 70; }
+#admin-confirm-root .modal-card {
+  max-width: 24rem;
+  padding: 1.5rem;
+}
+.admin-confirm-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem; }
+.admin-confirm-message { font-size: 0.85rem; color: var(--muted-500); line-height: 1.5; margin-bottom: 1.35rem; }
+.admin-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; }
+
+/* ----------------------------------------------------------
+   Toast — mirrors .deltas-toast's shape/motion so admin
+   success/error feedback feels consistent with the rest of
+   the app, without depending on that class directly.
+   ---------------------------------------------------------- */
+.admin-toast {
+  position: fixed; left: 50%; bottom: 2rem; transform: translate(-50%, 20px);
+  z-index: 80; opacity: 0; pointer-events: none;
+  transition: all 0.35s cubic-bezier(.2,.8,.2,1);
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--bg-color); border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 40px -8px rgba(0,0,0,0.5);
+  padding: 0.75rem 1.15rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+  max-width: calc(100vw - 2rem);
+}
+.admin-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.admin-toast.admin-toast-success { border-color: rgba(var(--accent-rgb), 0.4); box-shadow: 0 10px 40px -8px rgba(var(--accent-rgb), 0.5); }
+.admin-toast.admin-toast-error { border-color: rgba(224, 70, 95, 0.5); color: #ee8fa0; box-shadow: 0 10px 40px -8px rgba(224, 70, 95, 0.4); }
+.admin-toast svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+
+/* ----------------------------------------------------------
+   Custom date / datetime picker (moved here from admin.html —
+   now shared by every admin-shared form, not just the old
+   Voyage/Tugas/Jadwal pages).
+   ---------------------------------------------------------- */
+.kir-datepicker { position: relative; }
+.kir-date-trigger { display: flex; align-items: center; gap: 0.55rem; cursor: pointer; }
+.kir-date-display.placeholder { color: var(--muted-600); }
+.kir-calendar-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  background: var(--bg-color); border: 1px solid var(--glass-border);
+  border-radius: 0.85rem; padding: 0.9rem; width: 272px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+}
+.kir-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+.kir-cal-nav-btn {
+  width: 1.85rem; height: 1.85rem; border-radius: 0.5rem; display: flex; align-items: center;
+  justify-content: center; color: var(--muted-500); cursor: pointer; background: none; border: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.kir-cal-nav-btn:hover { background: rgba(128,128,128,0.12); color: var(--text-color); }
+.kir-cal-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; text-transform: capitalize; }
+.kir-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.kir-cal-weekday { font-size: 0.63rem; text-align: center; color: var(--muted-500); padding: 0.2rem 0 0.4rem; font-weight: 600; text-transform: uppercase; }
+.kir-cal-day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.78rem;
+  border-radius: 0.5rem; cursor: pointer; color: var(--text-color); border: 1px solid transparent;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.kir-cal-day:hover { background: rgba(128,128,128,0.12); }
+.kir-cal-day.empty { visibility: hidden; cursor: default; }
+.kir-cal-day.today { border-color: rgba(var(--accent-rgb), 0.55); font-weight: 600; }
+.kir-cal-day.selected { background: rgb(var(--accent-rgb)); color: #fff; font-weight: 600; }
+.kir-cal-time-row { display: flex; justify-content: center; margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px solid var(--glass-border); }
+.kir-cal-time-row input[type="time"] { color-scheme: dark; }
+.kir-cal-footer { display: flex; justify-content: space-between; margin-top: 0.65rem; padding-top: 0.6rem; border-top: 1px solid var(--glass-border); }
+.kir-cal-quick-btn { font-size: 0.72rem; font-weight: 600; color: rgb(var(--accent-light-rgb)); background: none; border: none; cursor: pointer; padding: 0; }
+.kir-cal-quick-btn:hover { text-decoration: underline; }
+
+/* ----------------------------------------------------------
+   Image field — upload button integrated into the URL row.
+   ---------------------------------------------------------- */
+.admin-image-input-row { display: flex; align-items: center; gap: 0.5rem; }
+.admin-image-input-row .glass-input { flex: 1 1 0%; min-width: 0; }
+.admin-image-upload-btn {
+  flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 0.5rem;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--glass-input-bg); border: 1px solid var(--glass-border);
+  color: var(--muted-500); cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease;
+}
+.admin-image-upload-btn:hover { color: rgb(var(--accent-light-rgb)); border-color: rgba(var(--accent-rgb), 0.5); }
+.admin-image-upload-btn svg { width: 1.15rem; height: 1.15rem; }
+
+.admin-image-preview-wrap {
+  margin-top: 0.65rem; border-radius: 0.65rem; overflow: hidden; border: 1px solid var(--glass-border);
+  position: relative; background: rgba(128,128,128,0.06);
+}
+.admin-image-preview { display: block; width: 100%; height: 8rem; object-fit: cover; }
+.admin-image-preview-broken-label {
+  display: none; position: absolute; inset: 0; align-items: center; justify-content: center;
+  font-size: 0.75rem; color: var(--muted-500); text-align: center; padding: 0.5rem;
+}
+.admin-image-preview-wrap.admin-image-preview-broken .admin-image-preview { visibility: hidden; }
+.admin-image-preview-wrap.admin-image-preview-broken .admin-image-preview-broken-label { display: flex; }
+
+/* ----------------------------------------------------------
+   Math editor — "Word-style" toolbar + textarea + live MathJax
+   preview, used by fields of type 'mathtext' (voyage question /
+   essay reference answer). The toolbar, textarea and preview are
+   stacked into one visually continuous control: toolbar and
+   preview share a muted background, the textarea in between is
+   where typing happens, rounded corners only on the outer edges
+   so it reads as a single component rather than three stacked
+   boxes.
+   ---------------------------------------------------------- */
+.math-editor {
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--glass-input-bg);
+}
+.math-editor-toolbar {
+  display: flex; flex-wrap: wrap; gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(128,128,128,0.07);
+}
+.math-toolbar-btn {
+  min-width: 2rem; height: 2rem; padding: 0 0.45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0.4rem; border: 1px solid transparent;
+  background: transparent; color: var(--muted-400);
+  font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.math-toolbar-btn:hover {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: rgb(var(--accent-light-rgb));
+}
+/* The textarea and its highlight backdrop are stacked so they occupy
+   exactly the same box: the wrap is a plain positioning context, the
+   textarea stays in normal flow (so resizing it via the native drag
+   handle grows the wrap, which the absolutely-positioned backdrop
+   then fills to match), and the backdrop sits behind it rendering
+   the same text with syntax tokens dimmed. The textarea's own glyphs
+   are made transparent — only its caret and native text-selection
+   paint — so what's actually *visible* as text is the backdrop
+   underneath, in perfect alignment because both share the exact same
+   font, padding and line-wrapping rules. */
+.math-editor-textarea-wrap { position: relative; }
+.math-editor-highlight {
+  position: absolute; inset: 0;
+  padding: 0.65rem 0.75rem;
+  white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
+  overflow: hidden; pointer-events: none;
+  color: var(--text-color); line-height: 1.5;
+}
+.mte-dim { color: var(--muted-500); }
+.math-editor-textarea.glass-input {
+  border: none; border-radius: 0; background: transparent;
+  resize: vertical; padding: 0.65rem 0.75rem; display: block; width: 100%;
+  position: relative; line-height: 1.5;
+  color: transparent; caret-color: var(--text-color);
+  /* .glass-input normally sets backdrop-filter:blur(8px) for the frosted-
+     glass look, but that blurs whatever's visually BEHIND the element —
+     which is now the highlight div carrying the actual visible text, so
+     it must be turned off here or the text is unreadable. */
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.math-editor-textarea.glass-input::selection { background: rgba(var(--accent-rgb), 0.35); }
+.math-editor-textarea.glass-input:focus { box-shadow: none; outline: none; }
+.math-editor-preview-bar {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.5rem 0.75rem 0.3rem;
+  border-top: 1px solid var(--glass-border);
+  color: var(--muted-600); font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  background: rgba(128,128,128,0.05);
+}
+.math-editor-preview {
+  padding: 0.4rem 0.75rem 0.85rem;
+  background: rgba(128,128,128,0.05);
+  font-size: 0.85rem; color: var(--text-color); line-height: 1.6;
+  min-height: 1.6rem;
+  word-break: break-word;
+}
+.math-editor-preview-empty { color: var(--muted-600); font-style: italic; }
+
+/* ----------------------------------------------------------
+   Rating/difficulty slider legend tooltip (ported from
+   admin.html's inline Voyage rating hint).
+   ---------------------------------------------------------- */
+.admin-range-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.admin-range-info-btn { color: var(--muted-500); background: none; border: none; cursor: pointer; padding: 0; display: flex; transition: color 0.15s ease; }
+.admin-range-info-btn:hover { color: var(--text-color); }
+
+/* Body-level, position:fixed — never clipped by a scrolling
+   ancestor (e.g. the modal card's overflow-y:auto). Positioned
+   via JS in kirAdminTooltipShow(). */
+.admin-tooltip {
+  position: fixed; z-index: 200;
+  width: 15rem; padding: 0.75rem;
+  background: var(--bg-color); border: 1px solid var(--glass-border);
+  border-radius: 0.75rem; box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  pointer-events: none;
+}
+.admin-tooltip.hidden { display: none; }
+.admin-tooltip::after {
+  content: ''; position: absolute; left: var(--tt-arrow-left, 50%); transform: translateX(-50%) rotate(45deg);
+  bottom: -6px; width: 11px; height: 11px; background: var(--bg-color);
+  border-right: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);
+}
+.admin-tooltip.arrow-below::after {
+  bottom: auto; top: -6px;
+  border-right: none; border-bottom: none;
+  border-left: 1px solid var(--glass-border); border-top: 1px solid var(--glass-border);
+}
+.admin-range-tooltip-title { font-weight: 600; font-size: 0.75rem; margin-bottom: 0.4rem; color: var(--text-color); }
+.admin-tooltip ul { display: flex; flex-direction: column; gap: 0.3rem; }
+.admin-tooltip li { font-size: 0.7rem; color: var(--muted-500); line-height: 1.4; }
+.admin-tooltip li span { font-weight: 600; margin-right: 0.25rem; }
+
+/* Plain title/body/model tooltip content (e.g. the Smart Grading
+   checkbox on Voyages) — same box as the range legend above, just a
+   different content shape. */
+.admin-tooltip-p { font-size: 0.7rem; color: var(--muted-500); line-height: 1.45; }
+.admin-tooltip-p + .admin-tooltip-p { margin-top: 0.4rem; }
+.admin-tooltip-model {
+  margin-top: 0.55rem; padding-top: 0.5rem; border-top: 1px solid var(--glass-border);
+  font-size: 0.68rem; color: var(--muted-600);
+}
+.admin-tooltip-model code {
+  font-family: inherit; font-weight: 600; color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.12); padding: 0.05rem 0.4rem; border-radius: 0.3rem;
+}
+
+/* ----------------------------------------------------------
+   Options builder row shell — this is the piece that was
+   missing: admin.html only ever defined it in its own local
+   <style> tag, so the shared '.voyage-option-dot' circle (whose
+   base size/border lives in style.css) had no flex row or
+   button-reset around it and collapsed to a bare 1px button edge.
+   ---------------------------------------------------------- */
+.voyage-option-row { display: flex; align-items: center; gap: 0.65rem; }
+.voyage-option-dot-btn {
+  background: none; border: none; padding: 0; margin: 0;
+  cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.voyage-option-dot-btn .voyage-option-dot { width: 20px; height: 20px; }
+.voyage-option-dot-btn.selected .voyage-option-dot { border-color: rgb(var(--accent-rgb)); }
+.voyage-option-dot-btn.selected .voyage-option-dot::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 999px; background: rgb(var(--accent-rgb));
+}

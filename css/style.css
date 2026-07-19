@@ -10,7 +10,7 @@
 
    1. data-cabang="robotik" | "sains" | "both"
       Sets the --accent-* CSS variables (red / blue / purple).
-      This is the user's club branch, chosen at register and
+      This is the user's extracurricular branch, chosen at register and
       editable later on the Settings page.
 
    2. data-theme="dark" | "light"
@@ -22,14 +22,77 @@
    no per-page CSS needed.
    ========================================================== */
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-color);
+  /* Reserve the vertical scrollbar's gutter permanently, whether or
+     not a scrollbar is actually showing. Otherwise, the instant a
+     modal locks scroll (overflow:hidden below) the scrollbar
+     disappears and hands its width back to the viewport, nudging
+     everything right — flow content AND position:fixed elements like
+     the Ekspedisi/create/Impor JSON FABs, since their containing
+     block is the real (scrollbar-excluding) viewport. Reserving the
+     gutter up front means that width was never "given back" in the
+     first place, so nothing moves when the scrollbar toggles off. */
+  scrollbar-gutter: stable;
+}
+
+/* Locked while any modal (or Ekspedisi's fullscreen focus mode) is
+   open, so the page behind can't scroll and reveal its native
+   scrollbar — that scrollbar sits in the browser's UI layer, on top
+   of even a fullscreen fixed overlay, so without this it shows up as
+   a stray bar down the right edge.
+
+   `position: fixed` (not just overflow:hidden) is what actually keeps
+   the page from jumping to the top when this engages — a bare
+   overflow:hidden resets body's scrollTop to 0, which was yanking
+   everything, including sticky elements like the sidebar, up with it.
+   js/admin-shared.js sets `top` to the negative of the current scroll
+   offset before adding this class, and restores the real scroll
+   position via window.scrollTo when it's removed. */
+html.kir-scroll-locked {
+  overflow: hidden !important;
+}
+html.kir-scroll-locked body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: hidden !important;
+}
+
+/* #sidebar is lg:sticky lg:top-0 so it stays visible while the main
+   column scrolls (and, since it's taller than the viewport, it
+   naturally detaches and scrolls along near the bottom of the page so
+   its own bottom — the "Keluar" tab — comes into view). Sticky can't
+   be trusted once .kir-scroll-locked engages: it recomputes against a
+   scroll offset that's now frozen/fake instead of real. So
+   __kirFreezeSidebar() in admin-shared.js swaps it to position:fixed
+   at the exact top/left/width/height it already had the instant
+   before the lock — wherever that was, stuck at top or partway
+   scrolled — instead of assuming it was at the top. #sidebar-root
+   gets a matching inline width so pulling the sidebar out of flex
+   flow doesn't collapse the space it was holding, which is what was
+   shifting <main> left. Transitions are suspended while frozen so
+   snapping in those (already-matching) inline dimensions doesn't
+   itself animate. */
+.kir-sidebar-frozen {
+  transition: none !important;
+}
+
+/* Smooth cross-document navigation between pages (Chrome/Edge; other
+   browsers just ignore this and fall back to the normal hard navigation). */
+@view-transition {
+  navigation: auto;
+}
 
 :root {
-  /* Default Orbit Accent (Premium Slate) */
-  --accent-rgb: 148, 163, 184;
-  --accent-2-rgb: 71, 85, 105;
-  --accent-light-rgb: 203, 213, 225;
-  --accent-lighter-rgb: 226, 232, 240;
+  /* Default Orbit Accent (Premium Neutral) — true grayscale, no blue
+     tint, and lighter overall so it reads as an extension of the
+     white/light-grey logo instead of a colored (blue-ish) accent. */
+  --accent-rgb: 212, 212, 216;
+  --accent-2-rgb: 82, 82, 91;
+  --accent-light-rgb: 244, 244, 245;
+  --accent-lighter-rgb: 250, 250, 250;
 
   /* Dark theme (default) */
   --bg-color: #09090b;
@@ -68,7 +131,7 @@ html[data-cabang="both"] {
 html[data-theme="light"] {
   --bg-color: #f4f4f5;
   --text-color: #0f172a;
-  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.08);
   --glass-border: rgba(15, 23, 42, 0.12);
   --glass-input-bg: rgba(15, 23, 42, 0.05);
   --scrollbar-thumb: rgba(15, 23, 42, 0.2);
@@ -93,12 +156,15 @@ html[data-theme="light"] .text-zinc-600 { color: #475569 !important; }
 
 /* Force white text inside the active navigation wash for high legibility */
 html[data-theme="light"] .nav-link.active {
-  background: rgb(var(--accent-rgb)) !important;
   color: #ffffff !important;
   opacity: 1 !important;
 }
 html[data-theme="light"] .nav-link.active svg {
   color: #ffffff !important;
+}
+html[data-theme="light"] .nav-active-pill {
+  background: rgb(var(--accent-rgb)) !important;
+  border-color: rgb(var(--accent-rgb)) !important;
 }
 
 /* Sidebar collapse structural override mechanics */
@@ -108,6 +174,8 @@ html[data-theme="light"] .nav-link.active svg {
   z-index: 40;
   width: 16rem;
   min-width: 16rem;
+  view-transition-name: kir-sidebar;
+  contain: layout;
 }
 
 #sidebar.sidebar-collapsed {
@@ -249,6 +317,7 @@ body {
   background: var(--glass-input-bg);
 }
 .glass-input::placeholder { color: var(--muted-600); }
+.glass-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ==========================================================
    Custom dropdown — replaces native <select> appearance
@@ -289,6 +358,14 @@ body {
 .kir-select-option.selected {
   background: rgba(var(--accent-rgb), 0.14); color: rgb(var(--accent-light-rgb)); font-weight: 600;
 }
+/* Visible-but-unselectable option (e.g. "Kompetitif (Coding)" when
+   Subjek isn't Informatika) — shown grayed out rather than removed
+   from the list, so it's clear the choice exists but isn't valid
+   right now. See disabledIf in admin-shared.js. */
+.kir-select-option.disabled {
+  color: var(--muted-600); cursor: not-allowed; pointer-events: none;
+}
+.kir-select-option.disabled:hover { background: transparent; }
 
 /* Multi-select variant — checkbox rows that stay open across picks */
 .kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
@@ -307,21 +384,45 @@ body {
 }
 
 .nav-link {
+  position: relative;
+  z-index: 1;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
   border: 1px solid transparent;
   color: var(--text-color);
   opacity: 0.75;
 }
 .nav-link.active {
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.35);
+  /* background/border/glow now live on the traveling .nav-active-pill
+     behind the links, so the highlight can slide between items
+     instead of teleporting. This just keeps the label at full opacity. */
   color: var(--text-color);
   opacity: 1;
-  box-shadow: 0 0 24px -8px rgba(var(--accent-rgb), 0.5);
 }
 .nav-link:not(.active):hover {
   background: rgba(128, 128, 128, 0.08);
   opacity: 1;
+}
+
+/* Traveling active-nav highlight — one shared pill, absolutely
+   positioned behind whichever .nav-link is active, moved into place
+   by JS (kirPositionNavPill in auth.js). Also carries a
+   view-transition-name so it glides smoothly across full page loads,
+   not just in-page changes. */
+.nav-active-pill {
+  position: absolute;
+  left: 0;
+  border-radius: 0.5rem;
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 0 24px -8px rgba(var(--accent-rgb), 0.5);
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  contain: layout;
+  view-transition-name: kir-nav-pill;
+  transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1), left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
 }
 
 ::-webkit-scrollbar { width: 8px; }
@@ -354,6 +455,19 @@ input[type="range"].kir-range::-moz-range-thumb {
 }
 input[type="range"].kir-range:active::-moz-range-thumb { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.18); }
 
+/* Snap-position ticks — fade out to hint "precise dragging is
+   available" whenever Alt is held, on every slider on the page (not
+   just the one under the cursor), since Alt applies to whichever one
+   you click next.
+   .kir-range-precise is also toggled directly by __kirRangeApplyDrag
+   in admin-shared.js for the duration of an actual Alt-drag, as a
+   belt-and-suspenders fallback for the body class below. */
+.kir-range-ticks { transition: opacity 0.18s ease; }
+.kir-range-wrap.kir-range-precise .kir-range-ticks,
+body.kir-alt-held .kir-range-ticks {
+  opacity: 0.15;
+}
+
 .diff-inline-input {
   width: 5.5rem; text-align: right; font-size: 0.8rem; font-weight: 600;
   color: rgb(var(--accent-light-rgb)); background: var(--glass-input-bg);
@@ -370,6 +484,31 @@ input[type="range"].kir-range:active::-moz-range-thumb { transform: scale(1.2); 
   50% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0); }
 }
 .pulse { animation: pulse-dot 2.2s infinite; }
+
+/* Admin sidebar "ping" — small red unread-style count badge on the
+   Admin Panel link's icon, echoing the Discord unread-ping look, so
+   admins can spot pending member approvals from any page. */
+.nav-ping-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-color);
+}
+@keyframes nav-ping-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 0 0 2px var(--bg-color); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0), 0 0 0 2px var(--bg-color); }
+}
+.nav-ping-badge:not(.hidden) { animation: nav-ping-pulse 2s infinite; }
 
 @keyframes star-burst {
   0% { 
@@ -462,6 +601,20 @@ input[type="range"].kir-range:active::-moz-range-thumb { transform: scale(1.2); 
   color: transparent;
 }
 
+.text-gradient-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-light-rgb)), #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .text-gradient-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-2-rgb)), #0f172a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 html[data-theme="light"] .hero-gradient {
   background-image: linear-gradient(to right, #0f172a, #1e293b, rgb(var(--accent-2-rgb)));
   -webkit-background-clip: text;
@@ -510,19 +663,88 @@ html[data-theme="light"] .hero-gradient {
   box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
 }
 
+/* Custom checkbox "card" — same glass-box + accent-fill language as
+   .cabang-chip and the kir-select checkbox mark, for any place a
+   plain native checkbox needs to look like the rest of the design
+   system instead of the browser default (e.g. the "Tertarik dengan
+   lomba" picks on the register form). The real <input type="checkbox">
+   stays in the DOM (visually hidden via sr-only) so existing code that
+   reads/queries it keeps working untouched — this is pure CSS restyling,
+   using :has() to react to its checked state, no JS required. */
+.kir-check-card {
+  display: flex; align-items: center; gap: 0.6rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  border-radius: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.kir-check-card:hover { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-check-card:has(input:checked) {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+}
+.kir-check-card:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+
+.kir-check-box {
+  width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0;
+  border: 1.5px solid var(--glass-border); position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.kir-check-card:has(input:checked) .kir-check-box {
+  background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); transform: scale(1.05);
+}
+.kir-check-card:has(input:checked) .kir-check-box::after {
+  content: ''; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.kir-check-card-label { font-size: 0.85rem; color: var(--text-color); }
+.kir-check-card:has(input:disabled) { cursor: default; opacity: 0.5; }
+
 /* Modal overlay (task detail window) */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px); z-index: 50;
   display: flex; align-items: center; justify-content: center;
   padding: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
+.modal-overlay.modal-open { opacity: 1; }
+.modal-overlay.modal-closing { pointer-events: none; }
 .modal-card {
   background: var(--bg-color);
   border: 1px solid var(--glass-border);
   max-width: 32rem; width: 100%; max-height: 88vh; overflow-y: auto;
   border-radius: 1rem;
+  opacity: 0;
+  transform: scale(0.97) translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.modal-overlay.modal-open .modal-card { opacity: 1; transform: scale(1) translateY(0); }
+
+/* Expedition (Voyages focus mode) — opaque black backdrop, no blur
+   (nothing behind it to soften), and the comments pane hidden so the
+   only thing on screen is the question itself. The backdrop fades to
+   black first; the question card is held back with a transition-delay
+   so it only starts fading in once the black is most of the way in,
+   instead of both appearing at once. There's also no "X" close
+   button in this mode — "Keluar Ekspedisi" is the only way out. */
+.modal-overlay.expedition-active {
+  background: #000;
+  backdrop-filter: none;
+  transition: opacity 0.35s ease;
+}
+.modal-overlay.expedition-active .modal-card {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition-delay: 0.2s;
+}
+.modal-overlay.expedition-active .modal-split-comments { display: none; }
+.modal-overlay.expedition-active #vm-close-btn { display: none; }
 
 /* ==========================================================
    Public marketing nav — shared by index.html, gallery.html,
@@ -684,6 +906,8 @@ html[data-theme="light"] .hero-gradient {
 #orbit-traveler {
   offset-rotate: 0deg;
   will-change: offset-distance;
+  background: radial-gradient(circle at 30% 30%, rgb(var(--accent-light-rgb)), rgb(var(--accent-rgb)));
+  box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.7), inset -2px -2px 6px rgba(0,0,0,0.3);
 }
 
 .proker-card {
@@ -721,6 +945,45 @@ html[data-theme="light"] .hero-gradient {
 .avatar-upload:hover .avatar-overlay { opacity: 1; }
 
 /* ==========================================================
+   Item thumbnails — diagonal-cut cover image used on Tasks,
+   Jadwal, and Materi cards/buttons when an item has an image.
+   Parent (the card/button) needs `relative overflow-hidden`;
+   text content inside needs `relative z-10` to paint above it.
+   ========================================================== */
+.item-thumb-slot {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 46%;
+  min-width: 96px;
+  max-width: 200px;
+  overflow: hidden;
+  clip-path: polygon(32% 0, 100% 0, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(32% 0, 100% 0, 100% 100%, 0% 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+.item-thumb-slot img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.item-thumb-slot::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, rgba(9, 9, 11, 0.92) 0%, rgba(9, 9, 11, 0.4) 40%, rgba(9, 9, 11, 0) 78%);
+}
+html[data-theme="light"] .item-thumb-slot::after {
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0) 78%);
+}
+
+/* 25% wider thumbnail — Tasks (Tugas) + Jadwal cards only.
+   Same slot, just scaled up (46% -> 57.5%, and the min/max
+   bounds scaled with it). */
+.item-thumb-slot-wide {
+  width: 57.5%;
+  min-width: 120px;
+  max-width: 250px;
+}
+
+/* ==========================================================
    Voyages — practice question cards + difficulty badges
    ========================================================== */
 .voyage-card {
@@ -729,6 +992,27 @@ html[data-theme="light"] .hero-gradient {
 }
 .voyage-card:hover { transform: translateY(-2px); }
 .voyage-card.completed { opacity: 0.72; }
+
+/* Soal text shouldn't be trivially selectable/copyable (e.g. into an
+   AI chat) — applies to the voyage cards on the list page and to the
+   question/options/essay side of the modal. The comments panel
+   (.modal-split-comments) is intentionally excluded, as are actual
+   form controls (inputs/textareas/selects), which need normal
+   selection/typing behavior to remain usable. This is a deterrent,
+   not a real security boundary — page source, screenshots, etc. still
+   work — but it stops casual copy-paste. */
+.voyage-card,
+.modal-split-main {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}
+.voyage-card input, .voyage-card textarea, .voyage-card select, .voyage-card .cm-editor, .voyage-card .cm-content,
+.modal-split-main input, .modal-split-main textarea, .modal-split-main select, .modal-split-main .cm-editor, .modal-split-main .cm-content {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+}
 
 @keyframes voyage-card-in {
   from { opacity: 0; transform: translateY(14px) scale(0.97); }
@@ -763,13 +1047,10 @@ html[data-theme="light"] .hero-gradient {
   display: inline-flex; align-items: center; gap: 0.3rem;
   font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.55rem;
   border-radius: 999px; letter-spacing: 0.01em; white-space: nowrap;
-}
-.diff-easy   { background: rgba(34, 197, 94, 0.14);  color: #6ee7a0; border: 1px solid rgba(34, 197, 94, 0.32); }
-.diff-medium { background: rgba(234, 179, 8, 0.14);  color: #fbd975; border: 1px solid rgba(234, 179, 8, 0.32); }
-.diff-hard   { background: rgba(249, 115, 22, 0.15); color: #fdab6f; border: 1px solid rgba(249, 115, 22, 0.35); }
-.diff-osn    {
-  background: linear-gradient(135deg, rgba(236,72,153,0.22), rgba(139,92,246,0.22));
-  color: #f3aee0; border: 1px solid rgba(236,72,153,0.4);
+  background: linear-gradient(135deg, rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.18) 0%, rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.05) 100%);
+  color: rgb(var(--diff-r), var(--diff-g), var(--diff-b));
+  border: 1px solid rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.35);
+  filter: brightness(1.1);
 }
 
 .subject-badge {
@@ -780,6 +1061,15 @@ html[data-theme="light"] .hero-gradient {
 .type-pill {
   display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem;
   color: var(--muted-500);
+}
+
+#vm-submit-btn:disabled {
+  background-image: none;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .voyage-option {
@@ -835,6 +1125,24 @@ html[data-theme="light"] .hero-gradient {
 }
 .podium-place.rank-2, .podium-place.rank-3 { align-self: end; min-height: 8rem; }
 .podium-place.rank-1 { min-height: 11rem; }
+
+/* Rank hierarchy built from the single per-user accent hue instead of
+   gold/silver/bronze — intensity + size step down from 1st to 3rd so
+   it still reads instantly, but never clashes with the branch color. */
+.podium-place.rank-1 {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.04));
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 32px -12px rgba(var(--accent-rgb), 0.55);
+}
+.podium-place.rank-2 {
+  background: rgba(var(--accent-rgb), 0.07);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+}
+.podium-place.rank-3 {
+  background: rgba(var(--accent-rgb), 0.045);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+}
+
 .podium-rank-icon {
   position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
   width: 28px; height: 28px; border-radius: 999px;
@@ -842,16 +1150,33 @@ html[data-theme="light"] .hero-gradient {
   font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.7rem;
   border: 2px solid var(--bg-color);
 }
+.podium-crown {
+  position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+  color: rgb(var(--accent-light-rgb));
+  filter: drop-shadow(0 2px 6px rgba(var(--accent-rgb), 0.6));
+}
 .podium-avatar {
   width: 3.25rem; height: 3.25rem; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 600; font-family: 'Space Grotesk', sans-serif;
   margin-bottom: 0.65rem; border: 2px solid var(--bg-color); flex-shrink: 0;
 }
-.rank-1 .podium-avatar { width: 4rem; height: 4rem; box-shadow: 0 0 24px -4px rgba(250, 204, 21, 0.6); }
-.rank-badge-1 { background: linear-gradient(135deg, #facc15, #ca8a04); color: #422006; }
-.rank-badge-2 { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; }
-.rank-badge-3 { background: linear-gradient(135deg, #f59e0b, #b45309); color: #451a03; }
+.rank-1 .podium-avatar { width: 4rem; height: 4rem; box-shadow: 0 0 24px -4px rgba(var(--accent-rgb), 0.7); }
+
+.rank-badge-1 {
+  background: linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)));
+  color: #fff;
+  box-shadow: 0 0 14px -3px rgba(var(--accent-rgb), 0.75);
+}
+.rank-badge-2 {
+  background: rgba(var(--accent-rgb), 0.55);
+  color: #fff;
+}
+.rank-badge-3 {
+  background: rgba(var(--accent-rgb), 0.28);
+  color: rgb(var(--accent-lighter-rgb));
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+}
 
 .podium-name {
   font-size: 0.85rem; font-weight: 600; text-align: center;
@@ -861,6 +1186,18 @@ html[data-theme="light"] .hero-gradient {
   -webkit-box-orient: vertical;
   box-orient: vertical;
   overflow: hidden; word-break: break-word; padding: 0 0.15rem; min-height: 2.1em;
+}
+
+/* Podium cards animate positional swaps via JS-driven FLIP (transform +
+   transition set inline, see playFlip()). This entrance animation is only
+   for a member who's brand new to the top 3 — not for ones just moving
+   between slots, since that's handled by the FLIP instead. */
+@keyframes podium-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.podium-enter {
+  animation: podium-enter 0.45s cubic-bezier(.2,.8,.2,1) both;
 }
 
 /* Filter chips + search (Leaderboard) */
@@ -874,6 +1211,73 @@ html[data-theme="light"] .hero-gradient {
   background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); color: #fff;
 }
 .lb-chip-divider { width: 1px; height: 1.25rem; background: var(--glass-border); flex-shrink: 0; margin: 0 0.15rem; }
+
+/* ==========================================================
+   Split modal layout — Tasks + Voyages modals put the item
+   itself on the left and a dedicated comments column on the
+   right, so the comment composer can stay pinned to the
+   bottom of its own column instead of trailing after a long
+   description. Mobile stacks the two panes instead (comments
+   pane gets its own capped height + internal scroll there too).
+   ========================================================== */
+.modal-card.modal-card-split {
+  max-width: 44rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* children scroll internally instead */
+}
+@media (min-width: 768px) {
+  .modal-card.modal-card-split {
+    max-width: 56rem;
+    flex-direction: row;
+  }
+}
+.modal-split-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 46vh;
+}
+@media (min-width: 768px) {
+  .modal-split-main { max-height: 88vh; }
+}
+.modal-split-comments {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  border-top: 1px solid var(--glass-border);
+  max-height: 44vh;
+}
+@media (min-width: 768px) {
+  .modal-split-comments {
+    flex: 0 0 320px;
+    width: 320px;
+    border-top: none;
+    border-left: 1px solid var(--glass-border);
+    max-height: 88vh;
+  }
+}
+.comment-panel-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  padding: 1.25rem 1.5rem;
+}
+.comment-panel-inner .comment-list {
+  flex: 1 1 auto;
+  max-height: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+.comment-panel-inner .comment-composer {
+  flex-shrink: 0;
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--glass-border);
+}
 
 /* ==========================================================
    Comments — shared mini widget on Tasks + Voyages modals
@@ -955,3 +1359,551 @@ html[data-theme="light"] .hero-gradient {
   width: 1.75rem; text-align: center; font-family: 'Space Grotesk', sans-serif;
   font-weight: 600; color: var(--muted-500); font-size: 0.9rem; flex-shrink: 0;
 }
+.leaderboard-rank-num.rank-badge-1,
+.leaderboard-rank-num.rank-badge-2,
+.leaderboard-rank-num.rank-badge-3 {
+  color: #fff;
+}
+.leaderboard-rank-num.rank-badge-3 { color: rgb(var(--accent-lighter-rgb)); }
+
+/* ==========================================================
+   Dashboard widget grid (Beranda) — editable, phone-widget-style
+   --------------------------------------------------------
+   Every widget sits on a square-cell CSS grid. --dash-cols and
+   --dash-cell are set from JS (dashboard.html) so cells stay
+   square across breakpoints. Row-gap and column-gap intentionally
+   share the same value (`gap` shorthand below) so spacing feels
+   uniform in both directions, like a real home-screen grid.
+   ========================================================== */
+.widget-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--dash-cols, 4), 1fr);
+  grid-auto-rows: var(--dash-cell, 96px);
+  gap: 20px;
+  grid-auto-flow: row;
+}
+
+.widget-grid.edit-mode {
+  border-radius: 1.25rem;
+}
+
+.widget-grid.edit-mode::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  z-index: 0;
+  background-size: calc(var(--dash-cell, 96px) + 20px) calc(var(--dash-cell, 96px) + 20px);
+  background-image:
+    linear-gradient(to right, transparent calc(100% - 1px), rgba(var(--accent-rgb), 0.28) calc(100% - 1px)),
+    linear-gradient(to bottom, transparent calc(100% - 1px), rgba(var(--accent-rgb), 0.28) calc(100% - 1px));
+  background-position: 0 0;
+}
+
+.widget-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.widget-wrap .widget-inner {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.widget-grid.edit-mode .widget-wrap .widget-inner {
+  cursor: grab;
+}
+.widget-wrap {
+  transition: grid-column 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), grid-row 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.widget-grid.edit-mode .widget-wrap.dragging {
+  opacity: 0.35;
+}
+
+/* The phantom placeholder that snaps to the grid */
+.widget-phantom {
+  border-radius: 1.25rem;
+  border: 2px dashed rgba(var(--accent-rgb), 0.8);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: inset 0 0 20px rgba(var(--accent-rgb), 0.15);
+  pointer-events: none;
+  animation: fade-resize-anim 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Smooth fade for live content updates during resize */
+.fade-resize {
+  animation: fade-resize-anim 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes fade-resize-anim {
+  0% { opacity: 0; filter: blur(4px); transform: scale(0.96); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+/* Widget Drag & Resize Enhancements */
+.widget-grid.edit-mode .widget-wrap.drag-over-target .widget-inner {
+  outline: 2px solid rgb(var(--accent-rgb));
+  outline-offset: 4px;
+  transform: scale(0.98);
+  transition: transform 0.15s ease, outline 0.1s ease;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  touch-action: none;
+}
+/* Edges */
+.resize-n { top: -8px; left: 12px; right: 12px; height: 16px; cursor: ns-resize; }
+.resize-s { bottom: -8px; left: 12px; right: 12px; height: 16px; cursor: ns-resize; }
+.resize-w { left: -8px; top: 12px; bottom: 12px; width: 16px; cursor: ew-resize; }
+.resize-e { right: -8px; top: 12px; bottom: 12px; width: 16px; cursor: ew-resize; }
+/* Corners */
+.resize-nw { top: -8px; left: -8px; width: 24px; height: 24px; cursor: nwse-resize; }
+.resize-ne { top: -8px; right: -8px; width: 24px; height: 24px; cursor: nesw-resize; }
+.resize-sw { bottom: -8px; left: -8px; width: 24px; height: 24px; cursor: nesw-resize; }
+.resize-se { 
+  bottom: -8px; right: -8px; width: 24px; height: 24px; cursor: nwse-resize;
+  background: radial-gradient(circle at bottom right, rgba(var(--accent-rgb), 0.8) 15%, transparent 20%);
+}
+
+.widget-remove-btn {
+  position: absolute;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  background: var(--bg-color);
+  color: var(--text-color);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+.widget-remove-btn { top: -10px; left: -10px; color: #ef4444; z-index: 70; }
+.widget-resize-btn { bottom: -8px; right: -8px; color: var(--muted-500); }
+.widget-remove-btn:hover,
+.widget-resize-btn:hover { background: rgba(128,128,128,0.16); transform: scale(1.08); }
+
+.widget-add-tile {
+  border: 1.5px dashed var(--glass-border);
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted-500);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  background: rgba(128,128,128,0.03);
+}
+.widget-add-tile:hover {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+/* Size picker popover (click the resize handle on a widget) */
+.size-picker-popover {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  gap: 0.4rem;
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.9rem;
+  padding: 0.5rem;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.4);
+  animation: size-picker-in 0.14s ease both;
+}
+@keyframes size-picker-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.size-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  width: 3.1rem;
+  height: 3.1rem;
+  padding: 0.3rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.size-picker-option:hover { background: rgba(128,128,128,0.1); }
+.size-picker-option.active {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.size-picker-swatch {
+  background: rgba(var(--accent-rgb), 0.4);
+  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  border-radius: 3px;
+}
+.size-picker-label {
+  font-size: 0.62rem;
+  color: var(--muted-500);
+  font-weight: 600;
+}
+
+.widget-catalog-tile {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.widget-catalog-tile:active { transform: scale(0.98); }
+
+/* Fancy clock widget */
+.clock-face {
+  position: relative;
+  border-radius: 999px;
+  border: 1.5px solid var(--glass-border);
+  background: radial-gradient(circle at 32% 28%, rgba(var(--accent-rgb), 0.16), transparent 62%);
+  flex-shrink: 0;
+}
+.clock-tick {
+  position: absolute;
+  background: var(--muted-500);
+  border-radius: 2px;
+  opacity: 0.6;
+}
+.clock-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: bottom center;
+  border-radius: 999px;
+}
+.clock-hand-hour { width: 3px; background: var(--text-color); }
+.clock-hand-min  { width: 2.5px; background: var(--text-color); }
+.clock-hand-sec  { width: 1.5px; background: rgb(var(--accent-rgb)); }
+.clock-center-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgb(var(--accent-rgb));
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+/* ==========================================================
+   Programming voyages — IDE-style shell: toolbar (with the
+   language switcher folded in, next to the file "tab"), the
+   CodeMirror host, and a tabbed console (Test Case / Output)
+   that reads like a real terminal. Deliberately a fixed dark
+   "console surface" rather than following the light/dark site
+   toggle, same convention already used by the black/30-black/50
+   <pre> blocks elsewhere on the site — code surfaces stay dark
+   even when the rest of the page is light.
+   ========================================================== */
+.code-shell {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+.code-toolbar-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.code-toolbar-right { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
+.code-dot { width: 0.55rem; height: 0.55rem; border-radius: 999px; opacity: 0.55; }
+.code-dot-a { background: #f87171; }
+.code-dot-b { background: #fbbf24; }
+.code-dot-c { background: #34d399; }
+.code-filename {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--muted-500);
+  margin-left: 0.35rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.code-lang-wrap { display: flex; align-items: center; gap: 0.5rem; }
+.code-lang-label {
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted-500);
+}
+/* Purpose-built language DROPDOWN for the code editor toolbar. This is
+   deliberately its own small component, not a reuse of the site-wide
+   kir-select (see kirRefreshCustomSelect in auth.js) — that one's a
+   generic <select> replacement sized and styled for regular form
+   fields (full-width trigger, roomy option rows). This one only ever
+   needs to show a handful of short language names inline in a dark
+   toolbar, so it gets a compact, monospace, terminal-flavored trigger
+   that reads as part of the code-* toolbar chrome instead of a bolted-
+   on form control. */
+.code-lang-picker { position: relative; display: inline-block; }
+.code-lang-dd-trigger {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.01em;
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(0, 0, 0, 0.22); border: 1px solid var(--glass-border);
+  border-radius: 0.45rem; padding: 0.32rem 0.6rem; cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.code-lang-dd-trigger:hover { border-color: rgba(var(--accent-rgb), 0.4); background: rgba(0, 0, 0, 0.32); }
+.code-lang-dd-trigger.open {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+.code-lang-dd-value { white-space: nowrap; }
+.code-lang-dd-chevron {
+  width: 0.75rem; height: 0.75rem; flex-shrink: 0; color: var(--muted-500);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.code-lang-dd-trigger.open .code-lang-dd-chevron { transform: rotate(180deg); color: rgb(var(--accent-light-rgb)); }
+
+.code-lang-dd-panel {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  min-width: 8rem;
+  background: #101014; border: 1px solid var(--glass-border);
+  border-radius: 0.55rem; padding: 0.3rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.code-lang-dd-panel.hidden { display: none; }
+.code-lang-dd-option {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--muted-500); padding: 0.4rem 0.6rem; border-radius: 0.4rem;
+  cursor: pointer; white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.code-lang-dd-option:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-color); }
+.code-lang-dd-option.active {
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.18);
+}
+.code-lang-fixed {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem; font-weight: 600; color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 0.4rem; padding: 0.3rem 0.6rem;
+}
+/* Terminal/IDE-flavored "run" action — monospace label + a subtle inset
+   top highlight so it reads like a keycap sitting in the toolbar, rather
+   than the site's generic solid accent-gradient CTA button (which is
+   reserved for primary actions like Kirim Jawaban elsewhere). */
+.code-run-btn {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.01em;
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  border-radius: 0.4rem; padding: 0.35rem 0.8rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.code-run-btn:hover { background: rgba(var(--accent-rgb), 0.24); }
+.code-run-btn:active { transform: scale(0.97); }
+.code-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.code-editor-host { border-bottom: 1px solid var(--glass-border); }
+.code-editor-host .cm-editor { outline: none; }
+
+/* Shown briefly while the CodeMirror bundle is still loading — and, if
+   it errors out instead, repurposed (via .code-editor-error) to explain
+   why instead of just leaving the box empty. */
+.code-editor-loading {
+  padding: 0.9rem 1rem; font-size: 0.75rem; color: var(--muted-500);
+  font-style: italic; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.code-editor-error { color: #f87171; font-style: normal; white-space: pre-wrap; }
+
+/* Plain-textarea stand-in for CodeMirror, used when the real editor
+   can't load (e.g. the esm.sh CDN is unreachable on the network). Kept
+   visually close to the real editor — same monospace font, same dark
+   surface, same 26rem height — so it doesn't read as a broken state,
+   just a lighter-weight one. */
+.code-editor-fallback {
+  display: block; width: 100%; height: 26rem; resize: vertical;
+  background: rgba(0, 0, 0, 0.28); border: none; outline: none;
+  color: #e4e4e7; caret-color: rgb(var(--accent-light-rgb));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem; line-height: 1.55; padding: 0.85rem 1rem;
+  tab-size: 4;
+}
+
+/* Section header shared by the Test Case panel and the Console panel —
+   small, uppercase, icon-led labels that separate the two from each
+   other and from the editor above, like distinct panes in an IDE. */
+.code-panel-header {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted-500);
+}
+.code-panel-header svg { opacity: 0.7; flex-shrink: 0; }
+.code-terminal-header { background: rgba(0, 0, 0, 0.24); }
+.terminal-dot {
+  width: 0.4rem; height: 0.4rem; border-radius: 999px;
+  background: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+  flex-shrink: 0;
+}
+
+.code-console-body {
+  background: rgba(0, 0, 0, 0.32);
+  overflow-y: auto;
+  padding: 0.85rem 1rem;
+}
+/* Sample test cases: their own scroll region, capped so a voyage with
+   many samples doesn't push the console off-screen above it. */
+/* The terminal/console: a real judge-output surface — solid near-black,
+   monospace, with its own idle "$" prompt + blinking cursor at rest so
+   it visibly reads as "ready", not just an empty panel. */
+.code-terminal-body {
+  background: #0a0a0d;
+  min-height: 12rem;
+  max-height: 24rem;
+}
+.console-pane.hidden { display: none; }
+.console-empty { font-size: 0.75rem; color: var(--muted-500); font-style: italic; }
+
+.console-cursor-row { 
+  display: flex; align-items: center; margin-top: 0.6rem; 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+}
+.console-cursor {
+  display: inline-block; width: 0.5rem; height: 0.95rem;
+  margin-left: 0.35rem;
+  background: rgb(var(--accent-light-rgb));
+  animation: console-blink 1s step-end infinite;
+}
+@keyframes console-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.console-testcase { margin-bottom: 1rem; }
+.console-testcase:last-child { margin-bottom: 0; }
+.console-testcase-label {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted-500); margin-bottom: 0.4rem;
+}
+.console-io-label { font-size: 0.68rem; font-weight: 500; color: var(--muted-500); margin: 0.4rem 0 0.25rem; }
+.console-io-block {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: #e4e4e7;
+  white-space: pre-wrap;
+}
+.console-testcase-result { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--glass-border); }
+
+.console-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #d4d4d8;
+  margin-bottom: 0.6rem;
+  line-height: 1.5;
+}
+.console-line:last-child { margin-bottom: 0; }
+.console-prompt { color: rgb(var(--accent-light-rgb)); font-weight: 700; margin-right: 0.15rem; }
+.console-line-muted { color: var(--muted-500); }
+.console-line-ok { color: #4ade80; }
+.console-line-fail { color: #f87171; }
+.console-result-block { margin-top: 0.3rem; }
+/* ----------------------------------------------------------
+   Markdown-rendered voyage content (question text, essay
+   feedback, etc), produced by kirRenderVoyageMarkdown() in
+   voyages.html. Tailwind's preflight strips default spacing and
+   list markers from raw HTML tags, so this restores just enough
+   styling to make Markdown output (bold, lists, headings, code,
+   links, quotes) look intentional instead of flat.
+   ---------------------------------------------------------- */
+.kir-markdown { line-height: 1.6; }
+.kir-markdown > *:first-child { margin-top: 0; }
+.kir-markdown > *:last-child { margin-bottom: 0; }
+.kir-markdown p { margin: 0.6em 0; }
+.kir-markdown strong { font-weight: 700; color: var(--text-color); }
+.kir-markdown em { font-style: italic; }
+.kir-markdown ul, .kir-markdown ol { margin: 0.6em 0; padding-left: 1.4em; }
+.kir-markdown ul { list-style: disc; }
+.kir-markdown ol { list-style: decimal; }
+.kir-markdown li { margin: 0.25em 0; }
+.kir-markdown li > ul, .kir-markdown li > ol { margin: 0.25em 0; }
+.kir-markdown h1, .kir-markdown h2, .kir-markdown h3, .kir-markdown h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0.9em 0 0.4em;
+  line-height: 1.3;
+}
+.kir-markdown h1 { font-size: 1.25em; }
+.kir-markdown h2 { font-size: 1.15em; }
+.kir-markdown h3 { font-size: 1.05em; }
+.kir-markdown h4 { font-size: 1em; }
+.kir-markdown a { color: rgb(var(--accent-rgb)); text-decoration: underline; text-underline-offset: 2px; }
+.kir-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.3rem;
+  padding: 0.1em 0.35em;
+}
+.kir-markdown pre {
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.6rem;
+  padding: 0.75em 0.9em;
+  margin: 0.6em 0;
+  overflow-x: auto;
+}
+.kir-markdown pre code { background: none; border: none; padding: 0; }
+.kir-markdown blockquote {
+  margin: 0.6em 0;
+  padding: 0.3em 0.9em;
+  border-left: 3px solid rgba(var(--accent-rgb), 0.5);
+  color: var(--muted-500);
+}
+.kir-markdown hr { border: none; border-top: 1px solid var(--glass-border); margin: 1em 0; }
+.kir-markdown table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; }
+.kir-markdown th, .kir-markdown td { border: 1px solid var(--glass-border); padding: 0.4em 0.6em; text-align: left; }
+.kir-markdown th { font-weight: 600; color: var(--text-color); }
+.kir-markdown img { max-width: 100%; border-radius: 0.5rem; margin: 0.5em 0; }
+
+/* Line-clamped previews (voyage card question snippet): markdown
+   can add block tags, so make sure nested elements stay inline
+   for the clamp to actually clamp instead of just clipping the
+   first block and leaving the rest visible.
+
+   MathJax's own output (mjx-container and everything inside it) is
+   excluded via :not() rather than overridden afterwards — MathJax
+   relies on its own injected stylesheet (inline-block / table /
+   table-row / table-cell) to stack fraction numerators over
+   denominators and lift superscripts. `display: revert` does NOT
+   restore that: revert rolls back to the user-agent/user stylesheet,
+   skipping MathJax's CSS entirely (it's an author stylesheet too),
+   which is why that attempt still broke. Excluding these elements
+   from our selector means our rule never applies to them at all, so
+   MathJax's real stylesheet cascades normally, uncontested. */
+.kir-markdown-clamp,
+.kir-markdown-clamp *:not(mjx-container, mjx-container *) { display: inline; }
