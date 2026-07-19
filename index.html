@@ -18,7 +18,7 @@
 
 <style>
   /* ==========================================================
-     ORBIT LANDING — Jupiter *is* the website.
+     ORBIT LANDING: Jupiter *is* the website.
      The page never scrolls. Wheel / touch / keys rotate the
      ring, stepping through content that lives in a single
      floating card which itself orbits from corner to corner
@@ -186,8 +186,8 @@
 
      The planet's real texture lives in .obt-sphere-surface. During an
      event that surface itself fades (it doesn't just get covered by
-     something else), uncovering .obt-corrupt-wireframe — a true
-     latitude/longitude wireframe sphere, not a flat grid — as if the
+     something else), uncovering .obt-corrupt-wireframe, which is a true
+     latitude/longitude wireframe sphere rather than a flat grid, as if the
      surface has been stripped away to show the structure underneath.
      The wireframe trails the surface by a beat (see the JS lerp on
      --corrupt-wire) so the reveal and the reconstruction both read as
@@ -306,7 +306,7 @@
   }
 
   /* obt-ring-group is sized/positioned to the ring's OWN true bounding
-     box (not inset:0 to the whole square stage) — this box is exactly
+     box (not inset:0 to the whole square stage). This box is exactly
      what the cross-document view transition snapshots and morphs, so
      it must match the visible ring's real geometry, or the morph scales
      against the wrong reference and the ring reads as the wrong size
@@ -324,7 +324,7 @@
     border-radius: 50%;
     border: 1.5px solid rgba(var(--accent-light-rgb), 0.55);
     box-shadow: 0 0 40px -3px rgba(var(--accent-rgb), 0.55);
-    /* Purely decorative — without this, its full (mostly-transparent)
+    /* Purely decorative. Without this, its full (mostly-transparent)
        bounding ellipse sits above the nav nodes in stacking order and
        swallows clicks/taps meant for whatever node happens to be
        passing through that band. */
@@ -421,7 +421,7 @@
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
   }
-  /* Custom scrollbar — subtle, rounded, accent-tinted, and readable
+  /* Custom scrollbar, subtle and rounded, accent-tinted, and readable
      against both the dark and light theme's glass surfaces. */
   .obt-card::-webkit-scrollbar { width: 6px; }
   .obt-card::-webkit-scrollbar-track { background: transparent; margin-block: 0.5rem; }
@@ -547,13 +547,13 @@
      Cross-document view transition: index.html <-> auth.html
      Both pages opt in via the @view-transition at-rule below (the
      old <meta name="view-transition"> tag was deprecated around
-     Chrome 126 and silently does nothing now — no console warning,
+     Chrome 126 and silently does nothing now, giving no console warning;
      it just falls back to a plain instant navigation, which is
      exactly the "nothing happens" symptom this replaces). Both
      pages also tag their planet sphere with the same
      view-transition-name, so the browser automatically morphs its
      position/size across the navigation instead of just
-     cross-fading it — this is what makes the planet visibly slide
+     cross-fading it. This is what makes the planet visibly slide
      over and grow when moving to the auth screen (and shrink back
      when returning). Everything here is a no-op (plain instant
      navigation) in browsers that don't support the API yet. */
@@ -566,7 +566,7 @@
   .obt-sphere { view-transition-name: kir-planet; }
 
   /* auth.html has its own ring too (same markup, scaled to its bigger
-     sphere), tagged with this same name — so this is a real morph
+     sphere), tagged with this same name, so this is a real morph
      between the two rings' positions/sizes, not just a fade, exactly
      like the planet itself. The nav nodes (.obt-nodes) deliberately get
      NO name, so unlike the ring they stay part of the quick root
@@ -665,7 +665,7 @@
       <!-- obt-ring-group wraps BOTH ring halves (front + back, not the
            moons/nodes) so they can share a single view-transition-name.
            z-index on the two children still sandwiches the sphere visually
-           exactly as before — this wrapper is a plain non-positioned box
+           exactly as before. This wrapper is a plain non-positioned box,
            purely for naming, see the cross-document view-transition rules
            near the end of <style> for why. -->
       <div class="obt-ring-group">
@@ -912,7 +912,7 @@
   })();
 
   /* ----------------------------------------------------------
-     Corruption event — Jupiter occasionally glitches: its surface
+     Corruption event: Jupiter occasionally glitches, and its surface
      briefly dissolves away to reveal the wireframe sphere underneath,
      then reconstructs. Everything about an occurrence (timing,
      duration, intensity, distortion pattern) is randomized so no two
@@ -944,7 +944,7 @@
       clearTimeout(timerId);
       if (document.hidden) return; // resumes from the visibilitychange handler below
       // Two blended randoms read a little more organic than a flat
-      // uniform range — occurrences cluster loosely around the middle
+      // uniform range, so occurrences cluster loosely around the middle
       // of the window instead of feeling evenly, mechanically spaced.
       // Frequent enough that most visitors will catch one without a
       // long wait, while staying unpredictable.
@@ -1007,7 +1007,7 @@
         }
 
         // A light, smoothed flicker layered on top of the envelope so
-        // the peak isn't perfectly flat — like a signal that can't
+        // the peak isn't perfectly flat, like a signal that can't
         // quite hold steady, and so the surface reads as breaking
         // apart rather than cleanly fading.
         const flicker = 1 + Math.sin(elapsed * 0.045 + seed) * 0.06 + Math.sin(elapsed * 0.017 + seed * 2) * 0.04;
@@ -1188,7 +1188,7 @@
        the settle timer. Node/dust positions are driven by a continuous
        per-frame lerp toward targetAngle (see the rAF loop below), never
        by a CSS transition, so retargeting mid-flight always produces a
-       smooth curve toward the new destination rather than a jump or cut —
+       smooth curve toward the new destination rather than a jump or cut,
        which is what lets jumpTo() redirect instantly and safely below. */
     function commitStep(newStep) {
       step = newStep;
@@ -1215,7 +1215,7 @@
 
     // Explicit destination picks (ring nodes, progress dots): the most
     // recent pick always wins immediately, even while a previous rotation
-    // is still settling — never queued, never dropped. The shortest
+    // is still settling; it is never queued, never dropped. The shortest
     // angular distance is always recomputed from the ring's current
     // logical position, so the ring never travels more than half the
     // circle (never the long way around, never dipping behind the planet
@@ -1258,7 +1258,7 @@
     let touchStartY = null;
     cosmos.addEventListener('touchstart', (e) => {
       // A tap that starts on the card or on a nav node should always
-      // be free to become a normal tap/click — never swallowed into a
+      // be free to become a normal tap/click, and never swallowed into a
       // scene-swipe just because it happened over the rotating stage.
       if (e.target.closest('.obt-card') || e.target.closest('.obt-node')) { touchStartY = null; return; }
       touchStartY = e.touches[0].clientY;
@@ -1308,7 +1308,7 @@
         starsEl.style.transform = `translate(${(-px * 14).toFixed(1)}px, ${(-py * 14).toFixed(1)}px)`;
         // The ring inherits its tilt purely from the shared .obt-stage
         // rotateX/rotateY above (it's a plain descendant, no independent
-        // transform of its own anymore) — keeps ring, sphere, and node
+        // transform of its own anymore), which keeps ring, sphere, and node
         // depth ordering correct from every viewing angle.
       });
       cosmos.addEventListener('mouseleave', () => {

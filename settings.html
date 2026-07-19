@@ -188,7 +188,7 @@
     } else {
       settingsSelectedCabang.add(which);
     }
-    // Require at least one selected — re-add if user tried to clear the last one
+    // Require at least one selected, so re-add if the user tried to clear the last one
     if (settingsSelectedCabang.size === 0) settingsSelectedCabang.add(which);
     document.getElementById('settings-cabang-robotik').classList.toggle('selected', settingsSelectedCabang.has('robotik'));
     document.getElementById('settings-cabang-sains').classList.toggle('selected', settingsSelectedCabang.has('sains'));

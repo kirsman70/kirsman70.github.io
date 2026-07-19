@@ -30,14 +30,14 @@
 
   /* The faint slate dots read fine on the near-black dark bg, but
      disappear against the near-opaque white .glass surface in
-     light mode — bump contrast + darken the dot color there. */
+     light mode, so contrast is bumped and the dot color darkened there. */
   [data-theme="light"] #chart-viewport {
     background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
   }
 
   /* Cards get a slightly less translucent backing than the default
      .glass so the viewport's dot-grid texture doesn't visibly bleed
-     through the card surface — it should stay confined to the empty
+     through the card surface; it should stay confined to the empty
      space behind/around the chart, not show through the UI. Kept
      subtle so cards still read as "glass", not solid black. */
   #chart-viewport .org-card {
@@ -270,7 +270,7 @@
   /* ---------- Connector lines ----------
      Computed from real layout (offsetLeft/offsetTop relative to
      #chart-canvas), so they stay correctly attached to each card
-     regardless of how many people are in a row or how it wraps —
+     regardless of how many people are in a row or how it wraps,
      and independent of the current pan/zoom transform. */
   function cardRect(el) {
     return {
@@ -307,7 +307,7 @@
 
       // If the children wrapped onto multiple visual lines (e.g. a
       // big members block), only connect to the top-most line with
-      // proper per-card drops, same as any other level — the
+      // proper per-card drops, same as any other level. The
       // overflow lines below are the same tier, just wrapped for
       // space, so they don't need their own branch.
       const topRow = childRects.filter(r => Math.abs(r.top - childTopY) < 1);
@@ -315,7 +315,7 @@
       // trunk from parent group down to the bus
       paths += `<path class="org-line" d="M ${parentCenterX} ${parentBottomY} L ${parentCenterX} ${busY}" />`;
 
-      // horizontal bus — spans every child-in-top-row center plus the
+      // horizontal bus, spanning every child-in-top-row center plus the
       // trunk point, so the trunk always lands exactly on the bus line
       const childXs = topRow.map(r => r.centerX);
       const busMinX = Math.min(parentCenterX, ...childXs);

@@ -358,7 +358,7 @@
 
 <!-- Admin-only: flagged-submission review, populated from
      voyage_integrity_review (see the anti-cheat SQL migration).
-     Never shown to non-admins — gated the same way as the JSON
+     Never shown to non-admins. Gated the same way as the JSON
      import button, via kirIsAdmin(). -->
 <div id="integrity-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeIntegrityModal()">
   <div class="modal-card" style="max-width:46rem; width:94vw; max-height:80vh; display:flex; flex-direction:column;">
@@ -386,8 +386,8 @@
   /* ----------------------------------------------------------
      Markdown rendering for voyage text (question, options, essay
      feedback, etc). This just delegates to the shared renderer in
-     admin-shared.js (kirRenderMarkdownWithMath) — the same one used
-     for the "mathtext" editor's live preview on the admin side — so
+     admin-shared.js (kirRenderMarkdownWithMath), the same one used
+     for the "mathtext" editor's live preview on the admin side, so
      what an admin sees while typing a question is exactly what
      members see on the card/modal, byte for byte. Kept as its own
      name since call sites elsewhere already reference it.
@@ -615,7 +615,7 @@
      (so it doesn't reshuffle confusingly on every reopen), but two
      different users almost never see the same order, and nobody can
      predict their own order in advance without already being logged
-     in as themselves. Nothing is stored — it's recomputed from the
+     in as themselves. Nothing is stored; it's recomputed from the
      hash every time.
      ---------------------------------------------------------- */
   function kirHashSeed(str) {
@@ -638,7 +638,7 @@
   }
 
   // Computed at send-time (not continuously) so it reflects actual time
-  // spent on the question when the attempt is submitted — one more signal
+  // spent on the question when the attempt is submitted. This is one more signal
   // for the server-side suspicion score (e.g. a "perfect" essay scored in
   // 4 seconds is worth flagging even with clean paste/tab counts).
   function kirTelemetrySnapshot() {
@@ -696,7 +696,7 @@
     renderVoyageList();
   }
 
-  // Expedition ("focus mode") — fullscreen-gated, one random not-yet-done
+  // Expedition ("focus mode"): fullscreen-gated, one random not-yet-done
   // voyage (matching the current filters) at a time, no comments pane,
   // auto-advancing to the next one every time markVoyageCompletedLocally
   // fires, until the matching pool is empty.
@@ -736,7 +736,7 @@
   }
 
   // If the person exits fullscreen any other way (Esc, browser chrome,
-  // etc.) don't silently end the expedition — ask first, since Esc is
+  // etc.) don't silently end the expedition. Ask first, since Esc is
   // easy to hit by accident. "Lanjutkan" re-requests fullscreen (that
   // click is itself a fresh user gesture, so the request is allowed);
   // declining, dismissing, or clicking the backdrop all end it.
@@ -833,7 +833,7 @@
   }
 
   // Alt-drag on the slider thumbs (handled globally in
-  // admin-shared.js) can leave diffMin/diffMax with decimals — show
+  // admin-shared.js) can leave diffMin/diffMax with decimals. Show
   // them as typed (3.14) but fall back to a plain integer (3) when
   // there's nothing after the point, instead of always "3.00".
   function fmtDiffVal(v) {
@@ -865,8 +865,8 @@
   }
 
   // Alt-precision dragging (see __kirRangeApplyDrag in admin-shared.js)
-  // dispatches an 'input' event on nearly every pointermove — far more
-  // often than a normal whole-number-stepped drag does — so gating
+  // dispatches an 'input' event on nearly every pointermove, far more
+  // often than a normal whole-number-stepped drag does. So gating
   // star spawns by a minimum time interval (rather than just a random
   // chance per event) keeps a fast precise drag from showering the
   // slider in dozens of stars at once.
@@ -1086,7 +1086,7 @@
     const runBtn = document.getElementById('vm-run-btn');
     if (runBtn) runBtn.classList.toggle('hidden', v.type !== 'programming');
 
-    // Programming voyages have no separate "submit" step — Jalankan runs
+    // Programming voyages have no separate "submit" step. Jalankan runs
     // the code against the judge (including hidden test cases) and marks
     // the voyage done the moment the judge accepts it. Kirim Jawaban only
     // makes sense for the other answer types.
@@ -1117,7 +1117,7 @@
       // be improved with another attempt.
       essayTextarea.disabled = !!(done && done.essayScore === 100);
       // Setting .value directly (vs. typing) doesn't fire 'input', so
-      // the highlight backdrop and live preview need a manual refresh —
+      // the highlight backdrop and live preview need a manual refresh,
       // otherwise a reopened essay shows the old preview/highlight state.
       kirMathHighlightSync('vm-essay-textarea');
       kirMathPreviewUpdate('vm-essay-textarea');
@@ -1262,7 +1262,7 @@
     return CODE_FILE_EXT[lang] || '';
   }
 
-  // Proper display casing per language — "Python", not "PYTHON"; "C++",
+  // Proper display casing per language: "Python", not "PYTHON"; "C++",
   // not "CPP". Used anywhere a language name is shown to the student
   // (the picker chips, the fixed single-language badge, console lines).
   const CODE_LANG_LABELS = { cpp: 'C++', c: 'C', python: 'Python', java: 'Java', javascript: 'JavaScript' };
@@ -1272,7 +1272,7 @@
 
   // Fallback starter code, only used when a voyage has no starter_code of
   // its own configured for the language AND the student hasn't saved a
-  // draft yet — so it never overwrites anything the student has already
+  // draft yet, so it never overwrites anything the student has already
   // written or a voyage-specific starter, it only fills the blank slate.
   const DEFAULT_CODE = {
     cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello Orbit!" << endl;\n    return 0;\n}\n',
@@ -1349,7 +1349,7 @@
   }
 
   // Renders the language picker as a row of small pill buttons instead of
-  // a <select> — no native dropdown chrome to fight with, no risk of an
+  // a <select>. There's no native dropdown chrome to fight with, no risk of an
   // option's text overflowing a fixed-width panel (which is what caused
   // the horizontal scrolling), and it reads as part of the code editor's
   // own toolbar rather than a bolted-on form control.
@@ -1487,7 +1487,7 @@
       });
 
       kirConsoleLine(
-        `${isAccepted ? '✓' : '✗'} <b>${kirEscapeHtml(data.verdict)}</b> — ${data.passed_count}/${data.total_count} passed (${data.runtime_ms} ms)`,
+        `${isAccepted ? '✓' : '✗'} <b>${kirEscapeHtml(data.verdict)}</b>: ${data.passed_count}/${data.total_count} passed (${data.runtime_ms} ms)`,
         isAccepted ? 'console-line-ok' : 'console-line-fail'
       );
 
@@ -1535,7 +1535,7 @@
       }
     }
 
-    // Programming voyages have no Kirim Jawaban button — Jalankan (see
+    // Programming voyages have no Kirim Jawaban button. Jalankan (see
     // runCodeSamples) both grades and marks completion. If this is ever
     // reached for a programming voyage anyway, do nothing rather than
     // re-run a second, redundant judged attempt.
@@ -1609,7 +1609,7 @@
         });
 
         // Footer should reflect what was actually earned on this question
-        // so far, not the max possible reward — a sub-100 score earns less.
+        // so far, not the max possible reward, since a sub-100 score earns less.
         const rewardLabelEl2 = document.getElementById('vm-reward-label');
         rewardLabelEl2.textContent = I18N[lang].voyages_earned_label;
         rewardLabelEl2.setAttribute('data-i18n', 'voyages_earned_label');
@@ -1966,12 +1966,12 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
       { id: 'difficulty', label: 'Rating', type: 'range', required: true, min: 1, max: 10, step: 1,
         bands: VOYAGE_DIFF_BANDS, legend: VOYAGE_DIFF_LEGEND, legendTitle: 'Skala Rating (Estimasi):', default: 5 },
       { id: 'question', label: 'Teks Soal', type: 'mathtext', rows: 4, required: true,
-        hint: 'Pakai tombol di atas untuk menyisipkan notasi matematika, atau ketik manual di antara tanda $ — akan dirender otomatis di halaman Voyages.' },
+        hint: 'Pakai tombol di atas untuk menyisipkan notasi matematika, atau ketik manual di antara tanda $, yang akan dirender otomatis di halaman Voyages.' },
       { id: 'options', label: 'Opsi Jawaban', type: 'options', hint: 'Tandai lingkaran di samping opsi untuk menjadikannya jawaban benar. Notasi matematika ($...$) juga didukung di sini untuk soal Pilihan Ganda.',
         addLabel: 'Tambah Opsi', optionPlaceholder: 'Opsi jawaban...', correctField: 'correct_index',
         showIf: { field: 'type', in: ['mc', 'dropdown'] } },
       { id: 'essay_ref', label: 'Jawaban Referensi (Opsional)', type: 'mathtext', rows: 3,
-        hint: 'Dipakai Penilaian Cerdas sebagai kunci jawaban — boleh berisi notasi matematika seperti di atas.',
+        hint: 'Dipakai Penilaian Cerdas sebagai kunci jawaban, boleh berisi notasi matematika seperti di atas.',
         showIf: { field: 'type', equals: 'essay' } },
       { id: 'ai_grading_enabled', label: 'Aktifkan Penilaian Cerdas', type: 'checkbox', default: true,
         showIf: { field: 'type', equals: 'essay' },
@@ -1991,7 +1991,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
           { value: 'all', label: 'Semua Bahasa', exclusive: true },
           { value: 'cpp', label: 'C++' },
           { value: 'python', label: 'Python' },
-          // Piston supports many more runtimes than this — add entries
+          // Piston supports many more runtimes than this. Add entries
           // here as needed, no other code changes required.
         ],
         hint: 'Pilih "Semua Bahasa" untuk mengizinkan semua bahasa yang didukung Piston, atau centang bahasa tertentu.',
@@ -2053,7 +2053,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
 
         // Defense in depth: the "Programming" option is grayed out in the
         // form whenever Subjek isn't Informatika, but that's a UI
-        // convenience, not enforcement — "Edit as JSON" mode and the
+        // convenience, not enforcement. "Edit as JSON" mode and the
         // DB's own CHECK constraint (voyages_programming_requires_informatika_check)
         // are what actually stop this combination from being saved.
         // Catching it here just gives a clearer message before the
@@ -2103,7 +2103,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
   }
 
   // Test cases live in their own table, so a coding voyage's save is
-  // two writes: the voyages row itself (above), then this — replace
+  // two writes: the voyages row itself (above), then this, which replaces
   // the full set of rows for that voyage rather than diffing, since
   // problems typically have a handful of cases and full-replace is far
   // simpler than reconciling adds/edits/removes/reorders.
@@ -2131,7 +2131,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
      Admin integrity review panel
      ----------------------------------------------------------
      Reads from voyage_integrity_review (a view over
-     voyage_completions + voyage_telemetry + profiles — see the
+     voyage_completions + voyage_telemetry + profiles; see the
      anti-cheat SQL migration). Every completion already carries a
      suspicion_score/suspicion_reasons/is_flagged computed server-side
      at submit time from the telemetry the client sent along; this
@@ -2188,7 +2188,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
       return `
         <div class="glass" style="padding:0.85rem 1rem; border-radius:0.75rem; display:flex; flex-direction:column; gap:0.4rem;">
           <div class="flex items-center justify-between gap-2">
-            <div class="text-sm font-semibold">${kirEscapeHtml(r.user_name || 'Anggota')} <span class="text-zinc-500 font-normal">— ${kirEscapeHtml(r.voyage_title || '')}</span></div>
+            <div class="text-sm font-semibold">${kirEscapeHtml(r.user_name || 'Anggota')} <span class="text-zinc-500 font-normal">(${kirEscapeHtml(r.voyage_title || '')})</span></div>
             <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.15); color:#ef4444;">Skor: ${r.suspicion_score ?? 0}</span>
           </div>
           <div class="text-xs text-zinc-500">${when}</div>
@@ -2253,7 +2253,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
   kirInjectSidebar('voyages');
   fetchVoyagesFromDatabase();
 
-  // Extra deterrent alongside the CSS user-select:none — blocks copy
+  // Extra deterrent alongside the CSS user-select:none. Blocks copy
   // and right-click-to-copy on the soal/options/essay side of things
   // (cards + modal main pane). Comments and actual form fields are
   // untouched. Not a real security boundary (view-source still works),

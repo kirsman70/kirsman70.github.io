@@ -87,7 +87,7 @@
 </div>
 
 <script>
-  // Static roster for the prototype — same extracurricular, dummy point totals
+  // Static roster for the prototype, using the same extracurricular with dummy point totals
   // across three windows (all-time / this month / this week).
   // "You" (the logged-in user) is inserted using the real deltas
   // total from js/auth.js so the leaderboard reacts to Voyages.
@@ -151,7 +151,7 @@
   // data-key. After re-rendering, items that kept the same key get their
   // old rect "played back" as a transform and eased to zero, so they visibly
   // slide/swap to the new spot instead of popping into place. Items with no
-  // matching old key are brand new to the view — they get an entrance
+  // matching old key are brand new to the view, so they get an entrance
   // animation (handled by the caller) instead of a FLIP.
   function captureRects(container) {
     const map = new Map();
