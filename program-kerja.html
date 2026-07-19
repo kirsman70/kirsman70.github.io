@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Program Kerja</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,14 +56,21 @@
     <p class="text-accent-300 text-xs font-medium tracking-widest uppercase mb-3" data-i18n="proker_eyebrow">Tahun Ajaran 2025/2026</p>
     <h1 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight mb-4" data-i18n="proker_title">Program Kerja</h1>
     <p class="text-zinc-500 text-sm sm:text-base" data-i18n="proker_desc">
-      Rencana kerja cabang Robotik dan Sains untuk tahun ajaran ini — dari latihan rutin sampai kompetisi.
+      Rencana kerja cabang Robotik dan Sains untuk tahun ajaran ini mencakup kegiatan latihan rutin hingga kompetisi.
     </p>
   </div>
 
   <!-- Orbit rail wraps both program sections -->
   <div class="orbit-rail-wrap">
     <svg class="orbit-rail-svg" id="orbit-rail-svg" viewBox="0 0 40 100" preserveAspectRatio="none">
-      <line x1="20" y1="0" x2="20" y2="100" stroke="var(--glass-border)" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+      <defs>
+        <linearGradient id="orbit-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color: rgb(var(--accent-light-rgb)); stop-opacity: 0.8" />
+          <stop offset="50%" style="stop-color: rgb(var(--accent-rgb)); stop-opacity: 0.4" />
+          <stop offset="100%" style="stop-color: var(--glass-border); stop-opacity: 1" />
+        </linearGradient>
+      </defs>
+      <line x1="20" y1="0" x2="20" y2="100" stroke="url(#orbit-grad)" stroke-width="1.5" vector-effect="non-scaling-stroke" />
     </svg>
     <div class="absolute z-10 rounded-full bg-accent-gradient shadow-glow-sm" id="orbit-traveler" style="width:14px;height:14px;left:50%;top:0;transform:translate(-50%,-50%);"></div>
 
@@ -160,7 +168,7 @@
   <!-- CTA -->
   <div class="glass rounded-2xl p-8 mt-10 text-center reveal">
     <h2 class="font-display text-xl font-semibold mb-2" data-i18n="proker_cta_title">Tertarik ikut program ini?</h2>
-    <p class="text-zinc-500 text-sm mb-5 max-w-md mx-auto" data-i18n="proker_cta_desc">Daftar sebagai anggota dan pilih cabang yang kamu minati — dasbor kamu otomatis menyesuaikan.</p>
+    <p class="text-zinc-500 text-sm mb-5 max-w-md mx-auto" data-i18n="proker_cta_desc">Daftar sebagai anggota dan pilih cabang yang kamu minati untuk mendapatkan dasbor yang disesuaikan secara otomatis.</p>
     <a href="auth.html" class="inline-block rounded-lg px-6 py-3 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="proker_cta_btn">Daftar Sekarang</a>
   </div>
 </main>

@@ -7,8 +7,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Jadwal</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
+<script src="js/admin-shared.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +19,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin-shared.css">
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -44,66 +47,195 @@
   <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
     <div class="mb-8">
       <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="jadwal">Jadwal</h1>
-      <p class="text-zinc-500 text-sm mt-1" data-i18n="schedule_desc">Acara klub mendatang, secara berurutan.</p>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="schedule_desc">Acara ekstrakurikuler mendatang, secara berurutan.</p>
     </div>
 
-    <div class="relative pl-8">
-      <div class="absolute left-[11px] top-2 bottom-2 w-0.5 timeline-line animate-line-draw" style="animation-delay: 1000ms"></div>
-
-      <div class="relative mb-8">
-        <div class="absolute -left-[26px] top-1.5 animate-dot-pop" style="animation-delay: 600ms">
-          <span class="block w-3 h-3 rounded-full bg-accent pulse"></span>
-        </div>
-        <div class="glass rounded-xl p-5 border border-accent-40 shadow-glow-sm animate-stagger-in" style="animation-delay: 0ms">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <p class="text-accent-300 text-xs font-medium tracking-wide uppercase mb-1">Kam, 17 Jul &middot; 18.00</p>
-              <p class="font-display font-semibold text-lg">Rapat Umum</p>
-              <p class="text-zinc-500 text-sm mt-1">Ruang 214, Student Union</p>
-            </div>
-            <span class="self-start text-xs font-medium px-3 py-1 rounded-full bg-accent-15 text-accent-300 border border-accent-30" data-i18n="badge_next">Berikutnya</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="relative mb-8">
-        <div class="absolute -left-[26px] top-1.5 animate-dot-pop" style="animation-delay: 700ms">
-          <span class="block w-3 h-3 rounded-full bg-zinc-600 border-2 border-zinc-950"></span>
-        </div>
-        <div class="glass rounded-xl p-5 animate-stagger-in" style="animation-delay: 45ms">
-          <p class="text-zinc-500 text-xs font-medium tracking-wide uppercase mb-1">Sab, 19 Jul &middot; 10.00</p>
-          <p class="font-display font-semibold text-lg text-zinc-200">Latihan Pertunjukan Musim Gugur</p>
-          <p class="text-zinc-500 text-sm mt-1">Auditorium Utama</p>
-        </div>
-      </div>
-
-      <div class="relative mb-8">
-        <div class="absolute -left-[26px] top-1.5 animate-dot-pop" style="animation-delay: 800ms">
-          <span class="block w-3 h-3 rounded-full bg-zinc-600 border-2 border-zinc-950"></span>
-        </div>
-        <div class="glass rounded-xl p-5 animate-stagger-in" style="animation-delay: 90ms">
-          <p class="text-zinc-500 text-xs font-medium tracking-wide uppercase mb-1">Rab, 23 Jul &middot; 17.30</p>
-          <p class="font-display font-semibold text-lg text-zinc-200">Ngobrol Santai dengan Sponsor</p>
-          <p class="text-zinc-500 text-sm mt-1">Kafe Halaman</p>
-        </div>
-      </div>
-
-      <div class="relative">
-        <div class="absolute -left-[26px] top-1.5 animate-dot-pop" style="animation-delay: 900ms">
-          <span class="block w-3 h-3 rounded-full bg-zinc-600 border-2 border-zinc-950"></span>
-        </div>
-        <div class="glass rounded-xl p-5 animate-stagger-in" style="animation-delay: 135ms">
-          <p class="text-zinc-500 text-xs font-medium tracking-wide uppercase mb-1">Sab, 26 Jul &middot; 19.00</p>
-          <p class="font-display font-semibold text-lg text-zinc-200">Malam Pemilihan Pengurus</p>
-          <p class="text-zinc-500 text-sm mt-1">Ruang 214, Student Union</p>
-        </div>
-      </div>
-    </div>
+    <div id="schedule-timeline" class="relative pl-8"><!-- filled by script below --></div>
   </main>
 </div>
 
+<!-- Event detail modal -->
+<div id="schedule-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeScheduleModal()">
+  <div class="modal-card p-0">
+    <div id="schedule-modal-image-wrap" class="hidden rounded-t-2xl overflow-hidden">
+      <img id="schedule-modal-image" class="w-full h-48 sm:h-56 object-cover" alt="" />
+    </div>
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4 mb-1">
+        <h2 id="schedule-modal-title" class="font-display text-lg font-semibold"></h2>
+        <div class="flex items-center gap-1.5 shrink-0 -mt-1 -mr-1">
+          <div id="schedule-modal-admin-actions" class="flex items-center gap-1.5"></div>
+          <button onclick="closeScheduleModal()" class="text-zinc-500 hover:text-zinc-300 p-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <p id="schedule-modal-meta" class="text-zinc-500 text-xs mb-4"></p>
+      <div class="glass rounded-lg p-4">
+        <p id="schedule-modal-desc" class="text-sm text-zinc-300 leading-relaxed"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  let EVENTS = [];
+
+  async function fetchScheduleFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('schedule')
+      .select('*')
+      .order('event_date', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching schedule:', error);
+      return;
+    }
+    
+    EVENTS = data || [];
+    renderTimeline();
+  }
+
+  /* ----------------------------------------------------------
+     Timeline rail — dot + line both anchor off the SAME point
+     (left + translateX(-50%)) instead of two independently
+     hand-tuned offsets, so they're always pixel-centered on
+     each other regardless of dot border/size. The outer wrapper
+     here only ever handles horizontal centering; the pop/draw
+     keyframe animations live on the INNER element so their own
+     transforms (scale/scaleY) never clobber the translateX.
+     ---------------------------------------------------------- */
+  function renderTimeline() {
+    const wrap = document.getElementById('schedule-timeline');
+
+    if (EVENTS.length === 0) {
+      wrap.innerHTML = `
+        <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in ml-[-2rem]">
+          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          <p class="text-zinc-300 font-medium mb-1">Belum ada jadwal acara!</p>
+          <p class="text-zinc-500 text-sm">Kalender ekstrakurikuler masih kosong. Pengurus akan segera memperbaruinya.</p>
+        </div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="absolute top-2 bottom-2" style="left:12px; transform: translateX(-50%);">
+        <div class="w-0.5 h-full timeline-line animate-line-draw" style="animation-delay: 1000ms"></div>
+      </div>
+      ${EVENTS.map((ev, i) => {
+        const d = new Date(ev.event_date);
+        const dateLabel = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+        const timeStr = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(d);
+
+        const cardHtml = `
+          <div onclick="openScheduleModal('${ev.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openScheduleModal('${ev.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-xl p-5 relative overflow-hidden w-full text-left hover:bg-white/5 transition group cursor-pointer ${ev.is_next ? 'border border-accent-40 shadow-glow-sm' : ''}">
+            ${ev.image_url ? `<div class="item-thumb-slot item-thumb-slot-wide"><img src="${ev.image_url}" alt="" /></div>` : ''}
+            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div class="min-w-0">
+                <p class="${ev.is_next ? 'text-accent-300' : 'text-zinc-500'} text-xs font-medium tracking-wide uppercase mb-1">${dateLabel} &middot; ${timeStr}</p>
+                <p class="font-display font-semibold text-lg ${ev.is_next ? '' : 'text-zinc-200'}">${ev.title}</p>
+                <p class="text-zinc-500 text-sm mt-1">${ev.location}</p>
+              </div>
+              ${ev.is_next ? `<span class="self-start text-xs font-medium px-3 py-1 rounded-full bg-accent-15 text-accent-300 border border-accent-30" data-i18n="badge_next">Berikutnya</span>` : ''}
+            </div>
+          </div>`;
+
+        return `
+        <div class="relative ${i === EVENTS.length - 1 ? '' : 'mb-8'}">
+          <div class="absolute top-1.5" style="left:-20px; transform: translateX(-50%);">
+            <span class="block w-3 h-3 rounded-full animate-dot-pop ${ev.is_next ? 'bg-accent pulse' : 'bg-zinc-600 border-2 border-zinc-950'}" style="animation-delay: ${600 + i * 100}ms"></span>
+          </div>
+          ${kirAdminWrapQuickActions(cardHtml, { onEdit: `openScheduleAdminModal('${ev.id}')`, onDelete: `confirmDeleteSchedule('${ev.id}')` })}
+        </div>`;
+      }).join('')}
+    `;
+    kirApplyTranslations();
+  }
+
+  function openScheduleModal(id) {
+    const ev = EVENTS.find(e => e.id === id);
+    if (!ev) return;
+    
+    const d = new Date(ev.event_date);
+    const dateLabel = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+    const timeStr = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(d);
+
+    document.getElementById('schedule-modal-admin-actions').innerHTML = kirAdminActionsHtml({
+      onEdit: `openScheduleAdminModal('${ev.id}')`,
+      onDelete: `confirmDeleteSchedule('${ev.id}')`
+    });
+
+    document.getElementById('schedule-modal-title').textContent = ev.title;
+    document.getElementById('schedule-modal-meta').textContent = `${dateLabel} \u00b7 ${timeStr} \u00b7 ${ev.location}`;
+    document.getElementById('schedule-modal-desc').textContent = ev.description || '';
+    
+    const imgWrap = document.getElementById('schedule-modal-image-wrap');
+    const img = document.getElementById('schedule-modal-image');
+    if (ev.image_url) { img.src = ev.image_url; imgWrap.classList.remove('hidden'); }
+    else { imgWrap.classList.add('hidden'); }
+    kirModalShow(document.getElementById('schedule-modal'));
+  }
+
+  function closeScheduleModal() {
+    kirModalHide(document.getElementById('schedule-modal'));
+  }
+
+  function scheduleAdminFields() {
+    return [
+      { id: 'title', label: 'Nama Acara', type: 'text', required: true, row: 'meta' },
+      { id: 'location', label: 'Lokasi', type: 'text', required: true, row: 'meta' },
+      { id: 'event_date', label: 'Waktu & Tanggal', type: 'datetime-local', required: true },
+      { id: 'description', label: 'Deskripsi', type: 'textarea', rows: 4 },
+      { id: 'image_url', label: 'URL Gambar', type: 'image' },
+    ];
+  }
+
+  function openScheduleAdminModal(id) {
+    const ev = id ? EVENTS.find(e => e.id === id) : null;
+    let values = null;
+    if (ev) {
+      const d = new Date(ev.event_date);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      values = { ...ev, event_date: d.toISOString().slice(0,16) };
+    }
+
+    kirOpenAdminModal({
+      title: ev ? 'Edit Jadwal' : 'Tambah Jadwal',
+      size: 'wide',
+      fields: scheduleAdminFields(),
+      values: values,
+      saveLabel: ev ? 'Simpan' : 'Tambah',
+      onSave: async (payload) => {
+        const result = ev
+          ? await kirAdminUpdate('schedule', ev.id, payload)
+          : await kirAdminCreate('schedule', payload);
+        if (!result.success) throw new Error(result.error);
+        await fetchScheduleFromDatabase();
+        if (ev && !document.getElementById('schedule-modal').classList.contains('hidden')) {
+          closeScheduleModal();
+        }
+      }
+    });
+  }
+
+  function confirmDeleteSchedule(id) {
+    const ev = EVENTS.find(e => e.id === id);
+    kirConfirmDialog({
+      title: 'Hapus acara ini?',
+      message: ev ? `"${ev.title}" akan dihapus permanen.` : 'Acara ini akan dihapus permanen.',
+      onConfirm: async () => {
+        const result = await kirAdminDelete('schedule', id);
+        if (!result.success) throw new Error(result.error);
+        closeScheduleModal();
+        await fetchScheduleFromDatabase();
+      }
+    });
+  }
+
+  kirRenderAdminFab({ onClick: () => openScheduleAdminModal(null) });
+
   kirInjectSidebar('schedule');
+  fetchScheduleFromDatabase();
 </script>
 </body>
 </html>

@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Voyages</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
+<script src="js/admin-shared.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin-shared.css">
 
 <!-- MathJax for rendering LaTeX -->
 <script>
@@ -26,6 +29,53 @@
   };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- marked (Markdown) + DOMPurify (sanitizes the HTML marked produces before
+     it's dropped in via innerHTML, since some voyage text comes from JSON
+     import rather than being hand-typed by an admin in the form) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.min.js"></script>
+<script>
+  window.kirInitCodeMirror = function(containerId, langStr, initialCode = "", onChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Clear and prepare host container dimensions
+    container.innerHTML = '<div id="kir-ace-editor" style="width: 100%; height: 26rem; border-radius: 0 0 0.85rem 0.85rem;"></div>';
+    
+    const editor = ace.edit("kir-ace-editor");
+    editor.setTheme("ace/theme/one_dark");
+    
+    const modeMap = { 
+        'cpp': 'c_cpp', 'c': 'c_cpp', 
+        'python': 'python', 'java': 'java', 'javascript': 'javascript' 
+    };
+    editor.session.setMode("ace/mode/" + (modeMap[langStr] || 'text'));
+    editor.setValue(initialCode, -1);
+    
+    editor.setOptions({
+        fontSize: "14px",
+        showPrintMargin: false,
+        showGutter: true,
+        highlightActiveLine: true,
+        enableBasicAutocompletion: true,
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    });
+
+    // Make editor background fit the glass theme nicely
+    document.getElementById("kir-ace-editor").style.backgroundColor = "rgba(0, 0, 0, 0.28)";
+
+    editor.session.on('change', () => {
+        if (typeof onChange === 'function') onChange(editor.getValue());
+    });
+    
+    window.__kirAceEditor = editor;
+  };
+
+  window.kirGetCodeMirrorValue = function() {
+    return window.__kirAceEditor ? window.__kirAceEditor.getValue() : "";
+  };
+</script>
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -54,7 +104,7 @@
     <div class="mb-7 flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="voyages_title">Voyages</h1>
-        <p class="text-zinc-500 text-sm mt-1" data-i18n="voyages_desc">Latihan soal MIPA dan koding. Selesaikan soal-soal ini untuk mengumpulkan deltas.</p>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="voyages_desc">Latihan soal MIPA dan informatika. Selesaikan soal-soal ini untuk mengumpulkan deltas.</p>
       </div>
       <div class="flex items-center gap-3 shrink-0">
         <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
@@ -86,23 +136,55 @@
       </div>
     </div>
 
+    <!-- Fixed stacked actions, bottom-right, bottom to top: Ekspedisi
+         (everyone) -> Tambah voyage (admin) -> Impor JSON (admin).
+         The admin two are rendered/shown by JS further down. -->
+    <button type="button" id="voyage-expedition-fab" onclick="openExpeditionFocusMode()" class="admin-fab bg-accent-gradient shadow-glow" title="Ekspedisi" aria-label="Ekspedisi">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+    </button>
+    <button type="button" id="voyage-import-json-btn" onclick="openVoyageJsonImportModal()" class="hidden admin-fab-tertiary glass" title="Impor voyage dari file JSON" aria-label="Impor voyage dari file JSON">
+      <svg class="text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" /></svg>
+    </button>
+    <button type="button" id="voyage-integrity-btn" onclick="openIntegrityModal()" class="hidden admin-fab-tertiary glass" style="position:relative" title="Tinjau integritas voyage" aria-label="Tinjau integritas voyage">
+      <svg class="text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+      <span id="voyage-integrity-badge" class="hidden" style="position:absolute; top:-0.35rem; right:-0.35rem; background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; line-height:1; padding:0.25rem 0.4rem; border-radius:999px; min-width:1.1rem; text-align:center;">0</span>
+    </button>
+
     <!-- Filters + search -->
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-6 mb-8">
       <div class="flex flex-col sm:flex-row sm:items-end gap-6 w-full sm:w-[calc(50%-0.5rem)]">
-        <div class="w-full sm:w-2/5 shrink-0">
-          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_filter_all">SUBJEK</label>
+        <div class="w-full sm:w-[7rem] shrink-0">
+          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_filter_subject_label">SUBJEK</label>
           <select id="filter-subject-select" multiple class="hidden">
             <option value="math" selected>Matematika</option>
             <option value="physics" selected>Fisika</option>
             <option value="chemistry" selected>Kimia</option>
             <option value="biology" selected>Biologi</option>
-            <option value="coding" selected>Koding</option>
+            <option value="informatika" selected>Informatika</option>
+          </select>
+        </div>
+
+        <div class="w-full sm:w-[7rem] shrink-0">
+          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_filter_type_label">TIPE</label>
+          <select id="filter-type-select" multiple class="hidden">
+            <option value="mc" selected>Pilihan Ganda</option>
+            <option value="dropdown" selected>Dropdown</option>
+            <option value="essay" selected>Esai</option>
+            <option value="programming" selected>Kompetitif (Programming)</option>
           </select>
         </div>
 
         <div class="w-full sm:flex-1 shrink-0">
         <div class="flex items-center justify-between text-xs font-medium text-zinc-400 mb-2 tracking-wide">
-          <span data-i18n="voyages_difficulty">RATING</span>
+          <span class="flex items-center gap-1.5">
+            <span data-i18n="voyages_difficulty">RATING</span>
+            <button type="button" class="admin-range-info-btn"
+                onmouseenter="kirAdminTooltipShowHtml(this, kirAltPreciseTooltipHtml())" onmouseleave="kirAdminTooltipHide()"
+                onfocus="kirAdminTooltipShowHtml(this, kirAltPreciseTooltipHtml())" onblur="kirAdminTooltipHide()"
+                title="Info">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+          </span>
           <span class="relative">
             <span id="diff-label" class="text-accent-300 font-semibold cursor-pointer hover:brightness-125 transition" onclick="openDiffInput()" title="Klik untuk mengetik, mis. 3 atau 3-6">1 - 10</span>
             <input id="diff-input" type="text" inputmode="numeric" autocomplete="off"
@@ -110,9 +192,9 @@
               oninput="liveDiffInput()" onkeydown="handleDiffInputKey(event)" onblur="cancelDiffInput()" />
           </span>
         </div>
-        <div class="relative h-6 flex items-center w-full cursor-pointer" onmousedown="handleTrackClick(event)">
+        <div class="relative h-6 flex items-center w-full cursor-pointer kir-range-wrap" onmousedown="handleTrackClick(event)">
           <!-- Ticks -->
-          <div class="absolute inset-0 flex justify-between items-center px-1 pointer-events-none">
+          <div class="kir-range-ticks absolute inset-0 flex justify-between items-center px-1 pointer-events-none">
             <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
             <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
             <div class="w-px h-2 bg-zinc-600"></div><div class="w-px h-2 bg-zinc-600"></div>
@@ -130,22 +212,30 @@
       </div>
       </div>
 
-      <div class="w-full sm:w-[calc(50%-0.5rem)] shrink-0">
-        <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_search_label">CARI</label>
-        <div class="relative">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
-            style="color:#71717a">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-          </svg>
-          <input
-            id="voyage-search"
-            type="text"
-            class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
-            oninput="handleVoyageSearchChange()"
-            data-i18n-placeholder="voyages_search_placeholder"
-            placeholder="Cari soal…"
-          />
+      <div class="w-full sm:w-[calc(50%-0.5rem)] shrink-0 flex flex-col sm:flex-row gap-6">
+        <div class="w-full">
+          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_search_label">CARI</label>
+          <div class="relative">
+            <input
+              id="voyage-search"
+              type="text"
+              class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
+              oninput="handleVoyageSearchChange()"
+              data-i18n-placeholder="voyages_search_placeholder"
+              placeholder="Cari soal…"
+            />
+            <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
+        </div>
+        <div class="w-full sm:w-[9.5rem] shrink-0">
+          <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_sort_label">URUTKAN</label>
+          <select id="voyage-sort-select" onchange="handleVoyageSortChange()" class="hidden">
+            <option value="random" selected data-i18n="voyages_sort_random">Acak</option>
+            <option value="diff_asc" data-i18n="voyages_sort_diff_asc">Rating: Rendah ke Tinggi</option>
+            <option value="diff_desc" data-i18n="voyages_sort_diff_desc">Rating: Tinggi ke Rendah</option>
+            <option value="title_az" data-i18n="voyages_sort_title_az">Judul: A ke Z</option>
+            <option value="newest" data-i18n="voyages_sort_newest">Terbaru</option>
+          </select>
         </div>
       </div>
     </div>
@@ -155,55 +245,132 @@
 </div>
 
 <!-- Voyage question modal -->
-<div id="voyage-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeVoyageModal()">
-  <div class="modal-card p-6">
-    <div class="flex items-start justify-between gap-4 mb-2">
-      <h2 id="vm-title" class="font-display text-lg font-semibold"></h2>
-      <button onclick="closeVoyageModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 -mt-1 -mr-1 p-1">
+<div id="voyage-modal" class="modal-overlay hidden" onclick="if(event.target===this && !expeditionActive) closeVoyageModal()">
+  <div class="modal-card modal-card-split p-0">
+    <div class="modal-split-main">
+      <div class="p-6">
+      <div id="vm-expedition-banner" class="hidden items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10">
+        <div class="flex items-center gap-2 text-xs font-medium text-accent-300 tracking-wide uppercase">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+          <span data-i18n="voyages_expedition_mode_label">Mode Ekspedisi</span>
+          <span class="text-zinc-500">&middot;</span>
+          <span id="vm-expedition-remaining" class="normal-case tracking-normal text-zinc-400"></span>
+        </div>
+        <button type="button" onclick="exitExpeditionMode()" class="text-xs font-medium text-zinc-400 hover:text-zinc-200 transition shrink-0" data-i18n="voyages_expedition_exit">Keluar Ekspedisi</button>
+      </div>
+      <div class="flex items-start justify-between gap-4 mb-2">
+        <h2 id="vm-title" class="font-display text-lg font-semibold"></h2>
+        <div class="flex items-center gap-1.5 shrink-0 -mt-1 -mr-1">
+          <div id="voyage-modal-admin-actions" class="flex items-center gap-1.5"></div>
+          <button id="vm-close-btn" onclick="closeVoyageModal()" class="text-zinc-500 hover:text-zinc-300 p-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap mb-5">
+        <span id="vm-subject-badge" class="subject-badge"></span>
+        <span id="vm-diff-badge" class="diff-badge"></span>
+        <span id="vm-type-pill" class="type-pill"></span>
+      </div>
+
+      <div class="glass rounded-lg p-4 mb-5">
+        <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Soal</p>
+        <div id="vm-question" class="text-sm text-zinc-200 leading-relaxed kir-markdown"></div>
+      </div>
+
+      <!-- Multiple choice -->
+      <div id="vm-mc-wrap" class="hidden">
+        <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_answer">Pilih salah satu jawaban di bawah.</p>
+        <div id="vm-mc-options" class="space-y-2.5 mb-5"></div>
+      </div>
+
+      <!-- Dropdown -->
+      <div id="vm-dropdown-wrap" class="hidden">
+        <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_dropdown">Pilih jawaban dari menu di bawah.</p>
+        <select id="vm-dropdown-select" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5"></select>
+      </div>
+
+      <!-- Essay: markup injected by kirRenderEssayMathEditor() below, same
+           toolbar/highlight/preview as the admin "Teks Soal" / "Jawaban
+           Referensi" fields (see kirAdminFieldHtml's 'mathtext' case in
+           admin-shared.js) so students can write $...$ LaTeX too. -->
+      <div id="vm-essay-wrap" class="hidden mb-5"></div>
+
+      <!-- Programming -->
+      <div id="vm-code-wrap" class="hidden mb-5">
+        <div class="code-shell">
+          <div class="code-toolbar">
+            <div class="code-toolbar-left">
+              <span class="code-dot code-dot-a"></span>
+              <span class="code-dot code-dot-b"></span>
+              <span class="code-dot code-dot-c"></span>
+              <span class="code-filename" id="vm-code-filename">solution</span>
+            </div>
+            <div class="code-toolbar-right">
+              <div class="code-lang-wrap">
+                <span class="code-lang-label" data-i18n="voyages_bahasa">Bahasa</span>
+                <div id="vm-code-lang-picker" class="code-lang-picker hidden"></div>
+                <span id="vm-code-lang-text" class="code-lang-fixed hidden"></span>
+              </div>
+              <button type="button" id="vm-run-btn" onclick="runCodeSamples()" class="code-run-btn hidden">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span data-i18n="voyages_run_samples">Jalankan</span>
+              </button>
+            </div>
+          </div>
+          <div id="vm-code-editor" class="code-editor-host"></div>
+
+          <div class="code-panel-header code-terminal-header">
+            <span class="terminal-dot"></span>
+            <span data-i18n="voyages_console_output">Konsol</span>
+          </div>
+          <div class="code-console-body code-terminal-body" id="vm-console-output">
+            <p class="console-empty" id="vm-console-empty" data-i18n="voyages_console_empty">Menunggu kode dijalankan…</p>
+            <div id="vm-console-log"></div>
+            <div class="console-cursor-row" id="vm-console-cursor-row">
+              <span class="console-prompt">$</span><span class="console-cursor"></span>
+            </div>
+          </div>
+
+          </div>
+      </div>
+
+      <div id="vm-feedback" class="hidden text-sm font-medium rounded-lg px-4 py-3 mb-4"></div>
+
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-xs text-zinc-500">
+          <span id="vm-reward-label" data-i18n="voyages_reward">Ganjaran</span>:
+          <span id="vm-reward-amount" class="text-accent-300 font-semibold">0</span>
+          <span data-i18n="deltas_points">deltas</span>
+        </p>
+        <div class="flex gap-2">
+          <button id="vm-submit-btn" onclick="submitVoyageAnswer()" class="min-w-[9.5rem] px-5 py-2.5 rounded-lg font-semibold text-sm text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="voyages_submit">Kirim Jawaban</button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="modal-split-comments">
+      <div id="voyage-comments-root" class="comment-panel-inner"><!-- filled by kirRenderCommentSection --></div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin-only: flagged-submission review, populated from
+     voyage_integrity_review (see the anti-cheat SQL migration).
+     Never shown to non-admins — gated the same way as the JSON
+     import button, via kirIsAdmin(). -->
+<div id="integrity-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeIntegrityModal()">
+  <div class="modal-card" style="max-width:46rem; width:94vw; max-height:80vh; display:flex; flex-direction:column;">
+    <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--glass-border);">
+      <h3 class="font-display font-semibold text-lg">Integritas Voyage</h3>
+      <button type="button" onclick="closeIntegrityModal()" class="admin-modal-close" aria-label="Tutup">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>
     </div>
-    <div class="flex items-center gap-2 flex-wrap mb-5">
-      <span id="vm-subject-badge" class="subject-badge"></span>
-      <span id="vm-diff-badge" class="diff-badge"></span>
-      <span id="vm-type-pill" class="type-pill"></span>
+    <div id="integrity-list" class="px-5 py-4" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:0.75rem;">
+      <!-- filled by renderIntegrityList() -->
     </div>
-
-    <div class="glass rounded-lg p-4 mb-5">
-      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Soal</p>
-      <p id="vm-question" class="text-sm text-zinc-200 leading-relaxed"></p>
-    </div>
-
-    <!-- Multiple choice -->
-    <div id="vm-mc-wrap" class="hidden">
-      <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_answer">Pilih salah satu jawaban di bawah.</p>
-      <div id="vm-mc-options" class="space-y-2.5 mb-5"></div>
-    </div>
-
-    <!-- Dropdown -->
-    <div id="vm-dropdown-wrap" class="hidden">
-      <p class="text-zinc-500 text-xs mb-3" data-i18n="voyages_choose_dropdown">Pilih jawaban dari menu di bawah.</p>
-      <select id="vm-dropdown-select" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5"></select>
-    </div>
-
-    <!-- Essay -->
-    <div id="vm-essay-wrap" class="hidden">
-      <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">Jawaban esai kamu</label>
-      <textarea id="vm-essay-textarea" rows="5" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5" data-i18n-placeholder="voyages_essay_placeholder" placeholder="Tulis jawaban esai kamu di sini…"></textarea>
-    </div>
-
-    <div id="vm-feedback" class="hidden text-sm font-medium rounded-lg px-4 py-3 mb-4"></div>
-
-    <div class="flex items-center justify-between gap-3">
-      <p class="text-xs text-zinc-500">
-        <span data-i18n="voyages_reward">Ganjaran</span>:
-        <span id="vm-reward-amount" class="text-accent-300 font-semibold">0</span>
-        <span data-i18n="deltas_points">deltas</span>
-      </p>
-      <button id="vm-submit-btn" onclick="submitVoyageAnswer()" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="voyages_submit">Kirim Jawaban</button>
-    </div>
-
-    <div class="border-t border-white/10 mt-5 pt-5" id="voyage-comments-root"><!-- filled by kirRenderCommentSection --></div>
   </div>
 </div>
 
@@ -213,132 +380,211 @@
 </div>
 
 <script>
-  const VOYAGES = [
-    {
-      id: 'v1',
-      title: 'Limit Fungsi Aljabar',
-      subject: 'math',
-      difficulty: 3,
-      type: 'mc',
-      question: 'Nilai dari $\\lim_{x \\to 2} \\frac{x^2 - 4}{x - 2}$ adalah …',
-      options: ['0', '2', '4', 'Tidak terdefinisi'],
-      correctIndex: 2,
-    },
-    {
-      id: 'v2',
-      title: 'Hukum Newton II',
-      subject: 'physics',
-      difficulty: 4,
-      type: 'dropdown',
-      question: 'Sebuah benda bermassa $4 \\text{ kg}$ didorong dengan gaya konstan $20 \\text{ N}$ di atas bidang datar tanpa gesekan. Percepatan benda tersebut adalah ___ $\\text{m/s}^2$.',
-      options: ['2', '4', '5', '8'],
-      correctIndex: 2,
-    },
-    {
-      id: 'v3',
-      title: 'Analisis Kompleksitas Big-O',
-      subject: 'coding',
-      difficulty: 6,
-      type: 'essay',
-      question: 'Jelaskan kompleksitas waktu (Big-O) dari algoritma pencarian biner (binary search) pada array terurut berukuran $n$, serta jelaskan secara singkat alasannya.',
-    },
-    {
-      id: 'v4',
-      title: 'Latihan 01 OSN Informatika',
-      subject: 'coding',
-      difficulty: 10,
-      type: 'mc',
-      question: 'Diberikan array integer yang sudah terurut menaik sepanjang $n$ ($1 \\le n \\le 10^6$). Untuk menemukan sepasang indeks $(i, j)$ sehingga $a[i] + a[j] = \\text{target}$ dengan kompleksitas waktu paling optimal, pendekatan mana yang tepat?',
-      options: [
-        'Brute force dua nested loop, $O(n^2)$',
-        'Two pointer dari kedua ujung array, $O(n)$',
-        'Rekursi penuh tanpa memoization',
-        'Mengurutkan ulang array di setiap iterasi'
-      ],
-      correctIndex: 1,
-    },
-    {
-      id: 'v5',
-      title: 'Konsep Mol dan Stoikiometri',
-      subject: 'chemistry',
-      difficulty: 3,
-      type: 'mc',
-      question: 'Berapa jumlah mol yang terkandung dalam $22 \\text{ gram}$ $\\text{CO}_2$? ($\\text{Ar C} = 12$, $\\text{O} = 16$)',
-      options: ['$0,25 \\text{ mol}$', '$0,5 \\text{ mol}$', '$1 \\text{ mol}$', '$2 \\text{ mol}$'],
-      correctIndex: 1,
-    },
-    {
-      id: 'v6',
-      title: 'Laju Reaksi Kimia',
-      subject: 'chemistry',
-      difficulty: 5,
-      type: 'dropdown',
-      question: 'Menaikkan suhu reaksi sebesar $10^\\circ\\text{C}$ umumnya menyebabkan laju reaksi meningkat sekitar ___ kali lipat, sesuai aturan Van\'t Hoff.',
-      options: ['1', '2', '5', '10'],
-      correctIndex: 1,
-    },
-    {
-      id: 'v7',
-      title: 'Kesetimbangan Asam Basa OSN Kimia',
-      subject: 'chemistry',
-      difficulty: 10,
-      type: 'essay',
-      question: 'Jelaskan bagaimana larutan penyangga (buffer) mempertahankan pH-nya ketika ditambahkan sedikit asam kuat atau basa kuat. Sertakan contoh pasangan asam basa konjugasi.',
-    },
-    {
-      id: 'v8',
-      title: 'Struktur dan Fungsi Sel',
-      subject: 'biology',
-      difficulty: 2,
-      type: 'mc',
-      question: 'Organel sel yang berperan sebagai tempat utama respirasi seluler dan produksi $\\text{ATP}$ adalah …',
-      options: ['Ribosom', 'Mitokondria', 'Badan Golgi', 'Lisosom'],
-      correctIndex: 1,
-    },
-    {
-      id: 'v9',
-      title: 'Genetika Mendel',
-      subject: 'biology',
-      difficulty: 5,
-      type: 'dropdown',
-      question: 'Pada persilangan monohibrid dominan penuh ($Aa \\times Aa$), rasio fenotipe keturunan $F_2$ yang dihasilkan adalah $3 : \\text{\\_\\_\\_}$.',
-      options: ['1', '2', '3', '4'],
-      correctIndex: 0,
-    },
-    {
-      id: 'v10',
-      title: 'Fisiologi Tumbuhan OSN Biologi',
-      subject: 'biology',
-      difficulty: 10,
-      type: 'essay',
-      question: 'Jelaskan mekanisme membuka dan menutupnya stomata pada daun, serta kaitannya dengan pergerakan ion kalium ($\\text{K}^+$) pada sel penjaga (guard cell).',
-    },
-  ];
+  let VOYAGES = [];
+  window.USER_COMPLETIONS = {};
+
+  /* ----------------------------------------------------------
+     Markdown rendering for voyage text (question, options, essay
+     feedback, etc). This just delegates to the shared renderer in
+     admin-shared.js (kirRenderMarkdownWithMath) — the same one used
+     for the "mathtext" editor's live preview on the admin side — so
+     what an admin sees while typing a question is exactly what
+     members see on the card/modal, byte for byte. Kept as its own
+     name since call sites elsewhere already reference it.
+     ---------------------------------------------------------- */
+  if (window.marked) {
+    marked.setOptions({ gfm: true, breaks: true });
+  }
+
+  function kirRenderVoyageMarkdown(raw) {
+    return kirRenderMarkdownWithMath(raw);
+  }
+
+  /* ----------------------------------------------------------
+     Same "Word-style" math editor the admin voyage form uses for
+     "Teks Soal" / "Jawaban Referensi" (see kirAdminFieldHtml's
+     'mathtext' case in admin-shared.js), reused here for the
+     student-facing essay answer so members can insert LaTeX with the
+     same toolbar instead of memorizing TeX, and get the exact same
+     live preview (kirRenderMarkdownWithMath + MathJax) before they
+     submit. Rendered once into the empty #vm-essay-wrap container
+     since this markup is static HTML in this file, not a JS template
+     evaluated where KIR_MATH_SNIPPETS lives.
+     ---------------------------------------------------------- */
+  function kirRenderEssayMathEditor() {
+    const wrap = document.getElementById('vm-essay-wrap');
+    if (!wrap || wrap.dataset.rendered) return;
+    wrap.dataset.rendered = '1';
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    wrap.innerHTML = `
+      <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">${kirEscapeHtml(I18N[lang].voyages_your_answer)}</label>
+      <div class="math-editor">
+        <div class="math-editor-toolbar" role="toolbar" aria-label="Sisipkan notasi matematika">
+          ${KIR_MATH_SNIPPETS.map((s, i) => `<button type="button" class="math-toolbar-btn" title="${kirEscapeHtml(s.title)}" onclick="kirMathInsert('vm-essay-textarea', ${i})">${s.label}</button>`).join('')}
+        </div>
+        <div class="math-editor-textarea-wrap">
+          <div id="vm-essay-textarea-highlight" class="math-editor-highlight text-sm" aria-hidden="true"></div>
+          <textarea id="vm-essay-textarea" rows="5" class="glass-input w-full text-sm math-editor-textarea" spellcheck="false" data-i18n-placeholder="voyages_essay_placeholder" placeholder="${kirEscapeHtml(I18N[lang].voyages_essay_placeholder)}"></textarea>
+        </div>
+        <div class="math-editor-preview-bar">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          <span data-i18n="voyages_preview_label">${kirEscapeHtml(I18N[lang].voyages_preview_label)}</span>
+        </div>
+        <div id="vm-essay-textarea-preview" class="math-editor-preview"><span class="math-editor-preview-empty">${kirEscapeHtml(I18N[lang].voyages_preview_empty)}</span></div>
+      </div>`;
+    kirMathEditorBind('vm-essay-textarea');
+
+    // Same paste/untrusted-input telemetry the plain textarea used to
+    // carry (see the copy/contextmenu deterrents further down), just
+    // attached here now that the element is created lazily instead of
+    // existing in the static markup from page load.
+    const ta = document.getElementById('vm-essay-textarea');
+    ta.addEventListener('paste', () => {
+      if (currentVoyageId) telemetryData.paste_count++;
+    });
+    ta.addEventListener('input', (e) => {
+      if (currentVoyageId && !e.isTrusted) telemetryData.untrusted_input_count++;
+    });
+  }
+
+  // NOTE: intentionally NOT select('*'). correct_index and essay_ref are the
+  // answer key, and they're also blocked at the DB level now (see migration),
+  // so selecting '*' here would actually error out for normal members. Admin
+  // editing gets the full row separately via the get_voyage_admin() RPC.
+  async function fetchVoyagesFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('voyages')
+      .select('id, title, subject, difficulty, type, question, options, image_url, ai_grading_enabled, created_at');
+    
+    if (error) {
+      console.error('Error fetching voyages:', error);
+      return;
+    }
+    
+    // Each voyage gets a stable random sort key assigned once here (not
+    // recomputed on every render) so the "Acak" (random) sort order stays
+    // put while the user types a search query or tweaks filters, and only
+    // reshuffles on a fresh fetch (e.g. page reload).
+    VOYAGES = (data || []).map(v => ({ ...v, _rand: Math.random() }));
+
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (userData?.user) {
+      currentUserId = userData.user.id;
+      const { data: comps } = await supabaseClient.from('voyage_completions').select('*').eq('user_id', userData.user.id);
+      if (comps) {
+        comps.forEach(c => window.USER_COMPLETIONS[c.voyage_id] = {
+          deltas: c.deltas_earned,
+          completedAt: c.created_at,
+          // Only populated for essay-type voyages, straight from the
+          // columns added for Smart Grading, and this is what lets the
+          // score/feedback survive a reload instead of vanishing.
+          essayAnswer: c.essay_answer,
+          essayScore: c.essay_score,
+          essayStrengths: c.essay_strengths,
+          essayImprovements: c.essay_improvements,
+          essayModel: c.essay_model,
+          essayPassed: c.essay_passed,
+        });
+      }
+    }
+
+    renderVoyageList();
+  }
 
   const SUBJECT_META = {
     math:      { label: 'Matematika', icon: '∑' },
     physics:   { label: 'Fisika', icon: '⚛' },
-    chemistry: { label: 'Kimia', icon: '⚗' },
-    biology:   { label: 'Biologi', icon: '🧬' },
-    coding:    { label: 'Koding', icon: '⌘' },
+    chemistry: { label: 'Kimia', icon: '◇' },
+    biology:   { label: 'Biologi', icon: '◈' },
+    informatika: { label: 'Informatika', icon: '⌘' },
   };
 
   const TYPE_META = {
     mc: { i18n: 'voyages_type_mc', label: 'Pilihan Ganda' },
     dropdown: { i18n: 'voyages_type_dropdown', label: 'Dropdown' },
     essay: { i18n: 'voyages_type_essay', label: 'Esai' },
+    programming: { i18n: 'voyages_type_programming', label: 'Kompetitif (Programming)' },
   };
 
-  function deltaReward(difficulty) {
-    return difficulty * 25 + (difficulty >= 10 ? 50 : 0);
+  function deltaReward(difficulty, type) {
+  const bases = [0, 10, 15, 25, 40, 60, 90, 135, 200, 300, 500];
+  const lowerIdx = Math.floor(difficulty);
+  const upperIdx = Math.ceil(difficulty);
+  const ratio = difficulty - lowerIdx;
+
+  const baseLower = bases[lowerIdx] || 10;
+  const baseUpper = bases[upperIdx] || 500;
+  const base = lowerIdx === upperIdx ? baseLower : baseLower + (baseUpper - baseLower) * ratio;
+
+  let mult = 1.0;
+  if (type === 'essay') mult = 2.5;
+  if (type === 'programming') mult = 3.0;
+  return Math.round(base * mult);
+}
+
+  // Shown to admins in the Smart Grading tooltip, and used as a fallback
+  // if the grade-essay Edge Function response doesn't include a `model`
+  // field. Keep this in sync with GEMINI_MODEL_DISPLAY_NAME in the
+  // grade-essay Edge Function (supabase/functions/grade-essay/index.ts).
+  const KIR_GRADING_MODEL_NAME = 'Gemini 3.5 Flash';
+
+  const GRADING_SPARKLE_SVG = '<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>';
+
+  // Builds the score/strengths/improvements card, used both right after
+  // a fresh submission and when reopening a voyage that was already
+  // graded before (state now persisted server-side, see USER_COMPLETIONS).
+  function gradingResultCardHtml(lang, { score, strengths, improvements, model, passed, reward }) {
+    const t = I18N[lang];
+    const scoreChipClasses = passed
+      ? 'bg-accent-10 text-accent-200 border border-accent-20'
+      : 'bg-white/5 text-zinc-300 border border-white/10';
+    const rewardRow = (typeof reward === 'number' && reward > 0) ? `
+      <div class="flex items-center gap-1.5 text-xs font-semibold text-accent-300">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+        +${reward} ${kirEscapeHtml(t.voyages_earned)}
+      </div>` : '';
+    return `
+      <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+        <span class="font-display font-semibold text-base flex items-center gap-1.5">
+          ${GRADING_SPARKLE_SVG}
+          ${kirEscapeHtml(t.voyages_grading_result_title)}
+        </span>
+        <span class="font-display font-bold text-sm px-2.5 py-1 rounded-full shrink-0 ${scoreChipClasses}">${score}<span class="opacity-60 font-medium">/100</span></span>
+      </div>
+      ${rewardRow}
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-semibold text-zinc-500">${kirEscapeHtml(t.voyages_grading_strengths)}</p>
+        <p class="text-xs text-zinc-300 mt-0.5">${kirEscapeHtml(strengths || '')}</p>
+      </div>
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-semibold text-zinc-500">${kirEscapeHtml(t.voyages_grading_improvements)}</p>
+        <p class="text-xs text-zinc-300 mt-0.5">${kirEscapeHtml(improvements || '')}</p>
+      </div>
+      ${model ? `<p class="text-[10px] text-zinc-600 pt-1.5 border-t border-white/5">${kirEscapeHtml(t.voyages_grading_model)}: <span class="text-zinc-500 font-medium">${kirEscapeHtml(model)}</span></p>` : ''}
+    `;
   }
 
-  function difficultyBadgeClass(d) {
-    if (d >= 10) return 'diff-osn';
-    if (d >= 7) return 'diff-hard';
-    if (d >= 4) return 'diff-medium';
-    return 'diff-easy';
+  // In-memory-only cache update after a fresh grade, mirroring what
+  // markVoyageCompletedLocally() does for mc/dropdown; the durable
+  // write happens server-side via record_essay_completion(), called
+  // from inside the grade-essay Edge Function.
+  function markEssayGradedLocally(voyageId, grade) {
+    const record = {
+      deltas: grade.reward,
+      completedAt: Date.now(),
+      essayAnswer: grade.essayAnswer,
+      essayScore: grade.score,
+      essayStrengths: grade.strengths,
+      essayImprovements: grade.improvements,
+      essayModel: grade.model,
+      essayPassed: grade.passed,
+    };
+    if (typeof window.USER_COMPLETIONS !== 'undefined') window.USER_COMPLETIONS[voyageId] = record;
   }
+
+  // getDifficultyRgb now lives in admin-shared.js (loaded above), so the
+  // admin rating editor and this page's own badges share one color
+  // source instead of drifting apart.
 
   function difficultyLabel(d) {
     return `${d}`;
@@ -350,22 +596,202 @@
     return `${DIFF_STAR_SVG}<span>${difficultyLabel(d)}</span>`;
   }
 
-  let currentSubjectFilter = new Set(['math', 'physics', 'chemistry', 'biology', 'coding']);
+  let currentSubjectFilter = new Set(['math', 'physics', 'chemistry', 'biology', 'informatika']);
+  let currentTypeFilter = new Set(['mc', 'dropdown', 'essay', 'programming']);
   let currentVoyageId = null;
+  let currentUserId = null;
   let selectedMcIndex = null;
+  let voyageOpenedAt = null;
+  let telemetryData = { paste_count: 0, tab_switch_count: 0, untrusted_input_count: 0, time_spent_ms: 0 };
+
+  /* ----------------------------------------------------------
+     Anti-cheat: stable per-(user, voyage) option shuffle.
+     ----------------------------------------------------------
+     Two students on the same MC question would otherwise see
+     "A/B/C/D" in the exact same DB order, so "jawabannya C" travels
+     fine between them. Instead we derive a deterministic-but-
+     unpredictable permutation from a hash of (user id + voyage id):
+     the same user always sees the same order for the same question
+     (so it doesn't reshuffle confusingly on every reopen), but two
+     different users almost never see the same order, and nobody can
+     predict their own order in advance without already being logged
+     in as themselves. Nothing is stored — it's recomputed from the
+     hash every time.
+     ---------------------------------------------------------- */
+  function kirHashSeed(str) {
+    let h = 2166136261 >>> 0; // FNV-1a
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function kirSeededRandom(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Computed at send-time (not continuously) so it reflects actual time
+  // spent on the question when the attempt is submitted — one more signal
+  // for the server-side suspicion score (e.g. a "perfect" essay scored in
+  // 4 seconds is worth flagging even with clean paste/tab counts).
+  function kirTelemetrySnapshot() {
+    return { ...telemetryData, time_spent_ms: voyageOpenedAt ? Math.max(0, Date.now() - voyageOpenedAt) : 0 };
+  }
+
+  // Returns an array `order` where order[displayPosition] = originalIndex.
+  function kirShuffledOptionOrder(voyageId, optionCount) {
+    const seed = kirHashSeed(`${currentUserId || 'anon'}:${voyageId}`);
+    const rand = kirSeededRandom(seed);
+    const order = Array.from({ length: optionCount }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+  }
   let diffMin = 1;
   let diffMax = 10;
   let voyageSearchQuery = '';
+  let currentVoyageSort = 'random';
 
   function handleVoyageSearchChange() {
     voyageSearchQuery = document.getElementById('voyage-search').value.trim().toLowerCase();
     renderVoyageList();
   }
 
+  function handleVoyageSortChange() {
+    currentVoyageSort = document.getElementById('voyage-sort-select').value;
+    renderVoyageList();
+  }
+
+  const VOYAGE_SORTERS = {
+    random:    (a, b) => a._rand - b._rand,
+    diff_asc:  (a, b) => a.difficulty - b.difficulty,
+    diff_desc: (a, b) => b.difficulty - a.difficulty,
+    title_az:  (a, b) => a.title.localeCompare(b.title),
+    newest:    (a, b) => new Date(b.created_at) - new Date(a.created_at),
+  };
+
+  function sortVoyages(list) {
+    const sorter = VOYAGE_SORTERS[currentVoyageSort] || VOYAGE_SORTERS.random;
+    return [...list].sort(sorter);
+  }
+
   function handleSubjectFilterChange() {
     const select = document.getElementById('filter-subject-select');
     currentSubjectFilter = new Set(Array.from(select.selectedOptions).map(o => o.value));
     renderVoyageList();
+  }
+
+  function handleTypeFilterChange() {
+    const select = document.getElementById('filter-type-select');
+    currentTypeFilter = new Set(Array.from(select.selectedOptions).map(o => o.value));
+    renderVoyageList();
+  }
+
+  // Expedition ("focus mode") — fullscreen-gated, one random not-yet-done
+  // voyage (matching the current filters) at a time, no comments pane,
+  // auto-advancing to the next one every time markVoyageCompletedLocally
+  // fires, until the matching pool is empty.
+  let expeditionActive = false;
+  let expeditionPool = [];
+
+  function getExpeditionPool() {
+    return VOYAGES.filter(v =>
+      currentSubjectFilter.has(v.subject) &&
+      currentTypeFilter.has(v.type) &&
+      (v.difficulty >= diffMin && v.difficulty <= diffMax) &&
+      !kirVoyageCompletion(v.id)
+    ).map(v => v.id);
+  }
+
+  function openExpeditionFocusMode() {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const pool = getExpeditionPool();
+    if (pool.length === 0) {
+      kirAdminToast(I18N[lang].voyages_expedition_empty, 'error');
+      return;
+    }
+    const el = document.documentElement;
+    const requestFs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (!requestFs) {
+      kirAdminToast(I18N[lang].voyages_expedition_fullscreen_unsupported, 'error');
+      return;
+    }
+    requestFs.call(el).then(() => {
+      expeditionActive = true;
+      expeditionPool = pool;
+      document.addEventListener('fullscreenchange', handleExpeditionFullscreenChange);
+      advanceExpedition();
+    }).catch(() => {
+      kirAdminToast(I18N[lang].voyages_expedition_fullscreen_required, 'error');
+    });
+  }
+
+  // If the person exits fullscreen any other way (Esc, browser chrome,
+  // etc.) don't silently end the expedition — ask first, since Esc is
+  // easy to hit by accident. "Lanjutkan" re-requests fullscreen (that
+  // click is itself a fresh user gesture, so the request is allowed);
+  // declining, dismissing, or clicking the backdrop all end it.
+  function handleExpeditionFullscreenChange() {
+    if (!expeditionActive || document.fullscreenElement) return;
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    kirConfirmDialog({
+      title: lang === 'id' ? 'Lanjutkan Ekspedisi?' : 'Continue Expedition?',
+      message: lang === 'id'
+        ? 'Kamu keluar dari mode layar penuh. Ekspedisi akan berhenti kecuali kamu melanjutkan.'
+        : 'You left fullscreen. The expedition will stop unless you continue.',
+      confirmLabel: lang === 'id' ? 'Lanjutkan' : 'Continue',
+      cancelLabel: lang === 'id' ? 'Keluar Ekspedisi' : 'Exit Expedition',
+      danger: false,
+      successMessage: '',
+      onConfirm: async () => {
+        const el = document.documentElement;
+        const requestFs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        try {
+          if (!requestFs) throw new Error('unsupported');
+          await requestFs.call(el);
+        } catch (e) {
+          exitExpeditionMode(false);
+        }
+      },
+      onCancel: () => exitExpeditionMode(false)
+    });
+  }
+
+  function advanceExpedition() {
+    expeditionPool = expeditionPool.filter(id => !kirVoyageCompletion(id));
+    if (expeditionPool.length === 0) {
+      const lang = localStorage.getItem('kir_lang') || 'id';
+      kirAdminToast(I18N[lang].voyages_expedition_complete, 'success');
+      exitExpeditionMode(true);
+      return;
+    }
+    const nextId = expeditionPool[Math.floor(Math.random() * expeditionPool.length)];
+    openVoyageModal(nextId, { expedition: true });
+  }
+
+  function exitExpeditionMode(shouldExitFullscreen = true) {
+    expeditionActive = false;
+    expeditionPool = [];
+    clearTimeout(window.__kirExpeditionAdvanceTimer);
+    document.removeEventListener('fullscreenchange', handleExpeditionFullscreenChange);
+    const modalEl = document.getElementById('voyage-modal');
+    // Expedition's card fade is delayed 0.2s + runs 0.3s (see style.css)
+    // so it needs longer than the default fade before `hidden` lands.
+    kirModalHide(modalEl, () => modalEl.classList.remove('expedition-active'), 520);
+    currentVoyageId = null;
+    if (shouldExitFullscreen && document.fullscreenElement) {
+      const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if (exitFs) exitFs.call(document);
+    }
   }
 
   function spawnDiffStars() {
@@ -390,8 +816,8 @@
     star.style.color = `rgb(var(${randomColor}))`;
     
     // Calculate the active track zone from input values directly
-    const minVal = parseInt(document.getElementById('diff-min').value, 10);
-    const maxVal = parseInt(document.getElementById('diff-max').value, 10);
+    const minVal = parseFloat(document.getElementById('diff-min').value);
+    const maxVal = parseFloat(document.getElementById('diff-max').value);
     const trueMin = Math.min(minVal, maxVal);
     const trueMax = Math.max(minVal, maxVal);
     
@@ -406,17 +832,28 @@
     setTimeout(() => star.remove(), 1200);
   }
 
+  // Alt-drag on the slider thumbs (handled globally in
+  // admin-shared.js) can leave diffMin/diffMax with decimals — show
+  // them as typed (3.14) but fall back to a plain integer (3) when
+  // there's nothing after the point, instead of always "3.00".
+  function fmtDiffVal(v) {
+    return Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
   function handleTrackClick(e) {
     if (e.target.tagName.toLowerCase() === 'input') return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    const targetVal = Math.max(1, Math.min(10, Math.round((percent * 9) + 1)));
+    const rawVal = Math.max(1, Math.min(10, (percent * 9) + 1));
+    // Alt+click jumps to a precise (2-decimal) position, same as
+    // Alt-dragging a thumb; a plain click still snaps to a whole step.
+    const targetVal = e.altKey ? Math.round(rawVal * 100) / 100 : Math.round(rawVal);
 
     const minInput = document.getElementById('diff-min');
     const maxInput = document.getElementById('diff-max');
-    const currentMin = parseInt(minInput.value, 10);
-    const currentMax = parseInt(maxInput.value, 10);
+    const currentMin = parseFloat(minInput.value);
+    const currentMax = parseFloat(maxInput.value);
 
     if (Math.abs(targetVal - currentMin) < Math.abs(targetVal - currentMax)) {
       minInput.value = targetVal;
@@ -427,11 +864,24 @@
     updateDiffFilter();
   }
 
+  // Alt-precision dragging (see __kirRangeApplyDrag in admin-shared.js)
+  // dispatches an 'input' event on nearly every pointermove — far more
+  // often than a normal whole-number-stepped drag does — so gating
+  // star spawns by a minimum time interval (rather than just a random
+  // chance per event) keeps a fast precise drag from showering the
+  // slider in dozens of stars at once.
+  let lastDiffStarTime = 0;
+  const DIFF_STAR_MIN_INTERVAL_MS = 90;
+
   function updateDiffFilter(skipStars = false) {
-    if (!skipStars && Math.random() > 0.4) spawnDiffStars();
+    const now = performance.now();
+    if (!skipStars && now - lastDiffStarTime > DIFF_STAR_MIN_INTERVAL_MS && Math.random() > 0.4) {
+      spawnDiffStars();
+      lastDiffStarTime = now;
+    }
     
-    let minVal = parseInt(document.getElementById('diff-min').value, 10);
-    let maxVal = parseInt(document.getElementById('diff-max').value, 10);
+    let minVal = parseFloat(document.getElementById('diff-min').value);
+    let maxVal = parseFloat(document.getElementById('diff-max').value);
     
     if (minVal > maxVal) {
       const tmp = minVal;
@@ -442,7 +892,7 @@
     diffMin = minVal;
     diffMax = maxVal;
     
-    document.getElementById('diff-label').textContent = diffMin + ' - ' + diffMax;
+    document.getElementById('diff-label').textContent = fmtDiffVal(diffMin) + ' - ' + fmtDiffVal(diffMax);
     
     const track = document.getElementById('diff-track');
     const leftPercent = ((minVal - 1) / 9) * 100;
@@ -472,8 +922,8 @@
 
   function cancelDiffInput() {
     // diffMin/diffMax already reflect the last valid value typed (or the
-    // range from before editing started, if nothing valid was typed) —
-    // so just hiding the input naturally "reverts" an emptied field.
+    // range from before editing started, if nothing valid was typed), so
+    // just hiding the input naturally "reverts" an emptied field.
     document.getElementById('diff-input').classList.add('hidden');
     document.getElementById('diff-label').classList.remove('hidden');
   }
@@ -527,38 +977,63 @@
 
   function renderVoyageList() {
     const lang = localStorage.getItem('kir_lang') || 'id';
-    const filtered = VOYAGES.filter(v => 
+    const filtered = sortVoyages(VOYAGES.filter(v => 
       currentSubjectFilter.has(v.subject) &&
+      currentTypeFilter.has(v.type) &&
       (v.difficulty >= diffMin && v.difficulty <= diffMax) &&
       (voyageSearchQuery === '' || v.title.toLowerCase().includes(voyageSearchQuery) || v.question.toLowerCase().includes(voyageSearchQuery))
-    );
-    document.getElementById('voyage-list').innerHTML = filtered.map((v, i) => {
+    ));
+
+    const list = document.getElementById('voyage-list');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="col-span-1 sm:col-span-2 glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
+          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+          <p class="text-zinc-300 font-medium mb-1">Tidak ada soal yang ditemukan!</p>
+          <p class="text-zinc-500 text-sm">Ubah pengaturan rating dan subjek, atau tunggu pengurus menambahkan soal baru.</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((v, i) => {
       const meta = SUBJECT_META[v.subject];
       const type = TYPE_META[v.type];
       const done = kirVoyageCompletion(v.id);
-      const reward = deltaReward(v.difficulty);
-      return `
-        <button onclick="openVoyageModal('${v.id}')" style="animation-delay: ${i * 45}ms" class="glass rounded-2xl p-5 text-left voyage-card ${done ? 'completed' : ''} relative overflow-hidden">
+      const reward = deltaReward(v.difficulty, v.type);
+      const isEssayScored = v.type === 'essay' && done && done.essayScore !== null && done.essayScore !== undefined;
+      const cardHtml = `
+        <div onclick="openVoyageModal('${v.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openVoyageModal('${v.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="glass rounded-2xl p-5 text-left voyage-card ${done ? 'completed' : ''} relative overflow-hidden group cursor-pointer h-full flex flex-col">
           ${v.difficulty >= 10 ? '<div class="glow-blob w-32 h-32 -top-8 -right-8" style="background: rgba(236,72,153,0.18);"></div>' : ''}
-          <div class="relative">
+          <div class="relative flex flex-col flex-1">
             <div class="flex items-center gap-2 flex-wrap mb-3">
               <span class="subject-badge">${meta.icon} ${meta.label}</span>
-              <span class="diff-badge ${difficultyBadgeClass(v.difficulty)}">${diffBadgeHtml(v.difficulty)}</span>
+              <span class="diff-badge" style="--diff-r: ${getDifficultyRgb(v.difficulty).r}; --diff-g: ${getDifficultyRgb(v.difficulty).g}; --diff-b: ${getDifficultyRgb(v.difficulty).b};">${diffBadgeHtml(v.difficulty)}</span>
             </div>
             <h3 class="font-display font-semibold text-base mb-1.5">${v.title}</h3>
-            <p class="text-zinc-500 text-xs mb-4 line-clamp-2">${v.question}</p>
-            <div class="flex items-center justify-between">
-              <span class="type-pill">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                <span data-i18n="${type.i18n}">${type.label}</span>
-              </span>
-              ${done
+            <div class="text-zinc-500 text-xs mb-4 line-clamp-2 kir-markdown kir-markdown-clamp">${kirRenderVoyageMarkdown(v.question)}</div>
+            <div class="flex items-center justify-between mt-auto">
+              <div class="flex items-center gap-2">
+                <span class="type-pill">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  <span data-i18n="${type.i18n}">${type.label}</span>
+                </span>
+                ${isEssayScored ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${done.essayPassed ? 'bg-accent-10 text-accent-200 border border-accent-20' : 'bg-white/5 text-zinc-400 border border-white/10'}">${done.essayScore}<span class="opacity-60 font-medium">/100</span></span>` : ''}
+              </div>
+              ${isEssayScored
                 ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-accent-10 text-accent-200 border border-accent-20 flex items-center gap-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> +${done.deltas}</span>`
-                : `<span class="text-xs font-semibold text-accent-300 flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>+${reward}</span>`
+                : (done
+                    ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-accent-10 text-accent-200 border border-accent-20 flex items-center gap-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> +${done.deltas}</span>`
+                    : `<span class="text-xs font-semibold text-accent-300 flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>+${reward}</span>`)
               }
             </div>
           </div>
-        </button>`;
+        </div>`;
+
+      return kirAdminWrapQuickActions(cardHtml, {
+        onEdit: `openVoyageAdminModal('${v.id}')`,
+        onDelete: `confirmDeleteVoyage('${v.id}')`
+      });
     }).join('');
     kirApplyTranslations();
     
@@ -571,12 +1046,20 @@
     document.getElementById('voyages-deltas-total').textContent = kirDeltasTotal().toLocaleString('id-ID');
   }
 
-  function openVoyageModal(id) {
+  function openVoyageModal(id, { expedition = false } = {}) {
     const v = VOYAGES.find(x => x.id === id);
     if (!v) return;
     currentVoyageId = id;
     selectedMcIndex = null;
+    voyageOpenedAt = Date.now();
+    telemetryData = { paste_count: 0, tab_switch_count: 0, untrusted_input_count: 0, time_spent_ms: 0 };
     const lang = localStorage.getItem('kir_lang') || 'id';
+    kirRenderEssayMathEditor();
+
+    document.getElementById('voyage-modal-admin-actions').innerHTML = expedition ? '' : kirAdminActionsHtml({
+      onEdit: `openVoyageAdminModal('${v.id}')`,
+      onDelete: `confirmDeleteVoyage('${v.id}')`
+    });
     const meta = SUBJECT_META[v.subject];
     const type = TYPE_META[v.type];
 
@@ -584,52 +1067,183 @@
     document.getElementById('vm-subject-badge').textContent = `${meta.icon} ${meta.label}`;
     const diffBadge = document.getElementById('vm-diff-badge');
     diffBadge.innerHTML = diffBadgeHtml(v.difficulty);
-    diffBadge.className = 'diff-badge ' + difficultyBadgeClass(v.difficulty);
+    diffBadge.className = 'diff-badge';
+    const rgb = getDifficultyRgb(v.difficulty);
+    diffBadge.setAttribute('style', `--diff-r: ${rgb.r}; --diff-g: ${rgb.g}; --diff-b: ${rgb.b};`);
     const typePill = document.getElementById('vm-type-pill');
     typePill.innerHTML = `<svg class="w-3.5 h-3.5 inline -mt-0.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>` + I18N[lang][type.i18n];
-    document.getElementById('vm-question').textContent = v.question;
-    document.getElementById('vm-reward-amount').textContent = deltaReward(v.difficulty);
+    document.getElementById('vm-question').innerHTML = kirRenderVoyageMarkdown(v.question);
+    const rewardLabelEl = document.getElementById('vm-reward-label');
+    rewardLabelEl.textContent = I18N[lang].voyages_reward;
+    rewardLabelEl.setAttribute('data-i18n', 'voyages_reward');
+    document.getElementById('vm-reward-amount').textContent = deltaReward(v.difficulty, v.type);
 
     document.getElementById('vm-mc-wrap').classList.toggle('hidden', v.type !== 'mc');
     document.getElementById('vm-dropdown-wrap').classList.toggle('hidden', v.type !== 'dropdown');
     document.getElementById('vm-essay-wrap').classList.toggle('hidden', v.type !== 'essay');
+    document.getElementById('vm-code-wrap').classList.toggle('hidden', v.type !== 'programming');
+
+    const runBtn = document.getElementById('vm-run-btn');
+    if (runBtn) runBtn.classList.toggle('hidden', v.type !== 'programming');
+
+    // Programming voyages have no separate "submit" step — Jalankan runs
+    // the code against the judge (including hidden test cases) and marks
+    // the voyage done the moment the judge accepts it. Kirim Jawaban only
+    // makes sense for the other answer types.
+    document.getElementById('vm-submit-btn').classList.toggle('hidden', v.type === 'programming');
 
     if (v.type === 'mc') {
-      document.getElementById('vm-mc-options').innerHTML = v.options.map((opt, i) => `
-        <div class="voyage-option" id="vm-opt-${i}" onclick="selectMcOption(${i})">
+      const order = kirShuffledOptionOrder(v.id, v.options.length);
+      document.getElementById('vm-mc-options').innerHTML = order.map((origIdx, pos) => `
+        <div class="voyage-option" id="vm-opt-${pos}" data-orig-idx="${origIdx}" onclick="selectMcOption(${origIdx})">
           <span class="voyage-option-dot"></span>
-          <span>${opt}</span>
+          <span class="kir-markdown">${kirRenderVoyageMarkdown(v.options[origIdx])}</span>
         </div>`).join('');
     }
     if (v.type === 'dropdown') {
+      const order = kirShuffledOptionOrder(v.id, v.options.length);
       const select = document.getElementById('vm-dropdown-select');
       select.innerHTML = `<option value="" disabled selected>${I18N[lang].voyages_pick_placeholder}</option>` +
-        v.options.map((opt, i) => `<option value="${i}">${opt}</option>`).join('');
+        order.map(origIdx => `<option value="${origIdx}">${v.options[origIdx]}</option>`).join('');
       kirRefreshCustomSelect('vm-dropdown-select');
     }
+    const essayTextarea = document.getElementById('vm-essay-textarea');
+    const done = kirVoyageCompletion(v.id);
+    
     if (v.type === 'essay') {
-      document.getElementById('vm-essay-textarea').value = '';
+      essayTextarea.value = kirMathtextEscapeBreaksForEditor((done && done.essayAnswer) ? done.essayAnswer : '');
+      // Lock the answer in only once a submission has actually scored a
+      // perfect 100. Otherwise leave it editable so the score can still
+      // be improved with another attempt.
+      essayTextarea.disabled = !!(done && done.essayScore === 100);
+      // Setting .value directly (vs. typing) doesn't fire 'input', so
+      // the highlight backdrop and live preview need a manual refresh —
+      // otherwise a reopened essay shows the old preview/highlight state.
+      kirMathHighlightSync('vm-essay-textarea');
+      kirMathPreviewUpdate('vm-essay-textarea');
+    }
+
+    if (v.type === 'programming') {
+      const allowed = v.coding_config?.allowed_languages || ['all'];
+      const allLangs = ['cpp', 'python', 'java', 'javascript', 'c'];
+      const langsToShow = allowed.includes('all') ? allLangs : allowed;
+
+      const picker = document.getElementById('vm-code-lang-picker');
+      const text = document.getElementById('vm-code-lang-text');
+
+      const startLang = langsToShow[0];
+
+      if (langsToShow.length === 1) {
+        picker.classList.add('hidden');
+        text.classList.remove('hidden');
+        text.textContent = kirLangDisplayName(langsToShow[0]);
+      } else {
+        text.classList.add('hidden');
+        picker.classList.remove('hidden');
+        kirRenderCodeLangPicker(langsToShow, startLang);
+      }
+
+      window.__kirCurrentCodeLang = startLang;
+      document.getElementById('vm-code-filename').textContent = 'solution' + kirCodeFileExt(startLang);
+
+      // Draft-autosave: whatever's actually in the editor always wins over
+      // the starter code. Without this, closing the modal (even by an
+      // accidental click just outside the card) would silently throw away
+      // whatever the student had typed, since re-opening used to always
+      // re-seed from coding_config.starter_code. Now every keystroke is
+      // mirrored to localStorage, so a reopen restores exactly where they
+      // left off, per voyage + per language.
+      const draftKey = kirCodeDraftKey(v.id, startLang);
+      const savedDraft = localStorage.getItem(draftKey);
+      const starter = v.coding_config?.starter_code?.[startLang] || kirDefaultStarter(startLang);
+      const pastCode = (savedDraft !== null && savedDraft.trim() !== '') ? savedDraft : starter;
+
+      setTimeout(() => {
+        window.kirInitCodeMirror('vm-code-editor', startLang, pastCode, (code) => {
+          localStorage.setItem(kirCodeDraftKey(v.id, startLang), code);
+        });
+      }, 10);
+
+      document.getElementById('vm-console-log').innerHTML = '';
+      document.getElementById('vm-console-empty').classList.add('hidden');
+
+      supabaseClient.from('voyage_test_cases').select('*').eq('voyage_id', v.id).eq('is_hidden', false).order('ordinal', {ascending: true})
+      .then(({data: samples}) => {
+        window.__kirVisibleSampleOrdinals = (samples || []).map(s => s.ordinal);
+        let tcHtml = '';
+        if (samples && samples.length) {
+          tcHtml = samples.map((s, i) => `// Sample ${i+1}\n// Input:\n${kirEscapeHtml(s.input || '(kosong)')}\n// Expected Output:\n${kirEscapeHtml(s.expected_output)}`).join('\n\n');
+        } else {
+          tcHtml = `// Tidak ada sample test case.`;
+        }
+        // Save globally so runCodeSamples can re-inject it before appending results
+        window.__kirSampleConsoleHtml = `<span class="console-line-muted" style="white-space: pre-wrap; display: block; margin-bottom: 1rem;">${tcHtml}</span>`;
+        kirConsoleLine(window.__kirSampleConsoleHtml);
+      });
     }
 
     const feedback = document.getElementById('vm-feedback');
     feedback.classList.add('hidden');
     feedback.textContent = '';
+    feedback.innerHTML = '';
 
     const submitBtn = document.getElementById('vm-submit-btn');
-    const done = kirVoyageCompletion(v.id);
     submitBtn.disabled = false;
     submitBtn.textContent = I18N[lang].voyages_submit;
     submitBtn.removeAttribute('data-i18n');
 
-    if (done && v.type !== 'essay') {
-      // Already solved before — show state, still let them review but no re-earning.
+    if (done) {
       feedback.classList.remove('hidden');
-      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
-      feedback.textContent = I18N[lang].voyages_already_done;
+      if (v.type === 'essay' && done.essayScore !== null && done.essayScore !== undefined) {
+        // Smart Grading ran before, so show the saved score/feedback instead
+        // of just a generic "already done" pill.
+        feedback.className = 'text-sm rounded-lg px-4 py-4 mb-4 space-y-3 ' +
+          (done.essayPassed ? 'bg-accent-10 text-zinc-200 border border-accent-20' : 'bg-white/5 text-zinc-300 border border-white/10');
+        feedback.innerHTML = gradingResultCardHtml(lang, {
+          score: done.essayScore, strengths: done.essayStrengths,
+          improvements: done.essayImprovements, model: done.essayModel, passed: done.essayPassed,
+          reward: done.deltas
+        });
+        // Once graded, the footer should reflect what was actually earned
+        // (which can be less than the max reward on a non-100 score),
+        // not the full potential reward shown before any attempt.
+        rewardLabelEl.textContent = I18N[lang].voyages_earned_label;
+        rewardLabelEl.setAttribute('data-i18n', 'voyages_earned_label');
+        document.getElementById('vm-reward-amount').textContent = done.deltas || 0;
+        if (done.essayScore === 100) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = I18N[lang].voyages_grading_locked;
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = I18N[lang].voyages_grading_retry;
+        }
+      } else if (v.type === 'essay') {
+        // Smart Grading was off when this was submitted, so this is the
+        // manual-review path.
+        feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+        feedback.textContent = I18N[lang].voyages_essay_sent;
+      } else {
+        // Already solved before. Show the state, still let them review, but no re-earning.
+        feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+        feedback.textContent = I18N[lang].voyages_already_done;
+      }
     }
 
-    document.getElementById('voyage-modal').classList.remove('hidden');
-    kirRenderCommentSection('voyage-comments-root', 'voyage', id);
+    const modalEl = document.getElementById('voyage-modal');
+    modalEl.classList.toggle('expedition-active', expedition);
+    kirModalShow(modalEl);
+
+    const banner = document.getElementById('vm-expedition-banner');
+    banner.classList.toggle('hidden', !expedition);
+    banner.classList.toggle('flex', expedition);
+    if (expedition) {
+      document.getElementById('vm-expedition-remaining').textContent = lang === 'id'
+        ? `${expeditionPool.length} tersisa`
+        : `${expeditionPool.length} remaining`;
+      document.getElementById('voyage-comments-root').innerHTML = '';
+    } else {
+      kirRenderCommentSection('voyage-comments-root', 'voyage', id);
+    }
     kirApplyTranslations();
     
     if (window.MathJax && window.MathJax.typesetPromise) {
@@ -638,14 +1252,69 @@
   }
 
   function closeVoyageModal() {
-    document.getElementById('voyage-modal').classList.add('hidden');
+    if (expeditionActive) { exitExpeditionMode(); return; }
+    kirModalHide(document.getElementById('voyage-modal'));
     currentVoyageId = null;
+  }
+
+  const CODE_FILE_EXT = { cpp: '.cpp', c: '.c', python: '.py', java: '.java', javascript: '.js' };
+  function kirCodeFileExt(lang) {
+    return CODE_FILE_EXT[lang] || '';
+  }
+
+  // Proper display casing per language — "Python", not "PYTHON"; "C++",
+  // not "CPP". Used anywhere a language name is shown to the student
+  // (the picker chips, the fixed single-language badge, console lines).
+  const CODE_LANG_LABELS = { cpp: 'C++', c: 'C', python: 'Python', java: 'Java', javascript: 'JavaScript' };
+  function kirLangDisplayName(lang) {
+    return CODE_LANG_LABELS[lang] || lang;
+  }
+
+  // Fallback starter code, only used when a voyage has no starter_code of
+  // its own configured for the language AND the student hasn't saved a
+  // draft yet — so it never overwrites anything the student has already
+  // written or a voyage-specific starter, it only fills the blank slate.
+  const DEFAULT_CODE = {
+    cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello Orbit!" << endl;\n    return 0;\n}\n',
+    c: '#include <stdio.h>\n\nint main() {\n    printf("Hello Orbit!\\n");\n    return 0;\n}\n',
+    python: 'print("Hello Orbit!")\n',
+    java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello Orbit!");\n    }\n}\n',
+    javascript: 'console.log("Hello Orbit!");\n',
+  };
+  function kirDefaultStarter(lang) {
+    return DEFAULT_CODE[lang] || '';
+  }
+
+  // Namespaced by voyage + language so switching languages (or reopening
+  // the same voyage later) never mixes up drafts, and so a click that
+  // accidentally lands on the modal backdrop and closes it never costs
+  // the student their in-progress code.
+  function kirCodeDraftKey(voyageId, lang) {
+    return `kir_code_draft_${voyageId}_${lang}`;
+  }
+
+  function kirScrollConsoleIntoView() {
+    const panel = document.getElementById('vm-console-output');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function kirConsoleLine(html, cls) {
+    const log = document.getElementById('vm-console-log');
+    const empty = document.getElementById('vm-console-empty');
+    if (empty) empty.classList.add('hidden');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.className = 'console-line' + (cls ? ' ' + cls : '');
+    line.innerHTML = html;
+    log.appendChild(line);
+    const panel = document.getElementById('vm-console-output');
+    if (panel) panel.scrollTop = panel.scrollHeight;
   }
 
   function selectMcOption(i) {
     selectedMcIndex = i;
-    document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el, idx) => {
-      el.classList.toggle('selected', idx === i);
+    document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el) => {
+      el.classList.toggle('selected', parseInt(el.dataset.origIdx, 10) === i);
     });
   }
 
@@ -656,41 +1325,369 @@
     setTimeout(() => toast.classList.remove('show'), 2200);
   }
 
-  function submitVoyageAnswer() {
+  // Local-only bookkeeping after the server has already confirmed + recorded
+  // the result. These never write correctness or deltas anywhere; that all
+  // happens inside check_voyage_answer() on the DB side now.
+  function markVoyageCompletedLocally(voyageId, deltas) {
+    const record = { deltas, completedAt: Date.now() };
+    localStorage.setItem('kir_voyage_done_' + voyageId, JSON.stringify(record));
+    if (typeof window.USER_COMPLETIONS !== 'undefined') window.USER_COMPLETIONS[voyageId] = record;
+    if (expeditionActive) {
+      // Small pause so the "benar!"/accepted feedback is actually seen
+      // before focus mode jumps to the next voyage.
+      clearTimeout(window.__kirExpeditionAdvanceTimer);
+      window.__kirExpeditionAdvanceTimer = setTimeout(() => {
+        if (expeditionActive) advanceExpedition();
+      }, 1600);
+    }
+  }
+
+  function bumpLocalDeltasTotal(amount) {
+    const next = kirDeltasTotal() + amount;
+    localStorage.setItem('kir_deltas_total', String(next));
+    return next;
+  }
+
+  // Renders the language picker as a row of small pill buttons instead of
+  // a <select> — no native dropdown chrome to fight with, no risk of an
+  // option's text overflowing a fixed-width panel (which is what caused
+  // the horizontal scrolling), and it reads as part of the code editor's
+  // own toolbar rather than a bolted-on form control.
+  function kirRenderCodeLangPicker(langs, activeLang) {
+    const picker = document.getElementById('vm-code-lang-picker');
+    if (!picker) return;
+    picker.innerHTML = `
+      <div class="code-lang-dd-trigger" onclick="this.classList.toggle('open'); document.getElementById('vm-code-lang-panel').classList.toggle('hidden'); event.stopPropagation();">
+        <span class="code-lang-dd-value" id="vm-code-lang-display">${kirLangDisplayName(activeLang)}</span>
+        <svg class="code-lang-dd-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+      </div>
+      <div id="vm-code-lang-panel" class="code-lang-dd-panel hidden">
+        ${langs.map(l => `
+          <div class="code-lang-dd-option ${l === activeLang ? 'active' : ''}" data-lang="${l}" onclick="kirSelectCodeLang('${l}')">${kirLangDisplayName(l)}</div>
+        `).join('')}
+      </div>
+    `;
+
+    // Global click listener to close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const panel = document.getElementById('vm-code-lang-panel');
+        const trigger = picker.querySelector('.code-lang-dd-trigger');
+        if (panel && !panel.classList.contains('hidden') && !picker.contains(e.target)) {
+            panel.classList.add('hidden');
+            if (trigger) trigger.classList.remove('open');
+        }
+    });
+  }
+
+  window.kirSelectCodeLang = function(lang) {
+    if (lang === window.__kirCurrentCodeLang) return;
+    const v = VOYAGES.find(x => x.id === currentVoyageId);
+    const code = window.kirGetCodeMirrorValue();
+
+    // Stash whatever was in the editor under the *previous* language's key
+    // before switching away from it, so hopping between languages never
+    // drops work in progress.
+    if (v && window.__kirCurrentCodeLang) {
+      localStorage.setItem(kirCodeDraftKey(v.id, window.__kirCurrentCodeLang), code);
+    }
+    window.__kirCurrentCodeLang = lang;
+
+    // Update custom dropdown display
+    const display = document.getElementById('vm-code-lang-display');
+    if (display) display.textContent = kirLangDisplayName(lang);
+
+    document.querySelectorAll('#vm-code-lang-panel .code-lang-dd-option').forEach(opt => {
+      opt.classList.toggle('active', opt.getAttribute('data-lang') === lang);
+    });
+
+    // Close the panel after selection
+    const panel = document.getElementById('vm-code-lang-panel');
+    if (panel) panel.classList.add('hidden');
+    const trigger = document.querySelector('.code-lang-dd-trigger');
+    if (trigger) trigger.classList.remove('open');
+
+    const filenameEl = document.getElementById('vm-code-filename');
+    if (filenameEl) filenameEl.textContent = 'solution' + kirCodeFileExt(lang);
+
+    const draftKey = v ? kirCodeDraftKey(v.id, lang) : null;
+    const saved = draftKey ? localStorage.getItem(draftKey) : null;
+    const starter = v?.coding_config?.starter_code?.[lang] || kirDefaultStarter(lang);
+    const initialCode = (saved !== null && saved.trim() !== '') ? saved : starter;
+
+    window.kirInitCodeMirror('vm-code-editor', lang, initialCode, (newCode) => {
+      if (draftKey) localStorage.setItem(draftKey, newCode);
+    });
+  };
+
+  window.runCodeSamples = async function() {
+    const v = VOYAGES.find(x => x.id === currentVoyageId);
+    if (!v || v.type !== 'programming') return;
+
+    const runBtn = document.getElementById('vm-run-btn');
+    const lang = window.__kirCurrentCodeLang;
+    const code = window.kirGetCodeMirrorValue();
+    const feedback = document.getElementById('vm-feedback');
+    const uiLang = localStorage.getItem('kir_lang') || 'id';
+
+    if (!code.trim()) return;
+
+    runBtn.disabled = true;
+
+    kirScrollConsoleIntoView();
+    document.getElementById('vm-console-log').innerHTML = '';
+    document.getElementById('vm-console-empty').classList.add('hidden');
+    
+    // Re-inject the comment block test cases so they stay visible
+    if (window.__kirSampleConsoleHtml) {
+        kirConsoleLine(window.__kirSampleConsoleHtml);
+    }
+    
+    kirConsoleLine(`<span class="console-prompt">$</span> mengeksekusi kode dengan <b>${kirEscapeHtml(kirLangDisplayName(lang))}</b>…`, 'console-line-muted');
+
+    feedback.classList.remove('hidden');
+    feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
+    feedback.textContent = 'Mengeksekusi dan menilai seluruh test case...';
+
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('judge-submit', {
+        body: { voyage_id: v.id, language: lang, source_code: code, action: 'submit', telemetry: kirTelemetrySnapshot() }
+      });
+
+      runBtn.disabled = false;
+
+      if (error || data.error) {
+          const msg = error?.message || data?.error || 'Gagal mengeksekusi kode.';
+          feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-red-400 border border-white/10';
+          feedback.textContent = msg;
+          kirConsoleLine(kirEscapeHtml(msg), 'console-line-fail');
+          return;
+      }
+
+      const isAccepted = data.verdict === 'Accepted';
+      feedback.className = 'text-sm rounded-lg px-4 py-4 mb-4 space-y-2 ' + (isAccepted ? 'bg-accent-10 text-zinc-200 border border-accent-20' : 'bg-white/5 text-red-400 border border-white/10');
+
+      const passedPct = Math.round((data.passed_count / data.total_count) * 100) || 0;
+      feedback.innerHTML = `
+        <div class="flex items-center justify-between">
+           <span class="font-display font-semibold text-base">${isAccepted ? 'Bagus Sekali! (Accepted)' : data.verdict}</span>
+           <span class="font-bold text-sm px-2.5 py-1 rounded-full ${isAccepted ? 'bg-accent-20 text-accent-300' : 'bg-white/10 text-white'}">${passedPct}%</span>
+        </div>
+        <p class="text-xs opacity-80">Passed <b>${data.passed_count}</b> out of <b>${data.total_count}</b> test cases.</p>
+        <p class="text-[10px] text-zinc-500 pt-1.5 border-t border-white/5">Waktu eksekusi maksimal: ${data.runtime_ms} ms</p>
+      `;
+
+      const ordinalToSampleIdx = {};
+      (window.__kirVisibleSampleOrdinals || []).forEach((ord, idx) => { ordinalToSampleIdx[ord] = idx; });
+      data.per_test.forEach(res => {
+         const sampleIdx = ordinalToSampleIdx[res.ordinal];
+         if (sampleIdx !== undefined) {
+             const isOk = res.status === 'Accepted';
+             kirConsoleLine(`Sample ${sampleIdx + 1}: <span class="${isOk ? 'console-line-ok' : 'console-line-fail'} font-semibold">${res.status}</span>`);
+         }
+      });
+
+      kirConsoleLine(
+        `${isAccepted ? '✓' : '✗'} <b>${kirEscapeHtml(data.verdict)}</b> — ${data.passed_count}/${data.total_count} passed (${data.runtime_ms} ms)`,
+        isAccepted ? 'console-line-ok' : 'console-line-fail'
+      );
+
+      if (isAccepted && data.reward > 0) {
+         bumpLocalDeltasTotal(data.reward);
+         refreshDeltasHeader();
+         showDeltasToast(data.reward);
+      }
+
+      if (isAccepted) {
+         markVoyageCompletedLocally(v.id, data.reward);
+         const rewardLabelEl = document.getElementById('vm-reward-label');
+         if (rewardLabelEl) {
+             rewardLabelEl.textContent = I18N[uiLang]?.voyages_earned_label || 'Ganjaran didapat';
+             document.getElementById('vm-reward-amount').textContent = data.reward;
+         }
+         renderVoyageList();
+      }
+    } catch (err) {
+      runBtn.disabled = false;
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-red-400 border border-white/10';
+      feedback.textContent = 'Terjadi kesalahan sistem.';
+      kirConsoleLine('Terjadi kesalahan sistem.', 'console-line-fail');
+    }
+  };
+
+  async function submitVoyageAnswer() {
     const v = VOYAGES.find(x => x.id === currentVoyageId);
     if (!v) return;
     const lang = localStorage.getItem('kir_lang') || 'id';
     const feedback = document.getElementById('vm-feedback');
-    const reward = deltaReward(v.difficulty);
     const alreadyDone = kirVoyageCompletion(v.id);
+    const submitBtn = document.getElementById('vm-submit-btn');
 
     if (v.type === 'essay') {
-      const text = document.getElementById('vm-essay-textarea').value.trim();
-      if (!text) return;
-      feedback.classList.remove('hidden');
-      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-15 text-accent-300 border border-accent-30';
-      feedback.textContent = I18N[lang].voyages_essay_sent;
-      if (!alreadyDone) {
-        kirMarkVoyageCompleted(v.id, 0);
-        renderVoyageList();
+      const { data: userData } = await supabaseClient.auth.getUser();
+      if (userData?.user) {
+        await supabaseClient.from('voyage_telemetry').insert({
+          user_id: userData.user.id,
+          voyage_id: v.id,
+          paste_count: telemetryData.paste_count,
+          tab_switch_count: telemetryData.tab_switch_count,
+          untrusted_input_count: telemetryData.untrusted_input_count
+        });
       }
-      document.getElementById('vm-submit-btn').disabled = true;
+    }
+
+    // Programming voyages have no Kirim Jawaban button — Jalankan (see
+    // runCodeSamples) both grades and marks completion. If this is ever
+    // reached for a programming voyage anyway, do nothing rather than
+    // re-run a second, redundant judged attempt.
+    if (v.type === 'programming') return;
+
+    if (v.type === 'essay') {
+      const text = kirMathtextBreaksToNewlines(document.getElementById('vm-essay-textarea').value).trim();
+      if (!text) return;
+
+      // Admin turned Smart Grading off for this question, so fall back to
+      // the original manual-review path: just record the attempt, no
+      // score/feedback, an officer looks at it later via comments.
+      if (v.ai_grading_enabled === false) {
+        submitBtn.disabled = true;
+        const { error } = await supabaseClient.rpc('check_voyage_answer', {
+          p_voyage_id: v.id, p_selected_index: null, p_telemetry: kirTelemetrySnapshot()
+        });
+
+        feedback.classList.remove('hidden');
+        if (error) {
+          console.error('Error submitting essay for review:', error);
+          feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
+          feedback.textContent = 'Terjadi kesalahan, coba lagi.';
+          submitBtn.disabled = false;
+          return;
+        }
+
+        feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+        feedback.textContent = I18N[lang].voyages_essay_sent;
+        submitBtn.textContent = I18N[lang].voyages_completed;
+        submitBtn.removeAttribute('data-i18n');
+        if (typeof window.USER_COMPLETIONS !== 'undefined') {
+          window.USER_COMPLETIONS[v.id] = { deltas: 0, completedAt: Date.now(), essayAnswer: text };
+        }
+        renderVoyageList();
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
+      feedback.textContent = I18N[lang].voyages_grading_analyzing;
+      submitBtn.disabled = true;
+
+      try {
+        const currentLang = localStorage.getItem('kir_lang') || 'id';
+        const { data, error } = await supabaseClient.functions.invoke('grade-essay', {
+          body: { voyage_id: v.id, submission: text, lang: currentLang, telemetry: kirTelemetrySnapshot() }
+        });
+
+        if (error) {
+          console.error("Detail Error dari Supabase:", error);
+          throw error;
+        }
+
+        const model = data.model || KIR_GRADING_MODEL_NAME;
+
+        feedback.className = 'text-sm rounded-lg px-4 py-4 mb-4 space-y-3 ' + 
+          (data.is_correct ? 'bg-accent-10 text-zinc-200 border border-accent-20' : 'bg-white/5 text-zinc-300 border border-white/10');
+
+        // The reward already banked from a previous attempt on this voyage,
+        // if any. Only the leftover on top of that gets added to the running
+        // total, so retrying to push a score higher never re-grants the
+        // whole reward again, just the difference the better score earned.
+        const previousReward = (alreadyDone && typeof alreadyDone.deltas === 'number') ? alreadyDone.deltas : 0;
+        const bestReward = Math.max(data.reward || 0, previousReward);
+        const leftoverReward = bestReward - previousReward;
+
+        feedback.innerHTML = gradingResultCardHtml(lang, {
+          score: data.score, strengths: data.strengths, improvements: data.improvements,
+          model, passed: data.is_correct, reward: bestReward
+        });
+
+        // Footer should reflect what was actually earned on this question
+        // so far, not the max possible reward — a sub-100 score earns less.
+        const rewardLabelEl2 = document.getElementById('vm-reward-label');
+        rewardLabelEl2.textContent = I18N[lang].voyages_earned_label;
+        rewardLabelEl2.setAttribute('data-i18n', 'voyages_earned_label');
+        document.getElementById('vm-reward-amount').textContent = bestReward;
+
+        if (leftoverReward > 0) {
+          bumpLocalDeltasTotal(leftoverReward);
+          refreshDeltasHeader();
+          showDeltasToast(leftoverReward);
+        }
+
+        markVoyageCompletedLocally(v.id, bestReward);
+        markEssayGradedLocally(v.id, {
+          reward: bestReward, essayAnswer: text, score: data.score,
+          strengths: data.strengths, improvements: data.improvements, model, passed: data.is_correct
+        });
+
+        // A perfect score is the ceiling, nothing left to improve, so lock
+        // the answer and the submit button. Any other score, passing or
+        // not, stays open for another attempt.
+        const isPerfect = data.score === 100;
+        document.getElementById('vm-essay-textarea').disabled = isPerfect;
+        submitBtn.disabled = isPerfect;
+        submitBtn.textContent = isPerfect ? I18N[lang].voyages_grading_locked : I18N[lang].voyages_grading_retry;
+        submitBtn.removeAttribute('data-i18n');
+        renderVoyageList();
+      } catch (err) {
+        console.error('Smart Grading failed:', err);
+        feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-red-400 border border-white/10';
+        feedback.textContent = I18N[lang].voyages_grading_failed;
+        submitBtn.disabled = false;
+      }
       return;
     }
 
-    let isCorrect = false;
+    let selectedIndex = null;
     if (v.type === 'mc') {
       if (selectedMcIndex === null) return;
-      isCorrect = selectedMcIndex === v.correctIndex;
-      document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el, idx) => {
-        el.classList.remove('selected');
-        if (idx === v.correctIndex) el.classList.add('correct');
-        else if (idx === selectedMcIndex) el.classList.add('incorrect');
-      });
+      selectedIndex = selectedMcIndex;
     } else if (v.type === 'dropdown') {
       const select = document.getElementById('vm-dropdown-select');
       if (select.value === '') return;
-      isCorrect = parseInt(select.value, 10) === v.correctIndex;
+      selectedIndex = parseInt(select.value, 10);
+    }
+
+    // The answer key never reaches the browser, so grading happens on the
+    // server: check_voyage_answer() looks up correct_index itself, decides
+    // is_correct/reward, and only if correct does it atomically record the
+    // completion and credits deltas. The client just reports what was
+    // selected and displays whatever the server says happened.
+    submitBtn.disabled = true;
+    const { data, error } = await supabaseClient.rpc('check_voyage_answer', {
+      p_voyage_id: v.id,
+      p_selected_index: selectedIndex,
+      p_telemetry: kirTelemetrySnapshot()
+    });
+
+    if (error) {
+      console.error('Error checking voyage answer:', error);
+      feedback.classList.remove('hidden');
+      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
+      feedback.textContent = 'Terjadi kesalahan, coba lagi.';
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+    const isCorrect = !!(result && result.is_correct);
+    const reward = (result && result.reward) || 0;
+
+    // NOTE: we deliberately do NOT reveal which option was actually correct
+    // when the answer is wrong; the server only tells us right/wrong, never
+    // the answer key, so retrying doesn't leak it option-by-option.
+    if (v.type === 'mc') {
+      document.querySelectorAll('#vm-mc-options .voyage-option').forEach((el) => {
+        el.classList.remove('selected');
+        if (parseInt(el.dataset.origIdx, 10) === selectedIndex) el.classList.add(isCorrect ? 'correct' : 'incorrect');
+      });
     }
 
     feedback.classList.remove('hidden');
@@ -698,21 +1695,21 @@
       feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
       feedback.textContent = I18N[lang].voyages_correct + (alreadyDone ? '' : ` +${reward} ${I18N[lang].voyages_earned}`);
       if (!alreadyDone) {
-        kirMarkVoyageCompleted(v.id, reward);
-        kirAddDeltas(reward);
+        markVoyageCompletedLocally(v.id, reward);
+        bumpLocalDeltasTotal(reward);
         refreshDeltasHeader();
         showDeltasToast(reward);
         renderVoyageList();
       }
-      document.getElementById('vm-submit-btn').disabled = true;
     } else {
       feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400 border border-white/10';
       feedback.textContent = I18N[lang].voyages_incorrect;
+      submitBtn.disabled = false;
     }
   }
 
-  const VOYAGES_STREAK_DAYS = 6;
-  const VOYAGES_STREAK_FILL_GOAL = 10; // days for a visually "full" flame — cosmetic only, matches dashboard
+  const VOYAGES_STREAK_DAYS = 0;
+  const VOYAGES_STREAK_FILL_GOAL = 10; // days for a visually "full" flame, cosmetic only, matches dashboard
 
   function renderVoyagesStreak() {
     document.getElementById('voyages-streak-count').textContent = VOYAGES_STREAK_DAYS;
@@ -722,12 +1719,562 @@
     document.getElementById('voyages-flame-fill-group').setAttribute('transform', `translate(0, ${currentY})`);
   }
 
+  const VOYAGE_DIFF_BANDS = [
+    { max: 3, color: '34,197,94',  label: 'Dasar' },
+    { max: 6, color: '234,179,8',  label: 'Menengah' },
+    { max: 8, color: '249,115,22', label: 'Lanjutan' },
+    { max: 10, color: '217,70,239', label: 'OSN' },
+  ];
+  const VOYAGE_DIFF_LEGEND = [
+    { color: '34,197,94',  label: '1-3', desc: 'Tingkat Kelas X / Dasar' },
+    { color: '234,179,8',  label: '4-6', desc: 'Tingkat Kelas XI / Menengah' },
+    { color: '249,115,22', label: '7-8', desc: 'Persiapan OSN-K / Lanjutan (Lebih Baik Esai)' },
+    { color: '217,70,239', label: '9-10', desc: 'Level OSN-P & OSN-N (Wajib Esai)' },
+  ];
+
+  const VOYAGE_JSON_SUBJECTS = ['math', 'physics', 'chemistry', 'biology', 'informatika'];
+  const VOYAGE_JSON_TYPES = ['mc', 'dropdown', 'essay', 'programming'];
+  let pendingTestCases = [];
+
+  /* ----------------------------------------------------------
+     Turns one raw uploaded JSON object into the exact `voyages`
+     row shape, mirrors the dbPayload mapping in openVoyageAdminModal's
+     onSave above, so a hand-edited/uploaded record always ends up
+     identical to one saved through the normal form. Throws a
+     human-readable Error for anything kirOpenJsonImportModal should
+     reject (it catches this per-item and keeps going with the rest
+     of the batch).
+     ---------------------------------------------------------- */
+  function voyageJsonTransform(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('Setiap voyage harus berupa objek JSON.');
+    }
+    const { title, subject, type, question, difficulty } = raw;
+    if (!title || typeof title !== 'string') throw new Error('"title" wajib diisi.');
+    if (!subject || !VOYAGE_JSON_SUBJECTS.includes(subject)) throw new Error(`"subject" harus salah satu dari: ${VOYAGE_JSON_SUBJECTS.join(', ')}.`);
+    if (!type || !VOYAGE_JSON_TYPES.includes(type)) throw new Error(`"type" harus salah satu dari: ${VOYAGE_JSON_TYPES.join(', ')}.`);
+    if (!question || typeof question !== 'string') throw new Error('"question" wajib diisi.');
+    const diffNum = Number(difficulty);
+    if (!Number.isFinite(diffNum) || diffNum < 1 || diffNum > 10) throw new Error('"difficulty" harus angka 1-10.');
+
+    const isChoiceType = type === 'mc' || type === 'dropdown';
+    const isCodingType = type === 'programming';
+
+    if (isChoiceType) {
+      if (!Array.isArray(raw.options) || raw.options.length < 2 || raw.options.some(o => typeof o !== 'string' || !o.trim())) {
+        throw new Error('"options" harus array berisi minimal 2 teks jawaban.');
+      }
+      const correctIdx = Number(raw.correct_index);
+      if (!Number.isInteger(correctIdx) || correctIdx < 0 || correctIdx >= raw.options.length) {
+        throw new Error('"correct_index" harus indeks yang valid ke dalam "options".');
+      }
+    }
+
+    if (isCodingType) {
+      if (!raw.coding_config) throw new Error('"coding_config" diperlukan untuk soal programming.');
+      if (!Array.isArray(raw.test_cases) || raw.test_cases.length === 0) throw new Error('"test_cases" diperlukan dan minimal berisi 1 test case.');
+    }
+
+    return {
+      title: title.trim(),
+      subject,
+      difficulty: diffNum,
+      type,
+      question,
+      options: isChoiceType ? raw.options : null,
+      correct_index: isChoiceType ? Number(raw.correct_index) : null,
+      essay_ref: raw.essay_ref || null,
+      image_url: raw.image_url || null,
+      // Defaults to on, per the same "opt-out, not opt-in" default used
+      // by the admin form's checkbox.
+      ai_grading_enabled: raw.ai_grading_enabled !== undefined ? !!raw.ai_grading_enabled : true,
+      coding_config: isCodingType ? {
+        allowed_languages: raw.coding_config.allowed_languages || ['all'],
+        time_limit_ms: raw.coding_config.time_limit_ms || 2000
+      } : null,
+      __test_cases: isCodingType ? raw.test_cases : null
+    };
+  }
+
+  // correct_index/essay_ref are column-level REVOKEd for authenticated/anon
+  // (see migration), so any .select() after an insert/update to 'voyages'
+  // must explicitly avoid asking for them, otherwise the implicit
+  // select('*') inside kirAdminCreate/kirAdminUpdate throws a permission
+  // error, even for admins (the revoke is a Postgres role thing, not an
+  // app-level admin check).
+  const VOYAGE_SAFE_RETURN_COLUMNS = 'id, title, subject, difficulty, type, question, options, image_url, ai_grading_enabled, coding_config, created_at';
+
+  /* ----------------------------------------------------------
+     Self-contained spec for an LLM: everything voyageJsonTransform
+     validates against, spelled out in prose plus a schema, so an
+     admin can paste this into ChatGPT/Claude along with source
+     material (e.g. "buat 10 soal turunan tingkat OSN-K") and get
+     back JSON that imports cleanly on the first try. Kept in sync
+     manually with voyageJsonTransform, so update this too whenever
+     that function's rules change.
+     ---------------------------------------------------------- */
+  function voyageJsonAiContext() {
+    const legendLines = VOYAGE_DIFF_LEGEND.map(b => `  - ${b.label}: ${b.desc}`).join('\n');
+    return `Kamu akan membuat soal untuk tabel "voyages" (Supabase/Postgres) di aplikasi belajar Orbit. Outputkan HANYA JSON valid, tanpa teks lain dan tanpa markdown code fence.
+
+Kamu bisa membuat lebih dari satu soal sekaligus. Untuk satu soal, kembalikan satu objek JSON. Untuk beberapa soal sekaligus, bungkus semua objek itu dalam satu array JSON, misalnya jika diminta "buat 5 soal", hasilnya array berisi 5 objek soal.
+
+FORMAT setiap objek soal:
+{
+  "title": string,               // wajib. Judul singkat soal.
+  "subject": string,              // wajib. Salah satu: ${VOYAGE_JSON_SUBJECTS.join(', ')}
+  "type": string,                 // wajib. Salah satu: ${VOYAGE_JSON_TYPES.join(', ')}
+                                   //   "programming" hanya boleh dipakai jika subject bernilai "informatika"
+  "difficulty": number,           // wajib. Bilangan bulat 1 sampai 10, skala di bawah.
+  "question": string,             // wajib. Teks soal. Mendukung Markdown (**tebal**, *miring*, list, heading, dan lain-lain) dan notasi matematika LaTeX di antara tanda $...$ (contoh: "Berapa $\\int x^2 dx$?"), keduanya dirender otomatis.
+  "image_url": string | null,     // opsional. URL gambar pendukung soal.
+
+  // Hanya untuk type "mc" atau "dropdown":
+  "options": string[],            // wajib untuk mc/dropdown. Minimal 2 opsi, semua non-kosong. Boleh pakai Markdown dan $...$ juga.
+  "correct_index": number,        // wajib untuk mc/dropdown. Index (mulai dari 0) ke "options" yang benar.
+
+  // Hanya untuk type "essay":
+  "essay_ref": string | null,     // opsional. Jawaban referensi atau kunci, dipakai untuk penilaian AI. Boleh pakai $...$.
+  "ai_grading_enabled": boolean,  // opsional, default true. Jika true, jawaban siswa langsung dinilai otomatis dengan skor 0 sampai 100 berdasarkan "essay_ref". Jika false, jawaban hanya tercatat untuk ditinjau manual.
+
+  // Hanya untuk type "programming" (subject wajib "informatika"):
+  "coding_config": {
+    "allowed_languages": string[], // contoh: ["all"] untuk semua bahasa, atau ["cpp","python"] untuk bahasa tertentu
+    "time_limit_ms": number        // batas waktu eksekusi per test case dalam milidetik, contoh 2000
+  },
+  "test_cases": [                  // wajib, minimal 1 item
+    {
+      "input": string,             // input program (stdin), boleh string kosong ""
+      "expected_output": string,   // wajib. Output yang diharapkan.
+      "is_hidden": boolean         // opsional, default false. Test case hidden dipakai untuk penilaian akhir dan tidak pernah ditampilkan ke siswa. Sertakan minimal satu test case yang tidak hidden supaya siswa punya contoh untuk didebug.
+    }
+  ]
+}
+
+SKALA "difficulty" (Rating 1 sampai 10), pakai panduan yang sama dengan form pembuatan voyage di admin:
+${legendLines}
+
+ATURAN PENTING:
+- Field yang tidak relevan dengan "type" boleh dihilangkan, jangan dipaksakan bernilai null jika memang tidak perlu, tapi field yang wajib untuk type tersebut harus tetap ada.
+- "correct_index" harus berupa index yang valid ke dalam array "options" (dihitung mulai dari 0).
+- Jangan tambahkan field lain di luar yang disebutkan di atas.
+- Bahasa soal memakai Bahasa Indonesia, kecuali diminta memakai bahasa lain.
+
+CONTOH satu soal Pilihan Ganda:
+{
+  "title": "Contoh Soal Turunan",
+  "subject": "math",
+  "type": "mc",
+  "difficulty": 5,
+  "question": "Berapakah turunan dari $f(x) = x^2$?",
+  "options": ["2x", "x", "x^2", "2"],
+  "correct_index": 0
+}
+
+CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
+[
+  {
+    "title": "Contoh Soal Turunan",
+    "subject": "math",
+    "type": "mc",
+    "difficulty": 5,
+    "question": "Berapakah turunan dari $f(x) = x^2$?",
+    "options": ["2x", "x", "x^2", "2"],
+    "correct_index": 0
+  },
+  {
+    "title": "Jumlah Dua Bilangan",
+    "subject": "informatika",
+    "type": "programming",
+    "difficulty": 3,
+    "question": "Baca dua bilangan bulat A dan B, lalu cetak A + B.",
+    "coding_config": { "allowed_languages": ["all"], "time_limit_ms": 2000 },
+    "test_cases": [
+      { "input": "2 3", "expected_output": "5", "is_hidden": false },
+      { "input": "10 -4", "expected_output": "6", "is_hidden": true }
+    ]
+  }
+]`;
+  }
+
+  function openVoyageJsonImportModal() {
+    pendingTestCases = [];
+    kirOpenJsonImportModal({
+      title: 'Impor Voyage dari JSON',
+      table: 'voyages',
+      itemLabel: 'voyage',
+      returning: VOYAGE_SAFE_RETURN_COLUMNS,
+      transform: voyageJsonTransform,
+      aiContext: voyageJsonAiContext,
+      beforeInsert: (payloads) => {
+        return payloads.map(p => {
+          p.id = crypto.randomUUID();
+          if (p.__test_cases) {
+            p.__test_cases.forEach((tc, i) => {
+              pendingTestCases.push({
+                voyage_id: p.id,
+                input: tc.input || "",
+                expected_output: tc.expected_output,
+                is_hidden: !!tc.is_hidden,
+                ordinal: i
+              });
+            });
+          }
+          delete p.__test_cases;
+          return p;
+        });
+      },
+      placeholderExample: {
+        title: 'Contoh Soal Turunan',
+        subject: 'math',
+        type: 'mc',
+        difficulty: 5,
+        question: 'Berapakah turunan dari f(x) = x^2?',
+        options: ['2x', 'x', 'x^2', '2'],
+        correct_index: 0
+      },
+      onDone: async () => {
+        if (pendingTestCases.length > 0) {
+          const { error } = await supabaseClient.from('voyage_test_cases').insert(pendingTestCases);
+          if (error) console.error("Error inserting test cases:", error);
+          pendingTestCases = [];
+        }
+        await fetchVoyagesFromDatabase();
+      }
+    });
+  }
+
+  function voyageAdminFields() {
+    return [
+      { id: 'title', label: 'Judul Soal', type: 'text', required: true },
+      { id: 'subject', label: 'Subjek', type: 'select', required: true, row: 'meta', options: [
+        { value: 'math', label: 'Matematika' },
+        { value: 'physics', label: 'Fisika' },
+        { value: 'chemistry', label: 'Kimia' },
+        { value: 'biology', label: 'Biologi' },
+        { value: 'informatika', label: 'Informatika' }
+      ] },
+      // The "Kompetitif (Programming)" *type* below is only legal when
+      // Subjek is Informatika, i.e. subject === 'informatika'.
+      { id: 'type', label: 'Tipe Soal', type: 'select', required: true, row: 'meta', options: [
+        { value: 'mc', label: 'Pilihan Ganda' },
+        { value: 'dropdown', label: 'Dropdown' },
+        { value: 'essay', label: 'Esai' },
+        { value: 'programming', label: 'Kompetitif (Programming)',
+          disabledIf: { field: 'subject', notEquals: 'informatika' } }
+      ] },
+      { id: 'difficulty', label: 'Rating', type: 'range', required: true, min: 1, max: 10, step: 1,
+        bands: VOYAGE_DIFF_BANDS, legend: VOYAGE_DIFF_LEGEND, legendTitle: 'Skala Rating (Estimasi):', default: 5 },
+      { id: 'question', label: 'Teks Soal', type: 'mathtext', rows: 4, required: true,
+        hint: 'Pakai tombol di atas untuk menyisipkan notasi matematika, atau ketik manual di antara tanda $ — akan dirender otomatis di halaman Voyages.' },
+      { id: 'options', label: 'Opsi Jawaban', type: 'options', hint: 'Tandai lingkaran di samping opsi untuk menjadikannya jawaban benar. Notasi matematika ($...$) juga didukung di sini untuk soal Pilihan Ganda.',
+        addLabel: 'Tambah Opsi', optionPlaceholder: 'Opsi jawaban...', correctField: 'correct_index',
+        showIf: { field: 'type', in: ['mc', 'dropdown'] } },
+      { id: 'essay_ref', label: 'Jawaban Referensi (Opsional)', type: 'mathtext', rows: 3,
+        hint: 'Dipakai Penilaian Cerdas sebagai kunci jawaban — boleh berisi notasi matematika seperti di atas.',
+        showIf: { field: 'type', equals: 'essay' } },
+      { id: 'ai_grading_enabled', label: 'Aktifkan Penilaian Cerdas', type: 'checkbox', default: true,
+        showIf: { field: 'type', equals: 'essay' },
+        tooltip: {
+          title: 'Tentang Penilaian Cerdas',
+          body: [
+            'Jika aktif, begitu anggota mengirim jawaban esainya akan langsung dinilai otomatis berdasarkan Jawaban Referensi di atas.',
+            'Anggota langsung mendapat skor 0–100, ringkasan kelebihan jawaban, dan poin yang perlu diperbaiki.',
+            'Jika dimatikan, jawaban esai hanya akan tercatat sebagai terkirim dan menunggu peninjauan manual oleh pengurus; skor dan masukan tidak dibuat otomatis.'
+          ],
+          model: KIR_GRADING_MODEL_NAME,
+          modelLabel: 'Model saat ini'
+        } },
+      { id: 'image_url', label: 'URL Gambar (Opsional)', type: 'image' },
+      { id: 'allowed_languages', label: 'Bahasa yang Diizinkan', type: 'checkboxes', required: true,
+        options: [
+          { value: 'all', label: 'Semua Bahasa', exclusive: true },
+          { value: 'cpp', label: 'C++' },
+          { value: 'python', label: 'Python' },
+          // Piston supports many more runtimes than this — add entries
+          // here as needed, no other code changes required.
+        ],
+        hint: 'Pilih "Semua Bahasa" untuk mengizinkan semua bahasa yang didukung Piston, atau centang bahasa tertentu.',
+        showIf: { field: 'type', equals: 'programming' } },
+      { id: 'time_limit_ms', label: 'Batas Waktu (ms)', type: 'number', required: true, default: 2000,
+        hint: 'Waktu eksekusi maksimum per test case, dalam milidetik.',
+        showIf: { field: 'type', equals: 'programming' } },
+      { id: 'test_cases', label: 'Test Case', type: 'testcases', required: true, addLabel: 'Tambah Test Case',
+        hint: 'Minimal satu test case yang TIDAK disembunyikan wajib ada, supaya siswa punya contoh untuk didebug. Test case tersembunyi dipakai untuk penilaian akhir dan tidak pernah dikirim ke browser siswa.',
+        showIf: { field: 'type', equals: 'programming' } },
+    ];
+  }
+
+  // Admin-only: the cached VOYAGES list no longer carries correct_index /
+  // essay_ref (see fetchVoyagesFromDatabase), so editing fetches the full
+  // row through get_voyage_admin(), a SECURITY DEFINER RPC that checks
+  // is_admin() server-side before returning the answer key.
+  async function openVoyageAdminModal(id) {
+    let v = null;
+    if (id) {
+      const { data, error } = await supabaseClient.rpc('get_voyage_admin', { p_voyage_id: id });
+      if (error) {
+        console.error('Error fetching voyage for admin edit:', error);
+        return;
+      }
+      v = Array.isArray(data) ? data[0] : data;
+      if (!v) return;
+
+      if (v.type === 'programming') {
+        // Admins can select hidden test cases directly (RLS: `is_hidden
+        // = false OR is_admin()`), no separate SECURITY DEFINER RPC
+        // needed here the way get_voyage_admin is for correct_index.
+        const { data: cases, error: casesErr } = await supabaseClient
+          .from('voyage_test_cases')
+          .select('input, expected_output, is_hidden')
+          .eq('voyage_id', id)
+          .order('ordinal', { ascending: true });
+        if (casesErr) console.error('Error fetching test cases for admin edit:', casesErr);
+        v.test_cases = cases || [];
+
+        // Flatten coding_config into top-level keys so the generic
+        // field renderer (which reads kirAdminModalConfig.values[field.id])
+        // picks them up like any other column.
+        const cfg = v.coding_config || {};
+        v.allowed_languages = cfg.allowed_languages || [];
+        v.time_limit_ms = cfg.time_limit_ms || 2000;
+      }
+    }
+
+    kirOpenAdminModal({
+      title: v ? 'Edit Voyage' : 'Tambah Voyage',
+      size: 'wide',
+      fields: voyageAdminFields(),
+      values: v,
+      saveLabel: v ? 'Simpan' : 'Tambah',
+      onSave: async (payload) => {
+        const isChoiceType = payload.type === 'mc' || payload.type === 'dropdown';
+        const isCodingType = payload.type === 'programming';
+
+        // Defense in depth: the "Programming" option is grayed out in the
+        // form whenever Subjek isn't Informatika, but that's a UI
+        // convenience, not enforcement — "Edit as JSON" mode and the
+        // DB's own CHECK constraint (voyages_programming_requires_informatika_check)
+        // are what actually stop this combination from being saved.
+        // Catching it here just gives a clearer message before the
+        // round-trip to the database.
+        if (isCodingType && payload.subject !== 'informatika') {
+          throw new Error('Tipe "Kompetitif (Programming)" hanya bisa dipakai jika Subjek adalah Informatika.');
+        }
+
+        const dbPayload = {
+          title: payload.title,
+          subject: payload.subject,
+          difficulty: payload.difficulty,
+          type: payload.type,
+          question: payload.question,
+          options: isChoiceType ? payload.options : null,
+          correct_index: isChoiceType ? payload.correct_index : null,
+          essay_ref: payload.essay_ref,
+          image_url: payload.image_url || null,
+          // Field is hidden (and so never collected) for non-essay types, so
+          // default it to true so the column (NOT NULL) always gets a
+          // sane value regardless of question type.
+          ai_grading_enabled: payload.type === 'essay' ? (payload.ai_grading_enabled !== false) : true,
+          coding_config: isCodingType
+            ? { allowed_languages: payload.allowed_languages, time_limit_ms: payload.time_limit_ms }
+            : null,
+        };
+
+        const result = v
+          ? await kirAdminUpdate('voyages', v.id, dbPayload, 'id', VOYAGE_SAFE_RETURN_COLUMNS)
+          : await kirAdminCreate('voyages', dbPayload, VOYAGE_SAFE_RETURN_COLUMNS);
+
+        if (!result.success) throw new Error(result.error);
+
+        const savedRow = Array.isArray(result.data) ? result.data[0] : result.data;
+        const voyageId = savedRow ? savedRow.id : (v ? v.id : null);
+
+        if (isCodingType && voyageId) {
+          await syncVoyageTestCases(voyageId, payload.test_cases || []);
+        }
+
+        await fetchVoyagesFromDatabase();
+        if (v && !document.getElementById('voyage-modal').classList.contains('hidden')) {
+          closeVoyageModal();
+        }
+      }
+    });
+  }
+
+  // Test cases live in their own table, so a coding voyage's save is
+  // two writes: the voyages row itself (above), then this — replace
+  // the full set of rows for that voyage rather than diffing, since
+  // problems typically have a handful of cases and full-replace is far
+  // simpler than reconciling adds/edits/removes/reorders.
+  async function syncVoyageTestCases(voyageId, testCases) {
+    const { error: deleteError } = await supabaseClient
+      .from('voyage_test_cases')
+      .delete()
+      .eq('voyage_id', voyageId);
+    if (deleteError) throw new Error('Gagal memperbarui test case: ' + deleteError.message);
+
+    if (!testCases.length) return;
+
+    const rows = testCases.map((tc, i) => ({
+      voyage_id: voyageId,
+      input: tc.input || '',
+      expected_output: tc.expected_output,
+      is_hidden: !!tc.is_hidden,
+      ordinal: i,
+    }));
+    const { error: insertError } = await supabaseClient.from('voyage_test_cases').insert(rows);
+    if (insertError) throw new Error('Gagal menyimpan test case: ' + insertError.message);
+  }
+
+  /* ----------------------------------------------------------
+     Admin integrity review panel
+     ----------------------------------------------------------
+     Reads from voyage_integrity_review (a view over
+     voyage_completions + voyage_telemetry + profiles — see the
+     anti-cheat SQL migration). Every completion already carries a
+     suspicion_score/suspicion_reasons/is_flagged computed server-side
+     at submit time from the telemetry the client sent along; this
+     panel is just where a human looks at what got flagged and either
+     dismisses it or leaves it as a record.
+     ---------------------------------------------------------- */
+  async function fetchFlaggedCompletions() {
+    const { data, error } = await supabaseClient
+      .from('voyage_integrity_review')
+      .select('*')
+      .eq('is_flagged', true)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error('Error fetching integrity review data:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async function refreshIntegrityBadge() {
+    const rows = await fetchFlaggedCompletions();
+    const badge = document.getElementById('voyage-integrity-badge');
+    if (rows.length > 0) {
+      badge.textContent = rows.length > 99 ? '99+' : String(rows.length);
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+    return rows;
+  }
+
+  async function openIntegrityModal() {
+    kirModalShow(document.getElementById('integrity-modal'));
+    const list = document.getElementById('integrity-list');
+    list.innerHTML = `<p class="text-sm text-zinc-500">Memuat…</p>`;
+    const rows = await refreshIntegrityBadge();
+    renderIntegrityList(rows);
+  }
+
+  function closeIntegrityModal() {
+    kirModalHide(document.getElementById('integrity-modal'));
+  }
+
+  function renderIntegrityList(rows) {
+    const list = document.getElementById('integrity-list');
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-zinc-500">Tidak ada submission yang ditandai saat ini.</p>`;
+      return;
+    }
+    list.innerHTML = rows.map(r => {
+      const reasons = Array.isArray(r.suspicion_reasons) ? r.suspicion_reasons : [];
+      const when = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '';
+      return `
+        <div class="glass" style="padding:0.85rem 1rem; border-radius:0.75rem; display:flex; flex-direction:column; gap:0.4rem;">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold">${kirEscapeHtml(r.user_name || 'Anggota')} <span class="text-zinc-500 font-normal">— ${kirEscapeHtml(r.voyage_title || '')}</span></div>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.15); color:#ef4444;">Skor: ${r.suspicion_score ?? 0}</span>
+          </div>
+          <div class="text-xs text-zinc-500">${when}</div>
+          ${reasons.length ? `<ul class="text-xs text-zinc-400" style="list-style:disc; padding-left:1.1rem;">${reasons.map(x => `<li>${kirEscapeHtml(x)}</li>`).join('')}</ul>` : ''}
+          <div class="flex justify-end">
+            <button type="button" class="admin-btn-secondary text-xs" onclick="dismissIntegrityFlag('${r.completion_id}', this)">Tandai sudah ditinjau</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function dismissIntegrityFlag(completionId, btnEl) {
+    if (btnEl) btnEl.disabled = true;
+    const { error } = await supabaseClient
+      .from('voyage_completions')
+      .update({ is_flagged: false, reviewed_at: new Date().toISOString() })
+      .eq('id', completionId);
+    if (error) {
+      console.error('Error dismissing flag:', error);
+      if (btnEl) btnEl.disabled = false;
+      return;
+    }
+    const rows = await refreshIntegrityBadge();
+    renderIntegrityList(rows);
+  }
+
+  function confirmDeleteVoyage(id) {
+    const v = VOYAGES.find(x => x.id === id);
+    kirConfirmDialog({
+      title: 'Hapus voyage ini?',
+      message: v ? `"${v.title}" akan dihapus permanen.` : 'Soal ini akan dihapus permanen.',
+      onConfirm: async () => {
+        const result = await kirAdminDelete('voyages', id);
+        if (!result.success) throw new Error(result.error);
+        closeVoyageModal();
+        await fetchVoyagesFromDatabase();
+      }
+    });
+  }
+
+  kirRenderAdminFab({ onClick: () => openVoyageAdminModal(null), variant: 'secondary' });
+  if (typeof kirIsAdmin === 'function' && kirIsAdmin()) {
+    document.getElementById('voyage-import-json-btn').classList.remove('hidden');
+    document.getElementById('voyage-integrity-btn').classList.remove('hidden');
+    refreshIntegrityBadge();
+  }
+
   document.getElementById('filter-subject-select').addEventListener('change', handleSubjectFilterChange);
   kirRefreshMultiSelect('filter-subject-select');
+  document.getElementById('filter-type-select').addEventListener('change', handleTypeFilterChange);
+  kirRefreshMultiSelect('filter-type-select');
+  kirRefreshCustomSelect('voyage-sort-select');
   updateDiffFilter(true);
-  refreshDeltasHeader();
+  
+  if (window.__kirProfileReady) {
+    window.__kirProfileReady.then(() => refreshDeltasHeader());
+  } else {
+    refreshDeltasHeader();
+  }
+  
   renderVoyagesStreak();
   kirInjectSidebar('voyages');
+  fetchVoyagesFromDatabase();
+
+  // Extra deterrent alongside the CSS user-select:none — blocks copy
+  // and right-click-to-copy on the soal/options/essay side of things
+  // (cards + modal main pane). Comments and actual form fields are
+  // untouched. Not a real security boundary (view-source still works),
+  // just enough friction to stop casual copy-paste into an AI chat.
+  function isProtectedTarget(el) {
+    if (el.closest('input, textarea, select')) return false;
+    if (el.closest('.modal-split-comments')) return false;
+    return !!el.closest('.voyage-card, .modal-split-main');
+  }
+  document.addEventListener('copy', (e) => {
+    if (isProtectedTarget(e.target)) e.preventDefault();
+  });
+  document.addEventListener('contextmenu', (e) => {
+    if (isProtectedTarget(e.target)) e.preventDefault();
+  });
+
+  window.addEventListener('blur', () => {
+    if (currentVoyageId && document.getElementById('voyage-modal').classList.contains('modal-open')) {
+      telemetryData.tab_switch_count++;
+    }
+  });
 </script>
 </body>
 </html>

@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Tugas</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
+<script src="js/admin-shared.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,8 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
-
-<!-- MathJax for rendering LaTeX -->
+<link rel="stylesheet" href="css/admin-shared.css">
 <script>
   window.MathJax = {
     tex: {
@@ -53,12 +54,12 @@
   <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
     <div class="mb-7">
       <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="tugas">Tugas</h1>
-      <p class="text-zinc-500 text-sm mt-1" data-i18n="tasks_desc">Semua yang ditugaskan ke klub saat ini.</p>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="tasks_desc">Semua yang ditugaskan ke ekstrakurikuler saat ini.</p>
     </div>
 
     <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Individual</button>
-      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">Ekstrakurikuler</button>
+      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">Individual</button>
+      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Ekstrakurikuler</button>
       <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Kelompok</button>
       
       <div class="w-px h-6 bg-white/10 mx-2"></div>
@@ -73,56 +74,118 @@
 
 <!-- Task detail / submission modal -->
 <div id="task-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeTaskModal()">
-  <div class="modal-card p-6">
-    <div class="flex items-start justify-between gap-4 mb-1">
-      <h2 id="modal-title" class="font-display text-lg font-semibold"></h2>
-      <button onclick="closeTaskModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 -mt-1 -mr-1 p-1">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-      </button>
+  <div class="modal-card modal-card-split p-0">
+    <div class="modal-split-main">
+      <div id="task-modal-image-wrap" class="hidden rounded-t-2xl md:rounded-tr-none overflow-hidden">
+        <img id="task-modal-image" class="w-full h-48 sm:h-56 object-cover" alt="" />
+      </div>
+      <div class="p-6">
+      <div class="flex items-start justify-between gap-4 mb-1">
+        <h2 id="modal-title" class="font-display text-lg font-semibold"></h2>
+        <div class="flex items-center gap-1.5 shrink-0 -mt-1 -mr-1">
+          <div id="task-modal-admin-actions" class="flex items-center gap-1.5"></div>
+          <button onclick="closeTaskModal()" class="text-zinc-500 hover:text-zinc-300 p-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <p id="modal-meta" class="text-zinc-500 text-xs mb-4"></p>
+      <div class="mb-4 w-56 relative z-20">
+        <select id="modal-status-select" onchange="handleTaskStatusChange(this.value)" class="glass-input w-full rounded-lg px-3 py-2 text-sm text-zinc-100">
+          <option value="todo">Belum Dimulai</option>
+          <option value="progress">Sedang Dikerjakan</option>
+          <option value="review">Menunggu Peninjauan</option>
+          <option value="done">Selesai</option>
+        </select>
+      </div>
+
+      <div class="glass rounded-lg p-4 mb-5">
+        <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Deskripsi tugas</p>
+        <p id="modal-description" class="text-sm text-zinc-300 leading-relaxed"></p>
+      </div>
+
+      <div>
+        <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="modal_ans">Jawaban kamu</p>
+        <div id="modal-submission-status" class="text-sm mb-3"></div>
+
+        <label id="modal-file-label-wrap" for="modal-file-input" class="glass-input flex items-center gap-3 rounded-lg px-4 py-3 text-sm cursor-pointer hover:bg-white/5 transition">
+          <svg class="w-4 h-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+          <span id="modal-file-label" class="text-zinc-400" data-i18n="modal_upload">Klik untuk unggah file jawaban&hellip;</span>
+        </label>
+        <input id="modal-file-input" type="file" class="hidden" onchange="handleSubmissionFile(event)" />
+        <p id="modal-file-locked-note" class="hidden text-[11px] text-zinc-500 mt-2" data-i18n="modal_wrong_branch">Tugas ini untuk cabang lain, kamu tidak bisa mengumpulkan jawaban di sini.</p>
+      </div>
+      </div>
     </div>
-    <p id="modal-meta" class="text-zinc-500 text-xs mb-4"></p>
-    <span id="modal-status" class="inline-block text-xs font-medium px-3 py-1 rounded-full mb-4"></span>
 
-    <div class="glass rounded-lg p-4 mb-5">
-      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="modal_desc">Deskripsi tugas</p>
-      <p id="modal-description" class="text-sm text-zinc-300 leading-relaxed"></p>
+    <div class="modal-split-comments">
+      <div id="task-comments-root" class="comment-panel-inner"><!-- filled by kirRenderCommentSection --></div>
     </div>
-
-    <div>
-      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="modal_ans">Jawaban kamu</p>
-      <div id="modal-submission-status" class="text-sm mb-3"></div>
-
-      <label for="modal-file-input" class="glass-input flex items-center gap-3 rounded-lg px-4 py-3 text-sm cursor-pointer hover:bg-white/5 transition">
-        <svg class="w-4 h-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-        <span id="modal-file-label" class="text-zinc-400" data-i18n="modal_upload">Klik untuk unggah file jawaban&hellip;</span>
-      </label>
-      <input id="modal-file-input" type="file" class="hidden" onchange="handleSubmissionFile(event)" />
-
-      <p class="text-[11px] text-zinc-600 mt-2" data-i18n="modal_proto">Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.</p>
-    </div>
-
-    <div class="border-t border-white/10 mt-5 pt-5" id="task-comments-root"><!-- filled by kirRenderCommentSection --></div>
   </div>
 </div>
 
 <script>
-  const TASKS = [
-    { id: 't1', title: 'Desain Flyer Acara', type: 'ekskul', cabang: 'both', assignee: 'Alex', due: '18 Jul', status: 'progress',
-      description: 'Buat flyer untuk Rapat Umum minggu ini. Gunakan palet warna cabang kamu, sertakan tanggal, jam, dan lokasi. Format akhir: PNG atau PDF, ukuran poster A3.' },
-    { id: 't2', title: 'Email Penjangkauan Sponsor', type: 'ekskul', cabang: 'sains', assignee: 'Priya', due: '20 Jul', status: 'progress',
-      description: 'Susun draf email penjangkauan untuk 5 calon sponsor lokal. Sertakan proposal singkat kegiatan klub dan manfaat kemitraan.' },
-    { id: 't3', title: 'Draf Anggaran Pertunjukan Musim Gugur', type: 'kelompok', cabang: 'robotik', assignee: 'Marcus', due: '22 Jul', status: 'review',
-      description: 'Rincikan estimasi biaya untuk Latihan Pertunjukan Musim Gugur: sewa tempat, konsumsi, dan perlengkapan. Unggah dalam bentuk spreadsheet.' },
-    { id: 't4', title: 'Konfirmasi Pemesanan Tempat', type: 'individual', cabang: 'both', assignee: 'Alex', due: '14 Jul', status: 'late',
-      description: 'Hubungi pengelola Ruang 214 untuk konfirmasi ketersediaan tanggal Rapat Umum dan Malam Pemilihan Pengurus.' },
-    { id: 't5', title: 'Postingan Rekap Media Sosial', type: 'ekskul', cabang: 'both', assignee: 'Priya', due: '25 Jul', status: 'todo',
-      description: 'Buat rekap foto dan highlight dari acara bulan ini untuk diposting di Instagram klub.' },
-    { id: 't6', title: 'Surat Suara Pemilihan Pengurus', type: 'individual', cabang: 'sains', assignee: 'Marcus', due: '30 Jul', status: 'done',
-      description: 'Desain dan cetak surat suara untuk Malam Pemilihan Pengurus, termasuk daftar kandidat yang sudah dikonfirmasi.' },
-  ];
+  let TASKS = [];
+  window.USER_SUBMISSIONS = {};
+  window.USER_STATUSES = {};
 
-  let currentTaskFilter = 'ekskul';
-  let currentCabangFilter = 'all';
+  async function fetchTasksFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('tasks')
+      .select('*')
+      .order('due_date', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return;
+    }
+    
+    TASKS = data || [];
+
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (userData?.user) {
+      const { data: subs } = await supabaseClient.from('task_submissions').select('*').eq('user_id', userData.user.id);
+      if (subs) {
+        subs.forEach(s => window.USER_SUBMISSIONS[s.task_id] = { fileName: s.file_name, url: s.file_url, submittedAt: s.created_at, id: s.id });
+      }
+      const { data: statuses } = await supabaseClient.from('user_task_statuses').select('*').eq('user_id', userData.user.id);
+      if (statuses) {
+        statuses.forEach(s => window.USER_STATUSES[s.task_id] = s.status);
+      }
+    }
+
+    renderTaskList();
+  }
+
+  let currentTaskFilter = 'individual';
+  let currentCabangFilter = kirCurrentUserCabang() === 'both' ? 'all' : kirCurrentUserCabang();
+
+  function setTaskFilter(filter) {
+    currentTaskFilter = filter;
+    ['individual', 'ekskul', 'kelompok'].forEach(f => {
+      const btn = document.getElementById('filter-' + f);
+      if (!btn) return;
+      const active = f === filter;
+      btn.classList.toggle('bg-accent-gradient', active);
+      btn.classList.toggle('text-white', active);
+      btn.classList.toggle('shadow-glow-sm', active);
+      btn.classList.toggle('bg-white/5', !active);
+      btn.classList.toggle('border', !active);
+      btn.classList.toggle('border-white/10', !active);
+      btn.classList.toggle('text-zinc-400', !active);
+    });
+    renderTaskList();
+  }
+
+  function setCabangFilter(cabang) {
+    currentCabangFilter = currentCabangFilter === cabang ? 'all' : cabang;
+    ['robotik', 'sains'].forEach(c => {
+      const btn = document.getElementById('filter-cabang-' + c);
+      if (!btn) return;
+      btn.classList.toggle('opacity-50', currentCabangFilter !== c);
+    });
+    renderTaskList();
+  }
 
   const STATUS_META = {
     progress: { i18n: 'status_progress', label: 'Sedang Dikerjakan', cls: 'bg-accent-15 text-accent-300 border border-accent-30' },
@@ -133,20 +196,74 @@
   };
 
   function submissionKey(taskId) { return 'kir_submission_' + taskId; }
+  
+  function getSubmission(taskId) {
+    if (typeof window.USER_SUBMISSIONS !== 'undefined' && window.USER_SUBMISSIONS[taskId]) {
+      return window.USER_SUBMISSIONS[taskId];
+    }
+    const raw = localStorage.getItem(submissionKey(taskId));
+    return raw ? JSON.parse(raw) : null;
+  }
 
   function renderTaskList() {
     const list = document.getElementById('task-list');
-    list.innerHTML = TASKS.map((t, i) => {
-      const meta = STATUS_META[t.status];
-      const submitted = localStorage.getItem(submissionKey(t.id));
-      return `
-        <button onclick="openTaskModal('${t.id}')" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full text-left hover:bg-white/5 transition">
-          <div class="min-w-0">
-            <p class="font-medium text-zinc-100">${t.title}</p>
-            <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee} &middot; <span data-i18n="due">Tenggat:</span> ${t.due}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
+
+    if (TASKS.length === 0) {
+      list.innerHTML = `
+        <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
+          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+          <p class="text-zinc-300 font-medium mb-1">Belum ada tugas di sini!</p>
+          <p class="text-zinc-500 text-sm">Santai dulu, atau cek materi untuk belajar hal baru sementara pengurus menyiapkan kegiatan selanjutnya.</p>
+        </div>`;
+      return;
+    }
+
+    const filtered = TASKS.filter(t =>
+      t.type === currentTaskFilter &&
+      (currentCabangFilter === 'all' || t.cabang === currentCabangFilter || t.cabang === 'both')
+    );
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
+          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+          <p class="text-zinc-300 font-medium mb-1">Belum ada tugas di sini!</p>
+          <p class="text-zinc-500 text-sm">Coba ubah filter, atau cek lagi nanti.</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((t, i) => {
+      const userStatus = window.USER_STATUSES[t.id] || 'todo';
+      const meta = STATUS_META[userStatus] || STATUS_META['todo'];
+      const submitted = getSubmission(t.id);
+      const formattedDue = t.due_date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(t.due_date)) : 'Tanpa Tenggat';
+      const canSubmit = kirCanSubmitTask(t);
+
+      const cardHtml = `
+        <div onclick="openTaskModal('${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTaskModal('${t.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-xl p-5 relative overflow-hidden w-full text-left hover:bg-white/5 transition group cursor-pointer">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            ${t.image_url ? `<div class="item-thumb-slot item-thumb-slot-wide"><img src="${t.image_url}" alt="" /></div>` : ''}
+            <div class="relative z-10 min-w-0">
+              <p class="font-medium text-zinc-100">${t.title}</p>
+              <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
+            </div>
+            <div class="relative z-10 self-start sm:self-center shrink-0" onclick="event.stopPropagation();">
+              <select onchange="handleTaskStatusChange(this.value, '${t.id}')" ${!canSubmit ? 'disabled' : ''} class="text-xs font-medium pl-3 pr-7 py-1 rounded-full ${meta.cls} appearance-none cursor-pointer outline-none focus:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed w-full h-full">
+                <option value="todo" class="bg-zinc-900 text-zinc-300" ${userStatus === 'todo' ? 'selected' : ''}>Belum Dimulai</option>
+                <option value="progress" class="bg-zinc-900 text-zinc-300" ${userStatus === 'progress' ? 'selected' : ''}>Sedang Dikerjakan</option>
+                <option value="review" class="bg-zinc-900 text-zinc-300" ${userStatus === 'review' ? 'selected' : ''}>Menunggu Peninjauan</option>
+                <option value="done" class="bg-zinc-900 text-zinc-300" ${userStatus === 'done' ? 'selected' : ''}>Selesai</option>
+              </select>
+              <svg class="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </div>
           </div>
-          <span class="self-start sm:self-center shrink-0 text-xs font-medium px-3 py-1 rounded-full ${meta.cls}" data-i18n="${meta.i18n}">${meta.label}</span>
-        </button>`;
+        </div>`;
+
+      return kirAdminWrapQuickActions(cardHtml, {
+        onEdit: `openTaskAdminModal('${t.id}')`,
+        onDelete: `confirmDeleteTask('${t.id}')`
+      });
     }).join('');
     
     if (window.MathJax && window.MathJax.typesetPromise) {
@@ -156,23 +273,81 @@
 
   let currentTaskId = null;
 
+  async function handleTaskStatusChange(newStatus, taskId = currentTaskId) {
+    if (!taskId) return;
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData?.user) return;
+
+    window.USER_STATUSES[taskId] = newStatus;
+    
+    if (currentTaskId === taskId) {
+      const selectEl = document.getElementById('modal-status-select');
+      if (selectEl && selectEl.value !== newStatus) {
+        selectEl.value = newStatus;
+        kirRefreshCustomSelect('modal-status-select');
+      }
+    }
+    
+    renderTaskList();
+
+    const { error } = await supabaseClient.from('user_task_statuses').upsert({
+      task_id: taskId,
+      user_id: userData.user.id,
+      status: newStatus,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'task_id, user_id' });
+
+    if (error) {
+      console.error('Error updating status:', error.message);
+    }
+  }
+
+  function kirCanSubmitTask(task) {
+    const userCabang = kirCurrentUserCabang();
+    return task.cabang === 'both' || userCabang === 'both' || task.cabang === userCabang;
+  }
+
   function openTaskModal(taskId) {
     const task = TASKS.find(t => t.id === taskId);
     if (!task) return;
     currentTaskId = taskId;
-    const meta = STATUS_META[task.status];
+
+    document.getElementById('task-modal-admin-actions').innerHTML = kirAdminActionsHtml({
+      onEdit: `openTaskAdminModal('${task.id}')`,
+      onDelete: `confirmDeleteTask('${task.id}')`
+    });
+
+    const canSubmit = kirCanSubmitTask(task);
+    document.getElementById('modal-file-label-wrap').classList.toggle('hidden', !canSubmit);
+    document.getElementById('modal-file-locked-note').classList.toggle('hidden', canSubmit);
+    document.getElementById('modal-file-input').disabled = !canSubmit;
+    const meta = STATUS_META[task.status] || STATUS_META['todo'];
+    const formattedDue = task.due_date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(task.due_date)) : 'Tanpa Tenggat';
 
     document.getElementById('modal-title').textContent = task.title;
-    document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">Ditugaskan ke</span> ${task.assignee} &middot; <span data-i18n="due">Tenggat:</span> ${task.due}`;
-    const statusEl = document.getElementById('modal-status');
-    statusEl.textContent = meta.label;
-    statusEl.setAttribute('data-i18n', meta.i18n);
-    statusEl.className = 'inline-block text-xs font-medium px-3 py-1 rounded-full mb-4 ' + meta.cls;
+    document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">Ditugaskan ke</span> ${task.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}`;
+    
+    const selectEl = document.getElementById('modal-status-select');
+    selectEl.value = window.USER_STATUSES[task.id] || 'todo';
+    selectEl.disabled = !canSubmit;
+    kirRefreshCustomSelect('modal-status-select');
+    
+    const trigger = selectEl.nextElementSibling?.querySelector('.kir-select-trigger');
+    if (trigger) {
+      trigger.style.pointerEvents = canSubmit ? 'auto' : 'none';
+      trigger.style.opacity = canSubmit ? '1' : '0.5';
+    }
+    
     document.getElementById('modal-description').textContent = task.description;
+
+    const modalImgWrap = document.getElementById('task-modal-image-wrap');
+    const modalImg = document.getElementById('task-modal-image');
+    if (task.image_url) { modalImg.src = task.image_url; modalImgWrap.classList.remove('hidden'); }
+    else { modalImgWrap.classList.add('hidden'); }
 
     renderSubmissionStatus();
     kirRenderCommentSection('task-comments-root', 'task', taskId);
-    document.getElementById('task-modal').classList.remove('hidden');
+    kirModalShow(document.getElementById('task-modal'));
     kirApplyTranslations();
     
     if (window.MathJax && window.MathJax.typesetPromise) {
@@ -181,39 +356,134 @@
   }
 
   function closeTaskModal() {
-    document.getElementById('task-modal').classList.add('hidden');
+    kirModalHide(document.getElementById('task-modal'));
     currentTaskId = null;
   }
 
   function renderSubmissionStatus() {
     const el = document.getElementById('modal-submission-status');
-    const saved = localStorage.getItem(submissionKey(currentTaskId));
-    if (saved) {
-      const data = JSON.parse(saved);
-      el.innerHTML = `<span class="text-accent-300">&#10003; Terkirim:</span> <span class="text-zinc-300">${data.fileName}</span> <button onclick="clearSubmission()" class="text-zinc-600 hover:text-zinc-400 text-xs ml-2 underline">hapus</button>`;
+    const data = getSubmission(currentTaskId);
+    if (data) {
+      el.innerHTML = `<span class="text-accent-300">&#10003; Terkirim:</span> <a href="${data.url || '#'}" target="_blank" class="text-zinc-300 hover:underline">${data.fileName}</a> <button onclick="clearSubmission()" class="text-zinc-600 hover:text-zinc-400 text-xs ml-2 underline">hapus</button>`;
     } else {
       el.innerHTML = `<span class="text-zinc-500">Belum ada jawaban dikirim.</span>`;
     }
   }
 
-  function handleSubmissionFile(event) {
+  async function handleSubmissionFile(event) {
     const file = event.target.files[0];
     if (!file || !currentTaskId) return;
-    localStorage.setItem(submissionKey(currentTaskId), JSON.stringify({ fileName: file.name, submittedAt: Date.now() }));
-    renderSubmissionStatus();
-    renderTaskList();
+    const task = TASKS.find(t => t.id === currentTaskId);
+    if (!task || !kirCanSubmitTask(task)) {
+      event.target.value = '';
+      return;
+    }
+
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData?.user) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${currentTaskId}-${userData.user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `submissions/${fileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage.from('assets').upload(filePath, file);
+    if (uploadError) {
+      alert('Gagal mengunggah file: ' + uploadError.message);
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage.from('assets').getPublicUrl(filePath);
+    const fileUrl = publicUrlData.publicUrl;
+
+    const { data: submission, error: dbError } = await supabaseClient.from('task_submissions').insert({
+      task_id: currentTaskId,
+      user_id: userData.user.id,
+      file_url: fileUrl,
+      file_name: file.name
+    }).select().single();
+
+    if (!dbError && submission) {
+      window.USER_SUBMISSIONS[currentTaskId] = { fileName: file.name, url: fileUrl, submittedAt: submission.created_at, id: submission.id };
+      localStorage.setItem(submissionKey(currentTaskId), JSON.stringify(window.USER_SUBMISSIONS[currentTaskId]));
+      renderSubmissionStatus();
+      renderTaskList();
+    }
     event.target.value = '';
   }
 
-  function clearSubmission() {
+  async function clearSubmission() {
     if (!currentTaskId) return;
+    const data = getSubmission(currentTaskId);
+    if (data && data.id) {
+      await supabaseClient.from('task_submissions').delete().eq('id', data.id);
+    }
+    delete window.USER_SUBMISSIONS[currentTaskId];
     localStorage.removeItem(submissionKey(currentTaskId));
     renderSubmissionStatus();
     renderTaskList();
   }
 
-  renderTaskList();
+  function taskAdminFields() {
+    return [
+      { id: 'title', label: 'Judul', type: 'text', required: true },
+      { id: 'description', label: 'Deskripsi', type: 'textarea', rows: 4, required: true },
+      { id: 'type', label: 'Tipe', type: 'select', required: true, row: 'type-cabang', options: [
+        { value: 'individual', label: 'Individual' },
+        { value: 'ekskul', label: 'Ekstrakurikuler' },
+        { value: 'kelompok', label: 'Kelompok' },
+      ] },
+      { id: 'cabang', label: 'Cabang', type: 'select', required: true, row: 'type-cabang', options: [
+        { value: 'robotik', label: 'Robotik' },
+        { value: 'sains', label: 'Sains' },
+        { value: 'both', label: 'Keduanya' },
+      ] },
+      { id: 'status', label: 'Status', type: 'select', required: true, row: 'status-assignee', options: Object.keys(STATUS_META).map(k => ({ value: k, label: STATUS_META[k].label })) },
+      { id: 'assignee', label: 'Ditugaskan ke', type: 'text', placeholder: 'Semua Anggota', row: 'status-assignee' },
+      { id: 'due_date', label: 'Tenggat', type: 'date' },
+      { id: 'image_url', label: 'URL Gambar', type: 'image' },
+    ];
+  }
+
+  function openTaskAdminModal(id) {
+    const task = id ? TASKS.find(t => t.id === id) : null;
+    kirOpenAdminModal({
+      title: task ? 'Edit Tugas' : 'Tambah Tugas',
+      size: 'wide',
+      fields: taskAdminFields(),
+      values: task,
+      saveLabel: task ? 'Simpan' : 'Tambah',
+      onSave: async (payload) => {
+        const result = task
+          ? await kirAdminUpdate('tasks', task.id, payload)
+          : await kirAdminCreate('tasks', payload);
+        if (!result.success) throw new Error(result.error);
+        await fetchTasksFromDatabase();
+        if (task && currentTaskId === task.id) closeTaskModal();
+      }
+    });
+  }
+
+  function confirmDeleteTask(id) {
+    const task = TASKS.find(t => t.id === id);
+    kirConfirmDialog({
+      title: 'Hapus tugas ini?',
+      message: task ? `"${task.title}" akan dihapus permanen.` : 'Tugas ini akan dihapus permanen.',
+      onConfirm: async () => {
+        const result = await kirAdminDelete('tasks', id);
+        if (!result.success) throw new Error(result.error);
+        if (currentTaskId === id) closeTaskModal();
+        await fetchTasksFromDatabase();
+      }
+    });
+  }
+
+  kirRenderAdminFab({ onClick: () => openTaskAdminModal(null) });
+
   kirInjectSidebar('tasks');
+  if (currentCabangFilter !== 'all') {
+    document.getElementById('filter-cabang-' + currentCabangFilter)?.classList.remove('opacity-50');
+  }
+  fetchTasksFromDatabase();
 </script>
 </body>
 </html>

@@ -7,6 +7,7 @@
 
 <!-- Auth guard: runs before the page paints, sends logged-out
      visitors to auth.html. Must load before the rest of <head>. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
 
@@ -120,23 +121,48 @@
     }
   }
 
-  function handleAvatarUpload(event) {
+  async function handleAvatarUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     if (file.size > 1.5 * 1024 * 1024) {
-      alert('Pilih gambar di bawah 1.5MB (prototipe menyimpan ini di browser kamu).');
+      alert('Pilih gambar di bawah 1.5MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      kirSetUserAvatar(reader.result);
-      refreshAvatarPreview();
-      kirRenderUserChrome();
-    };
-    reader.readAsDataURL(file);
+
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData?.user) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userData.user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('assets')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      alert('Gagal mengunggah foto: ' + uploadError.message);
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from('assets')
+      .getPublicUrl(filePath);
+
+    const avatarUrl = publicUrlData.publicUrl;
+
+    await supabaseClient.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userData.user.id);
+
+    kirSetUserAvatar(avatarUrl);
+    refreshAvatarPreview();
+    kirRenderUserChrome();
   }
 
-  function removeAvatar() {
+  async function removeAvatar() {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (userData?.user) {
+      await supabaseClient.from('profiles').update({ avatar_url: null }).eq('id', userData.user.id);
+    }
     kirClearUserAvatar();
     refreshAvatarPreview();
     kirRenderUserChrome();

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Anggota</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
 
@@ -26,6 +27,13 @@
     background-position: 0px 0px;
   }
   #chart-viewport.dragging { cursor: grabbing; }
+
+  /* The faint slate dots read fine on the near-black dark bg, but
+     disappear against the near-opaque white .glass surface in
+     light mode — bump contrast + darken the dot color there. */
+  [data-theme="light"] #chart-viewport {
+    background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+  }
 
   /* Cards get a slightly less translucent backing than the default
      .glass so the viewport's dot-grid texture doesn't visibly bleed
@@ -159,24 +167,38 @@
 </div>
 
 <script>
-  const MEMBERS = [
-    { name: 'Alex Pratama', role: 'Ketua Klub', cabang: 'both' },
-    { name: 'Priya Anand', role: 'Wakil Ketua', cabang: 'sains' },
-    { name: 'Budi Santoso', role: 'Sekretaris', cabang: 'robotik' },
-    { name: 'Marcus Wijaya', role: 'Bendahara', cabang: 'robotik' },
-    { name: 'Reza Firmansyah', role: 'PJ Robotika', cabang: 'robotik' },
-    { name: 'Dinda Larasati', role: 'PJ Sains', cabang: 'sains' },
-    { name: 'Kayla Amelia', role: 'Anggota', cabang: 'both' },
-    { name: 'Fajar Ramadhan', role: 'Anggota', cabang: 'robotik' },
-    { name: 'Nabila Putri', role: 'Anggota', cabang: 'sains' },
-    { name: 'Yusuf Hakim', role: 'Anggota', cabang: 'robotik' },
-    { name: 'Clara Situmorang', role: 'Anggota', cabang: 'sains' },
-    { name: 'Bayu Setiawan', role: 'Anggota', cabang: 'robotik' },
-    { name: 'Intan Maharani', role: 'Anggota', cabang: 'both' },
-    { name: 'Rangga Saputra', role: 'Anggota', cabang: 'robotik' },
-    { name: 'Salsabila Putri', role: 'Anggota', cabang: 'sains' },
-    { name: 'Hendra Gunawan', role: 'Anggota', cabang: 'robotik' },
-  ];
+  let MEMBERS = [];
+
+  async function fetchMembersFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .order('name', { ascending: true });
+      
+    if (error) {
+      console.error('Error fetching members:', error);
+      return;
+    }
+
+    const youName = localStorage.getItem('kir_user_name') || 'Anggota';
+
+    MEMBERS = data.map(p => ({
+      name: p.name,
+      role: p.role || 'Anggota',
+      cabang: p.cabang,
+      isYou: p.name === youName
+    }));
+
+    renderMembers();
+    
+    // Wait a frame so layout has settled (fonts, DOM) before measuring connectors.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        drawConnectors();
+        centerCanvas();
+      });
+    });
+  }
 
   function cabangBadges(cabang) {
     if (cabang === 'both') {
@@ -188,11 +210,13 @@
   }
 
   function getRoleI18n(role) {
-    const map = { 'Ketua Klub': 'role_ketua', 'Wakil Ketua': 'role_wakil', 'Sekretaris': 'role_sekretaris', 'Bendahara': 'role_bendahara', 'PJ Robotika': 'role_pj_robotika', 'PJ Sains': 'role_pj_sains', 'Anggota': 'role_anggota' };
-    return map[role] || 'role_anggota';
+    const map = { 'Ketua Ekstrakurikuler': 'role_ketua', 'Wakil Ketua': 'role_wakil', 'Sekretaris': 'role_sekretaris', 'Bendahara': 'role_bendahara', 'PJ Robotika': 'role_pj_robotika', 'PJ Sains': 'role_pj_sains', 'Anggota': 'role_anggota' };
+    return map[role] || null;
   }
 
   function buildCard(m) {
+    const i18nKey = getRoleI18n(m.role);
+    const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
     return `
       <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg">
         <div class="w-12 h-12 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold shrink-0 shadow-glow-sm">
@@ -200,7 +224,7 @@
         </div>
         <div class="min-w-0 w-full">
           <p class="font-medium text-zinc-100 text-sm truncate">${m.name}${m.isYou ? ' <span class="text-accent-300" data-i18n="you">(kamu)</span>' : ''}</p>
-          <p class="text-zinc-500 text-[11px] mt-0.5" data-i18n="${getRoleI18n(m.role)}">${m.role}</p>
+          <p class="text-zinc-500 text-[11px] mt-0.5" ${i18nAttr}>${m.role}</p>
         </div>
         <div class="flex items-center justify-center gap-1 mt-1">${cabangBadges(m.cabang)}</div>
       </div>`;
@@ -213,14 +237,14 @@
   }
 
   function renderMembers() {
-    const you = kirCurrentUserName();
-    const yourCabang = kirCurrentUserCabang();
-    const all = [{ name: you, isYou: true, role: 'Anggota', cabang: yourCabang }, ...MEMBERS];
+    const all = MEMBERS;
 
-    const ketua = all.filter(m => m.role === 'Ketua Klub');
-    const wakil = all.filter(m => m.role === 'Wakil Ketua');
-    const inti = all.filter(m => m.role === 'Sekretaris' || m.role === 'Bendahara' || m.role === 'PJ Robotika' || m.role === 'PJ Sains');
-    const anggota = all.filter(m => m.role === 'Anggota');
+    const ketua = all.filter(m => m.role.startsWith('Ketua Ekstrakurikuler'));
+    const wakil = all.filter(m => m.role.startsWith('Wakil Ketua'));
+    const inti = all.filter(m => m.role.startsWith('Sekretaris') || m.role.startsWith('Bendahara') || m.role.startsWith('PJ'));
+    
+    const placed = new Set([...ketua, ...wakil, ...inti]);
+    const anggota = all.filter(m => !placed.has(m));
 
     const anggotaRows = chunkArray(anggota, 5)
       .map(row => `<div class="org-row">${row.map(buildCard).join('')}</div>`)
@@ -401,18 +425,9 @@
     });
   }
 
-  renderMembers();
   initChartInteractions();
-
-  // Wait a frame so layout has settled (fonts, DOM) before measuring.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      drawConnectors();
-      centerCanvas();
-    });
-  });
-
   kirInjectSidebar('members');
+  fetchMembersFromDatabase();
 </script>
 </body>
 </html>

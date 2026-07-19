@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Materi</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
+<script src="js/admin-shared.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin-shared.css">
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -30,8 +33,8 @@
       <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
       <span class="font-display font-semibold">KIR</span>
     </a>
-    <button onclick="document.getElementById('sidebar').classList.toggle('sidebar-collapsed')" class="text-zinc-300 p-2 -mr-2">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 collapse-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
     </button>
@@ -42,26 +45,195 @@
   <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
     <div class="mb-7">
       <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="materials">Materials</h1>
-      <p class="text-zinc-500 text-sm mt-1" data-i18n="materials_desc">Modul pembelajaran dan referensi untuk anggota klub.</p>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="materials_desc">Modul pembelajaran dan referensi untuk anggota ekstrakurikuler.</p>
     </div>
 
-    <div class="grid sm:grid-cols-2 gap-5">
-      <div class="glass rounded-xl p-5 border border-accent-30 animate-stagger-in" style="animation-delay: 0ms">
-        <h3 class="font-display font-semibold text-lg text-zinc-100 mb-2">Panduan Dasar C++</h3>
-        <p class="text-zinc-400 text-sm mb-4">Materi pemrograman mikrokontroler untuk robotik dasar.</p>
-        <button class="px-4 py-2 rounded-lg bg-white/10 text-sm font-medium hover:bg-white/20 transition">Unduh PDF</button>
+    <!-- Search and Filters -->
+    <div class="mb-6">
+      <div class="relative mb-4">
+        <input type="text" id="material-search-input" placeholder="Search materials..." class="glass-input w-full rounded-lg px-4 py-3 text-sm pl-10" data-i18n-placeholder="materials_search_placeholder" />
+        <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
       </div>
-      <div class="glass rounded-xl p-5 border border-accent-30 animate-stagger-in" style="animation-delay: 45ms">
-        <h3 class="font-display font-semibold text-lg text-zinc-100 mb-2">Metodologi Riset</h3>
-        <p class="text-zinc-400 text-sm mb-4">Pengantar menyusun kerangka penelitian karya ilmiah.</p>
-        <button class="px-4 py-2 rounded-lg bg-white/10 text-sm font-medium hover:bg-white/20 transition">Buka Tautan</button>
+      <div class="flex items-center gap-2 overflow-x-auto pb-2">
+        <button onclick="filterMaterialsByCabang('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">All</button>
+        <button onclick="filterMaterialsByCabang('robotik')" id="filter-robotik" class="px-3 py-1 rounded-full badge-robotik opacity-50 transition">Robotik</button>
+        <button onclick="filterMaterialsByCabang('sains')" id="filter-sains" class="px-3 py-1 rounded-full badge-sains opacity-50 transition">Sains</button>
       </div>
     </div>
+
+    <div id="materials-grid" class="grid sm:grid-cols-2 gap-5"><!-- filled by script below --></div>
   </main>
 </div>
 
+<!-- Material detail modal -->
+<div id="material-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeMaterialModal()">
+  <div class="modal-card p-0">
+    <div id="material-modal-image-wrap" class="hidden rounded-t-2xl overflow-hidden">
+      <img id="material-modal-image" class="w-full h-48 sm:h-56 object-cover" alt="" />
+    </div>
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4 mb-1">
+        <h2 id="material-modal-title" class="font-display text-lg font-semibold"></h2>
+        <div class="flex items-center gap-1.5 shrink-0 -mt-1 -mr-1">
+          <div id="material-modal-admin-actions" class="flex items-center gap-1.5"></div>
+          <button onclick="closeMaterialModal()" class="text-zinc-500 hover:text-zinc-300 p-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="glass rounded-lg p-4 mt-3 mb-5">
+        <p id="material-modal-desc" class="text-sm text-zinc-300 leading-relaxed"></p>
+      </div>
+      <button id="material-modal-action" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition"></button>
+    </div>
+  </div>
+</div>
+
 <script>
+  let MATERIALS = [];
+
+  async function fetchMaterialsFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('materials')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching materials:', error);
+      return;
+    }
+    
+    MATERIALS = data || [];
+    renderMaterials();
+  }
+
+  let currentFilter = 'all';
+  let currentSearch = '';
+
+  function renderMaterials() {
+    const filtered = MATERIALS.filter(m => {
+      const matchesCabang = currentFilter === 'all' || m.cabang === currentFilter || m.cabang === 'both';
+      const matchesSearch = currentSearch === '' || m.title.toLowerCase().includes(currentSearch.toLowerCase()) || m.desc.toLowerCase().includes(currentSearch.toLowerCase());
+      return matchesCabang && matchesSearch;
+    });
+
+    document.getElementById('materials-grid').innerHTML = filtered.length ? filtered.map((m, i) => {
+      const cardHtml = `
+      <div onclick="openMaterialModal('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialModal('${m.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="glass rounded-xl p-5 relative overflow-hidden border border-accent-30 animate-stagger-in cursor-pointer hover:bg-white/5 transition group">
+        ${m.image_url ? `<div class="item-thumb-slot"><img src="${m.image_url}" alt="" /></div>` : ''}
+        <div class="relative z-10">
+          <h3 class="font-display font-semibold text-lg text-zinc-100 mb-2">${m.title}</h3>
+          <p class="text-zinc-400 text-sm mb-4">${m.description || m.desc || ''}</p>
+          <button onclick="event.stopPropagation(); openMaterialModal('${m.id}')" class="px-4 py-2 rounded-lg bg-white/10 text-sm font-medium hover:bg-white/20 transition">${m.actionlabel || 'Buka Materi'}</button>
+        </div>
+      </div>`;
+
+      return kirAdminWrapQuickActions(cardHtml, {
+        onEdit: `openMaterialAdminModal('${m.id}')`,
+        onDelete: `confirmDeleteMaterial('${m.id}')`
+      });
+    }).join('') : `
+      <div class="col-span-1 sm:col-span-2 glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
+        <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+        <p class="text-zinc-300 font-medium mb-1">Belum ada materi di sini!</p>
+        <p class="text-zinc-500 text-sm">Pengurus belum mengunggah referensi atau modul pembelajaran. Mohon bersabar, ya!</p>
+      </div>`;
+  }
+
+  function filterMaterialsByCabang(cabang) {
+    currentFilter = cabang;
+    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+      btn.classList.add('opacity-50');
+      btn.classList.remove('bg-accent-gradient', 'text-white', 'shadow-glow-sm');
+    });
+    document.getElementById(`filter-${cabang}`).classList.remove('opacity-50');
+    if (cabang === 'all') {
+      document.getElementById(`filter-${cabang}`).classList.add('bg-accent-gradient', 'text-white', 'shadow-glow-sm');
+    }
+    renderMaterials();
+  }
+
+  document.getElementById('material-search-input')?.addEventListener('input', (e) => {
+    currentSearch = e.target.value;
+    renderMaterials();
+  });
+
+  let currentMaterialId = null;
+
+  function openMaterialModal(id) {
+    const m = MATERIALS.find(x => x.id === id);
+    if (!m) return;
+    currentMaterialId = id;
+    document.getElementById('material-modal-admin-actions').innerHTML = kirAdminActionsHtml({
+      onEdit: `openMaterialAdminModal('${m.id}')`,
+      onDelete: `confirmDeleteMaterial('${m.id}')`
+    });
+    document.getElementById('material-modal-title').textContent = m.title;
+    document.getElementById('material-modal-desc').textContent = m.description || m.desc || '';
+    document.getElementById('material-modal-action').textContent = m.actionlabel || 'Buka Materi';
+    const imgWrap = document.getElementById('material-modal-image-wrap');
+    const img = document.getElementById('material-modal-image');
+    if (m.image_url) { img.src = m.image_url; imgWrap.classList.remove('hidden'); }
+    else { imgWrap.classList.add('hidden'); }
+    kirModalShow(document.getElementById('material-modal'));
+  }
+
+  function closeMaterialModal() {
+    kirModalHide(document.getElementById('material-modal'));
+    currentMaterialId = null;
+  }
+
+  function materialAdminFields() {
+    return [
+      { id: 'title', label: 'Judul', type: 'text', required: true },
+      { id: 'description', label: 'Deskripsi', type: 'textarea', rows: 4, required: true },
+      { id: 'cabang', label: 'Cabang', type: 'select', required: true, row: 'meta', options: [
+        { value: 'robotik', label: 'Robotik' },
+        { value: 'sains', label: 'Sains' },
+        { value: 'both', label: 'Keduanya' },
+      ] },
+      { id: 'actionlabel', label: 'Label Tombol', type: 'text', placeholder: 'Buka Materi', row: 'meta' },
+      { id: 'image_url', label: 'URL Gambar', type: 'image' },
+    ];
+  }
+
+  function openMaterialAdminModal(id) {
+    const material = id ? MATERIALS.find(m => m.id === id) : null;
+    kirOpenAdminModal({
+      title: material ? 'Edit Materi' : 'Tambah Materi',
+      size: 'wide',
+      fields: materialAdminFields(),
+      values: material,
+      saveLabel: material ? 'Simpan' : 'Tambah',
+      onSave: async (payload) => {
+        const result = material
+          ? await kirAdminUpdate('materials', material.id, payload)
+          : await kirAdminCreate('materials', payload);
+        if (!result.success) throw new Error(result.error);
+        await fetchMaterialsFromDatabase();
+        if (material && currentMaterialId === material.id) closeMaterialModal();
+      }
+    });
+  }
+
+  function confirmDeleteMaterial(id) {
+    const material = MATERIALS.find(m => m.id === id);
+    kirConfirmDialog({
+      title: 'Hapus materi ini?',
+      message: material ? `"${material.title}" akan dihapus permanen.` : 'Materi ini akan dihapus permanen.',
+      onConfirm: async () => {
+        const result = await kirAdminDelete('materials', id);
+        if (!result.success) throw new Error(result.error);
+        if (currentMaterialId === id) closeMaterialModal();
+        await fetchMaterialsFromDatabase();
+      }
+    });
+  }
+
+  kirRenderAdminFab({ onClick: () => openMaterialAdminModal(null) });
+
   kirInjectSidebar('materials');
+  fetchMaterialsFromDatabase();
 </script>
 </body>
 </html>

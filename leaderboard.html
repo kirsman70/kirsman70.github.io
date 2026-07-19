@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Peringkat</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
 
@@ -47,15 +48,12 @@
       </div>
       <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
         <span class="text-zinc-500 text-xs" data-i18n="leaderboard_your_rank">Peringkat kamu</span>
-        <span id="your-rank-value" class="font-display font-semibold text-lg text-accent-300">#—</span>
+        <span id="your-rank-value" class="font-display font-semibold text-lg text-accent-300">Belum ada</span>
       </div>
     </div>
 
     <!-- Search -->
     <div class="relative mb-4">
-      <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-      </svg>
       <input
         id="lb-search"
         type="text"
@@ -64,6 +62,7 @@
         placeholder="Cari anggota…"
         oninput="handleFilterChange()"
       />
+      <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
     </div>
 
     <!-- Filters -->
@@ -78,7 +77,7 @@
     </div>
 
     <!-- Podium -->
-    <div id="podium" class="grid grid-cols-3 gap-3 sm:gap-5 items-end mb-10"><!-- filled by script --></div>
+    <div id="podium" class="grid grid-cols-3 gap-3 sm:gap-5 items-end mb-10 mt-10"><!-- filled by script --></div>
 
     <!-- Full list -->
     <div class="glass rounded-2xl p-3 sm:p-4">
@@ -88,18 +87,36 @@
 </div>
 
 <script>
-  // Static roster for the prototype — same club, dummy point totals
+  // Static roster for the prototype — same extracurricular, dummy point totals
   // across three windows (all-time / this month / this week).
   // "You" (the logged-in user) is inserted using the real deltas
   // total from js/auth.js so the leaderboard reacts to Voyages.
-  const LEADERBOARD_STATIC = [
-    { name: 'Alex Pratama',    cabang: 'both',    deltas: 2150, monthGain: 420, weekGain: 180 },
-    { name: 'Priya Anand',     cabang: 'sains',   deltas: 1890, monthGain: 360, weekGain: 145 },
-    { name: 'Marcus Wijaya',   cabang: 'robotik', deltas: 1675, monthGain: 260, weekGain: 95  },
-    { name: 'Kayla Amelia',    cabang: 'both',    deltas: 1420, monthGain: 300, weekGain: 110 },
-    { name: 'Dinda Larasati',  cabang: 'sains',   deltas: 1310, monthGain: 150, weekGain: 60  },
-    { name: 'Reza Firmansyah', cabang: 'robotik', deltas: 980,  monthGain: 110, weekGain: 40  },
-  ];
+  let ROSTER = [];
+
+  async function fetchLeaderboardFromDatabase() {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching leaderboard:', error);
+      return;
+    }
+
+    const youName = localStorage.getItem('kir_user_name') || 'Anggota';
+
+    ROSTER = data.map((p, i) => ({
+      id: p.id ?? i,
+      name: p.name,
+      cabang: p.cabang,
+      deltas: p.deltas_total || 0,
+      weekGain: p.deltas_week ? p.deltas_week.reduce((a, b) => a + b, 0) : 0,
+      monthGain: p.deltas_lifetime ? (p.deltas_lifetime[p.deltas_lifetime.length - 1] || 0) : 0,
+      isYou: p.name === youName
+    }));
+
+    renderLeaderboard();
+  }
 
   let rangeFilter = 'all';   // 'all' | 'month' | 'week'
   let branchFilter = 'all';  // 'all' | 'robotik' | 'sains'
@@ -111,19 +128,6 @@
     const cls = cabang === 'sains' ? 'badge-sains' : 'badge-robotik';
     const label = cabang === 'sains' ? 'Sains' : 'Robotik';
     return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
-  }
-
-  function buildRoster() {
-    const gainSinceBaseline = Math.max(0, kirDeltasTotal() - 1240); // earned via Voyages this session
-    const you = {
-      name: kirCurrentUserName(),
-      cabang: kirCurrentUserCabang(),
-      deltas: kirDeltasTotal(),
-      monthGain: gainSinceBaseline,
-      weekGain: gainSinceBaseline,
-      isYou: true,
-    };
-    return [you, ...LEADERBOARD_STATIC];
   }
 
   function rangeValue(m) {
@@ -140,6 +144,47 @@
   function matchesSearch(m, query) {
     if (!query) return true;
     return m.name.toLowerCase().includes(query.toLowerCase());
+  }
+
+  // ---- FLIP-style reorder animation ----
+  // Before re-rendering a container, snapshot each item's rect keyed by
+  // data-key. After re-rendering, items that kept the same key get their
+  // old rect "played back" as a transform and eased to zero, so they visibly
+  // slide/swap to the new spot instead of popping into place. Items with no
+  // matching old key are brand new to the view — they get an entrance
+  // animation (handled by the caller) instead of a FLIP.
+  function captureRects(container) {
+    const map = new Map();
+    if (!container) return map;
+    container.querySelectorAll('[data-key]').forEach(el => {
+      map.set(el.dataset.key, el.getBoundingClientRect());
+    });
+    return map;
+  }
+
+  function playFlip(container, oldRects) {
+    if (!container) return;
+    container.querySelectorAll('[data-key]').forEach(el => {
+      const oldRect = oldRects.get(el.dataset.key);
+      if (!oldRect) return;
+      const newRect = el.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      el.getBoundingClientRect(); // force reflow so the jump above applies before we transition
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)';
+        el.style.transform = '';
+      });
+      el.addEventListener('transitionend', function done(e) {
+        if (e.propertyName !== 'transform') return;
+        el.style.transition = '';
+        el.removeEventListener('transitionend', done);
+      });
+    });
   }
 
   function setRangeFilter(range) {
@@ -176,7 +221,7 @@
     return `<span>${rank}</span>`;
   }
 
-  function renderPodium(sorted) {
+  function renderPodium(sorted, oldKeys) {
     const podiumEl = document.getElementById('podium');
     if (sorted.length < 3) {
       podiumEl.innerHTML = '';
@@ -192,23 +237,23 @@
     ];
     const rankClass = ['rank-2', 'rank-1', 'rank-3'];
     const badgeCls = ['rank-badge-2', 'rank-badge-1', 'rank-badge-3'];
-    const bgTint = [
-      'background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2);',
-      'background: rgba(250,204,21,0.10); border: 1px solid rgba(250,204,21,0.3);',
-      'background: rgba(180,83,9,0.08); border: 1px solid rgba(180,83,9,0.22);',
-    ];
 
-    podiumEl.innerHTML = order.map(({ m, rank }, i) => `
-      <div class="podium-place ${rankClass[i]} glass" style="${bgTint[i]}">
+    podiumEl.innerHTML = order.map(({ m, rank }, i) => {
+      const key = String(m.id);
+      const isNew = !oldKeys.has(key);
+      return `
+      <div class="podium-place ${rankClass[i]} glass${isNew ? ' podium-enter' : ''}" data-key="${key}" style="${isNew ? `animation-delay:${i * 60}ms` : ''}">
+        ${rank === 1 ? `<svg class="podium-crown" width="26" height="20" viewBox="0 0 26 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 7l4.5 3.5L13 3l6.5 7.5L24 7l-2.5 10h-17L2 7z" fill="currentColor"/></svg>` : ''}
         <span class="podium-rank-icon ${badgeCls[i]}">${rankIconSvg(rank)}</span>
         <div class="podium-avatar bg-accent-gradient">${m.name.charAt(0).toUpperCase()}</div>
         <p class="podium-name">${m.name}${m.isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</p>
         <p class="font-display font-bold text-lg mt-1">${rangeValue(m).toLocaleString('id-ID')}</p>
         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 ${badgeCls[i]}">#${rank}</span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
-  function renderList(sorted) {
+  function renderList(sorted, oldKeys) {
     const lang = localStorage.getItem('kir_lang') || 'id';
     const listEl = document.getElementById('leaderboard-list');
 
@@ -219,11 +264,13 @@
 
     listEl.innerHTML = sorted.map((m, i) => {
       const rank = i + 1;
+      const key = String(m.id);
+      const isNew = !oldKeys.has(key);
       const rankMarkup = rank <= 3
         ? `<span class="leaderboard-rank-num rank-badge-${rank}" style="width:1.6rem;height:1.6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;">${rank}</span>`
         : `<span class="leaderboard-rank-num">${rank}</span>`;
       return `
-        <div class="leaderboard-row animate-stagger-in ${m.isYou ? 'you' : ''}" style="animation-delay: ${i * 45}ms">
+        <div class="leaderboard-row ${m.isYou ? 'you' : ''}${isNew ? ' animate-stagger-in' : ''}" data-key="${key}" style="${isNew ? `animation-delay: ${i * 45}ms` : ''}">
           ${rankMarkup}
           <div class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm shrink-0">
             ${m.name.charAt(0).toUpperCase()}
@@ -242,22 +289,30 @@
   }
 
   function renderLeaderboard() {
-    const roster = buildRoster();
+    const podiumEl = document.getElementById('podium');
+    const listEl = document.getElementById('leaderboard-list');
+    const oldPodiumRects = captureRects(podiumEl);
+    const oldListRects = captureRects(listEl);
+
+    const roster = ROSTER;
     const query = document.getElementById('lb-search').value.trim();
     const filtered = roster.filter(m => matchesBranch(m) && matchesSearch(m, query));
     const sorted = filtered.slice().sort((a, b) => rangeValue(b) - rangeValue(a));
 
-    renderPodium(sorted);
-    renderList(sorted);
+    renderPodium(sorted, new Set(oldPodiumRects.keys()));
+    renderList(sorted, new Set(oldListRects.keys()));
+
+    playFlip(podiumEl, oldPodiumRects);
+    playFlip(listEl, oldListRects);
 
     const yourIndex = sorted.findIndex(m => m.isYou);
-    document.getElementById('your-rank-value').textContent = yourIndex === -1 ? '—' : '#' + (yourIndex + 1);
+    document.getElementById('your-rank-value').textContent = yourIndex === -1 ? 'Belum ada' : '#' + (yourIndex + 1);
   }
 
   updateFilterChipsUI();
-  renderLeaderboard();
   kirApplyTranslations();
   kirInjectSidebar('leaderboard');
+  fetchLeaderboardFromDatabase();
 </script>
 </body>
 </html>

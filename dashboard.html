@@ -7,6 +7,7 @@
 
 <!-- Auth guard: runs before the page paints, sends logged-out
      visitors to auth.html. Must load before the rest of <head>. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
 
@@ -17,6 +18,14 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* Enhance widget visuals with elevated gradients and inset shadows */
+  .widget-inner {
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 4px 24px -4px rgba(0,0,0,0.2) !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+</style>
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -40,240 +49,72 @@
   </div>
 
   <div id="sidebar-root"></div>
+  <script>
+    // Inject the sidebar immediately, before the (larger)
+    // dashboard-widgets.js script below has to finish downloading
+    // and parsing. Otherwise the sidebar's appearance gets delayed
+    // behind that file specifically on this page, making the pop-in
+    // more noticeable here than on other pages.
+    kirInjectSidebar('dashboard');
+  </script>
 
   <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
       <div>
         <h1 data-kir="greeting" class="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Selamat datang!</h1>
         <p class="text-zinc-500 text-sm mt-1" data-i18n="dashboard_sub">Berikut yang terjadi di Orbit minggu ini.</p>
       </div>
-    </div>
-
-    <div class="grid sm:grid-cols-2 lg:grid-cols-2 gap-5 mb-8">
-      <div class="glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 0ms">
-        <div class="glow-blob w-40 h-40 bg-accent-20 -top-10 -right-10"></div>
-        <div class="relative">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-zinc-400 text-sm font-medium" data-i18n="active_tasks">Tugas Aktif</p>
-            <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center">
-              <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            </div>
-          </div>
-          <p class="font-display text-4xl font-semibold">6</p>
-          <p class="text-zinc-500 text-xs mt-2">2 <span data-i18n="due_this_week">jatuh tempo minggu ini</span> &middot; <span class="text-accent-300">1 <span data-i18n="late">terlambat</span></span></p>
-        </div>
-      </div>
-
-      <div class="glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 45ms">
-        <div class="glow-blob w-40 h-40 bg-accent-20 -bottom-10 -left-10"></div>
-        <div class="relative">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-zinc-400 text-sm font-medium" data-i18n="upcoming_events">Acara Mendatang</p>
-            <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center">
-              <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            </div>
-          </div>
-          <p class="font-display text-4xl font-semibold">3</p>
-          <p class="text-zinc-500 text-xs mt-2"><span data-i18n="up_next">Selanjutnya:</span> <span class="text-zinc-300">Rapat Umum, Kam</span></p>
-        </div>
-      </div>
-    </div>
-
-<div class="grid sm:grid-cols-4 gap-5 mb-8">
-      <!-- Deltas — 3/4 width -->
-      <div class="sm:col-span-3 glass rounded-2xl p-6 relative overflow-hidden animate-stagger-in" style="animation-delay: 90ms">
-        <div class="glow-blob w-48 h-48 bg-accent-20 -top-16 -right-16"></div>
-        <div class="relative">
-          <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <p class="text-zinc-400 text-sm font-medium" data-i18n="deltas_label">Deltas</p>
-            <div class="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5 text-[11px]">
-              <button id="deltas-toggle-week" onclick="setDeltasRange('week')" class="px-2.5 py-1 rounded-md font-medium transition" data-i18n="deltas_range_week">Minggu ini</button>
-              <button id="deltas-toggle-lifetime" onclick="setDeltasRange('lifetime')" class="px-2.5 py-1 rounded-md font-medium transition" data-i18n="deltas_range_lifetime">Sepanjang waktu</button>
-            </div>
-          </div>
-          <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
-            <div class="flex items-end gap-2">
-              <p class="font-display text-4xl font-semibold" id="deltas-total">1.240</p>
-              <span class="text-zinc-500 text-xs mb-1.5" data-i18n="deltas_points">deltas</span>
-            </div>
-            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-accent-15 text-accent-300 border border-accent-30">
-              +<span id="deltas-gain">128</span> <span id="deltas-gain-label" data-i18n="this_week">minggu ini</span>
-            </span>
-          </div>
-          <svg id="deltas-sparkline" viewBox="0 0 280 60" class="w-full h-14" preserveAspectRatio="none"></svg>
-          <div id="deltas-date-labels" class="flex justify-between text-[10px] text-zinc-600 mt-1 px-0.5"></div>
-          <p class="text-zinc-600 text-[11px] mt-3" data-i18n="deltas_desc">Poin didapat dari mengerjakan soal latihan.</p>
-        </div>
-      </div>
-
-      <!-- Streak — 1/4 width -->
-      <div class="glass rounded-2xl p-5 relative overflow-hidden flex flex-col items-center justify-center text-center animate-stagger-in" style="animation-delay: 135ms">
-        <div class="glow-blob w-32 h-32 bg-accent-20 -bottom-10 -left-10"></div>
-        <div class="relative flex flex-col items-center">
-          <p class="text-zinc-400 text-xs font-medium mb-2 uppercase tracking-wide" data-i18n="streak_label">Streak</p>
-          <svg id="streak-flame" viewBox="0 0 24 24" class="w-12 h-12 sm:w-14 sm:h-14" style="filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.55));">
-            <defs>
-              <clipPath id="flame-clip">
-                <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
-              </clipPath>
-              <linearGradient id="flame-gradient" x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0%" style="stop-color: rgb(var(--accent-2-rgb))" />
-                <stop offset="100%" style="stop-color: rgb(var(--accent-light-rgb))" />
-              </linearGradient>
-            </defs>
-            <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
-            <g clip-path="url(#flame-clip)">
-              <g id="flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
-                <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#flame-gradient)" class="flame-wave" />
-              </g>
-            </g>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="undo-btn" onclick="undoLayout()" class="hidden p-2.5 rounded-lg glass text-zinc-400 hover:text-zinc-200 transition" title="Undo (Ctrl+Z)" disabled>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+        </button>
+        <button id="redo-btn" onclick="redoLayout()" class="hidden p-2.5 rounded-lg glass text-zinc-400 hover:text-zinc-200 transition" title="Redo (Ctrl+Y)" disabled>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+        </button>
+        <button id="edit-dashboard-btn" onclick="toggleDashboardEdit()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass hover:bg-white/10 transition">
+          <svg id="edit-dashboard-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" />
           </svg>
-          <p class="font-display text-2xl font-semibold mt-2" id="streak-count">6</p>
-          <p class="text-zinc-500 text-[11px]" data-i18n="streak_days">hari beruntun</p>
-        </div>
+          <span id="edit-dashboard-label" data-i18n="dash_edit">Edit</span>
+        </button>
       </div>
     </div>
 
-    <div class="glass rounded-2xl p-6 animate-stagger-in" style="animation-delay: 180ms">
-      <h2 class="font-display text-base font-semibold mb-4" data-i18n="recent_activity">Aktivitas terbaru</h2>
-      <ul id="activity-list" class="space-y-4 text-sm"><!-- filled by script below --></ul>
+    <div id="widget-grid" class="widget-grid mb-3 pb-8" ondragover="handleGridDragOver(event)" ondrop="handleGridDrop(event)"><!-- filled by script below --></div>
+
+    <div id="edit-mode-footer" class="hidden items-center justify-between gap-3 flex-wrap mb-8 text-xs">
+      <p class="text-zinc-500" data-i18n="dash_edit_hint">Seret widget untuk memindahkan, tekan ikon ukuran untuk mengubah besarnya.</p>
+      <button onclick="resetDashboardLayout()" class="text-zinc-500 hover:text-accent-300 underline transition" data-i18n="dash_reset">Kembalikan ke tampilan awal</button>
     </div>
   </main>
 </div>
 
+<!-- Add widget modal -->
+<div id="add-widget-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeAddWidgetModal()">
+  <div class="modal-card p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="font-display text-lg font-semibold" data-i18n="dash_add_widget">Tambah Widget</h2>
+        <p class="text-zinc-500 text-xs mt-1" data-i18n="dash_add_widget_desc">Pilih widget untuk ditambahkan ke dasbor kamu.</p>
+      </div>
+      <button onclick="closeAddWidgetModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 p-1">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div id="add-widget-list" class="grid sm:grid-cols-2 gap-3"><!-- filled by script below --></div>
+  </div>
+</div>
+
+<script src="js/dashboard-widgets.js"></script>
 <script>
-  const ACTIVITIES = [
-    { msAgo: 45 * 60 * 1000, dot: 'bg-accent',
-      html: '<span class="text-zinc-200 font-medium">Priya</span> memindahkan "Email Penjangkauan Sponsor" ke <span class="text-accent-300">Sedang Dikerjakan</span>' },
-    { msAgo: 5 * 60 * 60 * 1000, dot: 'bg-zinc-600',
-      html: '<span class="text-zinc-200 font-medium">Marcus</span> menambahkan acara baru: Latihan Pertunjukan Musim Gugur' },
-    { msAgo: 26 * 60 * 60 * 1000, dot: 'bg-zinc-600',
-      html: '<span class="text-zinc-200 font-medium">Kamu</span> mengirimkan "Desain Flyer Acara" untuk ditinjau' },
-  ];
 
-  function renderActivity() {
-    const now = Date.now();
-    document.getElementById('activity-list').innerHTML = ACTIVITIES.map(item => {
-      const when = kirFormatActivityTime(new Date(now - item.msAgo));
-      return `
-        <li class="flex items-start gap-3">
-          <span class="w-1.5 h-1.5 rounded-full ${item.dot} mt-1.5 shrink-0"></span>
-          <div class="flex-1 min-w-0 flex items-baseline gap-2 flex-wrap">
-            <p class="text-zinc-400">${item.html}</p>
-            <span class="flex-1 min-w-[16px] border-b border-dotted border-[var(--glass-border)] mb-1 hidden sm:block"></span>
-            <span class="text-zinc-600 text-xs shrink-0 whitespace-nowrap">${when}</span>
-          </div>
-        </li>`;
-    }).join('');
-  }
-
-// --- Deltas + Streak (dummy data for now — wire up to the real
-  // questions/leaderboard page once it exists) ---
-  const DELTAS_HISTORY_WEEK = [820, 860, 905, 890, 960, 1080, 1240]; // last 7 days
-  const DELTAS_HISTORY_LIFETIME = [50, 180, 340, 520, 610, 780, 860, 940, 1010, 1080, 1150, 1240]; // last 12 months
-  const STREAK_DAYS = 6;
-  const STREAK_FILL_GOAL = 10; // days for a visually "full" flame — cosmetic only
-
-  let deltasRange = 'week'; // 'week' | 'lifetime'
-
-  function currentDeltasHistory() {
-    return deltasRange === 'week' ? DELTAS_HISTORY_WEEK : DELTAS_HISTORY_LIFETIME;
-  }
-
-  function setDeltasRange(range) {
-    deltasRange = range;
-    renderDeltasAndStreak();
-  }
-
-  function updateDeltasToggleUI() {
-    const weekBtn = document.getElementById('deltas-toggle-week');
-    const lifeBtn = document.getElementById('deltas-toggle-lifetime');
-    const activeCls = 'bg-accent-gradient text-white shadow-glow-sm';
-    const inactiveCls = 'text-zinc-400 hover:text-white';
-    weekBtn.className = 'px-2.5 py-1 rounded-md font-medium transition ' + (deltasRange === 'week' ? activeCls : inactiveCls);
-    lifeBtn.className = 'px-2.5 py-1 rounded-md font-medium transition ' + (deltasRange === 'lifetime' ? activeCls : inactiveCls);
-  }
-
-  function deltasDateLabels(lang) {
-    if (deltasRange === 'week') {
-      const fmt = new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', { weekday: 'short', timeZone: 'Asia/Jakarta' });
-      const labels = [];
-      for (let i = 6; i >= 0; i--) labels.push(fmt.format(new Date(Date.now() - i * 86400000)));
-      return labels;
-    }
-    const fmt = new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', { month: 'short', timeZone: 'Asia/Jakarta' });
-    const labels = [];
-    const now = new Date();
-    const count = DELTAS_HISTORY_LIFETIME.length;
-    for (let i = count - 1; i >= 0; i--) {
-      labels.push(fmt.format(new Date(now.getFullYear(), now.getMonth() - i, 1)));
-    }
-    return labels;
-  }
-
-  function renderDeltasSparkline() {
-    const svg = document.getElementById('deltas-sparkline');
-    const w = 280, h = 60, pad = 4;
-    const data = currentDeltasHistory();
-    const max = Math.max(...data), min = Math.min(...data);
-    const range = (max - min) || 1;
-    const stepX = (w - pad * 2) / (data.length - 1);
-    const points = data.map((v, i) => [
-      pad + i * stepX,
-      h - pad - ((v - min) / range) * (h - pad * 2)
-    ]);
-    const line = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-    const area = line + ` L${points[points.length - 1][0].toFixed(1)},${h} L${points[0][0].toFixed(1)},${h} Z`;
-
-    // Really slight horizontal gridlines — 3 evenly spaced rows
-    const gridRows = 3;
-    let gridlines = '';
-    for (let i = 1; i < gridRows; i++) {
-      const y = pad + ((h - pad * 2) / gridRows) * i;
-      gridlines += `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${w - pad}" y2="${y.toFixed(1)}" stroke="var(--glass-border)" stroke-width="1" stroke-opacity="0.5" />`;
-    }
-
-    svg.innerHTML = `
-      <defs>
-        <linearGradient id="deltas-area-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" style="stop-color: rgb(var(--accent-rgb)); stop-opacity: 0.35" />
-          <stop offset="100%" style="stop-color: rgb(var(--accent-rgb)); stop-opacity: 0" />
-        </linearGradient>
-      </defs>
-      ${gridlines}
-      <path d="${area}" fill="url(#deltas-area-grad)" stroke="none" />
-      <path d="${line}" fill="none" stroke="rgb(var(--accent-rgb))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-    `;
-
-    const lang = localStorage.getItem('kir_lang') || 'id';
-    document.getElementById('deltas-date-labels').innerHTML =
-      deltasDateLabels(lang).map(d => `<span>${d}</span>`).join('');
-  }
-
-  function renderDeltasAndStreak() {
-    const lang = localStorage.getItem('kir_lang') || 'id';
-    const data = currentDeltasHistory();
-    const total = data[data.length - 1];
-    const gain = total - data[0];
-
-    document.getElementById('deltas-total').textContent = total.toLocaleString(lang === 'id' ? 'id-ID' : 'en-US');
-    document.getElementById('deltas-gain').textContent = gain;
-    document.getElementById('deltas-gain-label').textContent = I18N[lang][deltasRange === 'week' ? 'this_week' : 'all_time'];
-    document.getElementById('streak-count').textContent = STREAK_DAYS;
-
-    const pct = Math.min(STREAK_DAYS / STREAK_FILL_GOAL, 1);
-    const flameTop = 2, flameBottom = 21; // approx vertical bounds of the flame path
-    const currentY = flameBottom - ((flameBottom - flameTop) * pct);
-    const group = document.getElementById('flame-fill-group');
-    group.setAttribute('transform', `translate(0, ${currentY})`);
-
-    updateDeltasToggleUI();
-    renderDeltasSparkline();
-  }
-
-  renderDeltasAndStreak();
-  renderActivity();
-  kirInjectSidebar('dashboard');
+/* ----------------------------------------------------------
+   Boot
+   ---------------------------------------------------------- */
+renderWidgetGrid();
+window.addEventListener('resize', () => requestAnimationFrame(updateCellSize));
+window.matchMedia('(min-width: 640px)').addEventListener('change', () => renderWidgetGrid());
+fetchDashboardWidgetsData();
 </script>
 </body>
 </html>
