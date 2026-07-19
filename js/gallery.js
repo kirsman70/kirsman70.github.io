@@ -9,7 +9,7 @@
 const GALLERY_COLORS = {
   robotik: 'rgba(224,70,95,0.85)',
   sains: 'rgba(56,130,246,0.85)',
-  klub: 'rgba(139,92,246,0.85)',
+  ekstrakurikuler: 'rgba(139,92,246,0.85)',
   neutral: 'rgba(148,163,184,0.85)',
 };
 

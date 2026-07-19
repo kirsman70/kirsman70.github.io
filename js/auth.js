@@ -15,8 +15,14 @@
    won't need to change — just swap what's inside this file.
    ========================================================== */
 
+const SUPABASE_URL = 'https://qalkibuywgookvicnuhv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhbGtpYnV5d2dvb2t2aWNudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMjg5OTEsImV4cCI6MjA5OTgwNDk5MX0.P1d6Mf3xQITOIyFMLPdFnji0awZj38Sj1K7HZe2n4Zc';
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+window.supabaseClient = supabaseClient;
+
 const KIR_SESSION_KEY  = 'kir_session';
 const KIR_NAME_KEY     = 'kir_user_name';
+const KIR_ROLE_KEY     = 'kir_user_role';
 const KIR_CABANG_KEY   = 'kir_user_cabang';   // 'robotik' | 'sains' | 'both'
 const KIR_AVATAR_KEY   = 'kir_user_avatar';   // base64 data URL, or absent
 const KIR_THEME_KEY    = 'kir_theme';         // 'dark' | 'light'
@@ -32,16 +38,17 @@ const I18N = {
     settings_desc: 'Kelola profil, cabang, dan tampilan akun kamu.',
     active_branch: 'Cabang Aktif', branch_desc: 'Cabang terdaftar kamu saat ini.',
     appearance_lang: 'Tampilan & Bahasa', change_lang: 'Ubah Bahasa',
+    crop_title: 'Sesuaikan Foto', crop_hint: 'Seret untuk menggeser, geser slider untuk memperbesar.', crop_cancel: 'Batal', crop_save: 'Simpan',
     dashboard_sub: 'Berikut yang terjadi di Orbit minggu ini.',
     active_tasks: 'Tugas Aktif', due_this_week: 'jatuh tempo minggu ini', late: 'terlambat',
     upcoming_events: 'Acara Mendatang', up_next: 'Selanjutnya:', recent_activity: 'Aktivitas terbaru',
-    tasks_desc: 'Semua yang ditugaskan ke klub saat ini.', assigned_to: 'Ditugaskan ke', due: 'Tenggat:', submitted: 'jawaban terkirim',
+    tasks_desc: 'Semua yang ditugaskan ke ekstrakurikuler saat ini.', assigned_to: 'Ditugaskan ke', due: 'Tenggat:', submitted: 'jawaban terkirim',
     status_progress: 'Sedang Dikerjakan', status_review: 'Menunggu Peninjauan', status_late: 'Terlambat', status_todo: 'Belum Dimulai', status_done: 'Selesai',
     modal_desc: 'Deskripsi tugas', modal_ans: 'Jawaban kamu', modal_upload: 'Klik untuk unggah file jawaban\u2026', modal_proto: 'Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.',
-    schedule_desc: 'Acara klub mendatang, secara berurutan.', badge_next: 'Berikutnya',
-    members_desc: 'Semua orang yang tergabung di KIR.', role_ketua: 'Ketua Klub', role_wakil: 'Wakil Ketua', role_bendahara: 'Bendahara', role_anggota: 'Anggota', you: '(kamu)',
+    schedule_desc: 'Acara ekstrakurikuler mendatang, secara berurutan.', badge_next: 'Berikutnya',
+    members_desc: 'Semua orang yang tergabung di KIR.', role_ketua: 'Ketua Ekstrakurikuler', role_wakil: 'Wakil Ketua', role_bendahara: 'Bendahara', role_anggota: 'Anggota', you: '(kamu)',
     materials_desc: 'Modul pembelajaran dan referensi untuk anggota klub.',
-    idx_login: 'Masuk', idx_register: 'Daftar', idx_dash_badge: 'Dasbor Klub',
+    idx_login: 'Masuk', idx_register: 'Daftar', idx_dash_badge: 'Dasbor Ekstrakurikuler',
     idx_h1_a: 'Satu tempat untuk', idx_h1_b: 'tugas, jadwal, dan tim kamu.',
     idx_sub: 'KIR membantu pengurus dan anggota klub melacak pembagian tugas dan jadwal acara mendatang. Tinggalkan grup obrolan yang berantakan dan beralih ke sistem yang lebih terorganisir.',
     idx_cta_1: 'Mulai sekarang', idx_cta_2: 'Sudah punya akun? Masuk',
@@ -53,6 +60,11 @@ const I18N = {
     idx_branch_rob_sub: 'Untuk anggota yang fokus di rancang bangun, pemrograman, dan kompetisi robot.',
     idx_branch_sci_sub: 'Untuk anggota yang fokus di riset, eksperimen, dan karya tulis ilmiah.',
     idx_footer: 'KIR - Karya Ilmiah Remaja, dibuat untuk klub-klub kampus.',
+    page_title_home: 'Orbit', page_title_dashboard: 'Beranda', page_title_tasks: 'Tugas',
+    page_title_materials: 'Materi', page_title_schedule: 'Jadwal', page_title_members: 'Anggota',
+    page_title_voyages: 'Voyages', page_title_leaderboard: 'Peringkat',
+    page_title_settings: 'Pengaturan', page_title_program_kerja: 'Program Kerja', page_title_gallery: 'Galeri',
+    page_title_auth: 'Masuk atau Daftar',
     idx_dashboard: 'Dasbor', idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
     greeting_morning: 'Selamat pagi', greeting_afternoon: 'Selamat siang', greeting_evening: 'Selamat sore', greeting_night: 'Selamat malam',
     activity_today: 'Hari ini pukul', activity_yesterday: 'Kemarin pukul', activity_at: 'pukul',
@@ -62,7 +74,7 @@ const I18N = {
     streak_label: 'Beruntun', streak_days: 'hari beruntun',
     galeri: 'Galeri', program_kerja: 'Program Kerja',
     nav_beranda: 'Beranda', nav_galeri: 'Galeri', nav_proker: 'Program Kerja',
-    gallery_title: 'Galeri', gallery_desc: 'Dokumentasi kegiatan klub, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
+    gallery_title: 'Galeri', gallery_desc: 'Dokumentasi kegiatan ekstrakurikuler, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
     gallery_up: '.. Kembali', gallery_empty: 'Folder ini belum berisi file. Foto akan segera diunggah.',
     gallery_items_one: 'item', gallery_items_other: 'item',
     proker_eyebrow: 'Tahun Ajaran 2025/2026',
@@ -71,31 +83,50 @@ const I18N = {
     proker_cta_title: 'Tertarik ikut program ini?', proker_cta_desc: 'Daftar sebagai anggota dan pilih cabang yang kamu minati untuk mendapatkan dasbor yang disesuaikan secara otomatis.',
     proker_cta_btn: 'Daftar Sekarang',
     voyage_category: 'Voyage', nav_voyages: 'Voyages', nav_leaderboard: 'Peringkat',
-    voyages_title: 'Voyages', voyages_desc: 'Latihan soal MIPA dan koding. Selesaikan soal-soal ini untuk mengumpulkan deltas.',
-    voyages_filter_all: 'Semua', voyages_filter_math: 'Matematika', voyages_filter_physics: 'Fisika', voyages_filter_coding: 'Koding',
+    voyages_title: 'Voyages', voyages_desc: 'Latihan soal MIPA dan informatika. Selesaikan soal-soal ini untuk mengumpulkan deltas.',
+    voyages_filter_all: 'Semua', voyages_filter_math: 'Matematika', voyages_filter_physics: 'Fisika', voyages_filter_informatika: 'Informatika',
     voyages_filter_chemistry: 'Kimia', voyages_filter_biology: 'Biologi', voyages_filter_selected: 'dipilih', voyages_filter_none: 'Tidak ada',
+    voyages_filter_subject_label: 'Subjek', voyages_filter_type_label: 'Tipe',
+    voyages_expedition_mode_label: 'Mode Ekspedisi', voyages_expedition_exit: 'Keluar Ekspedisi',
+    voyages_expedition_empty: 'Semua voyage yang cocok dengan filter kamu sudah selesai.',
+    voyages_expedition_fullscreen_required: 'Mode layar penuh diperlukan untuk memulai Ekspedisi.',
+    voyages_expedition_fullscreen_unsupported: 'Perangkat ini tidak mendukung mode layar penuh.',
+    voyages_expedition_complete: 'Ekspedisi selesai — kamu menyelesaikan semua voyage yang cocok!',
     voyages_search_placeholder: 'Cari soal…', voyages_search_label: 'Cari',voyages_search_placeholder: 'Cari soal…',
  voyages_reward: 'Ganjaran',
+    voyages_sort_label: 'Urutkan', voyages_sort_random: 'Acak', voyages_sort_diff_asc: 'Rating: Rendah ke Tinggi',
+    voyages_sort_diff_desc: 'Rating: Tinggi ke Rendah', voyages_sort_title_az: 'Judul: A ke Z', voyages_sort_newest: 'Terbaru',
+    voyages_grading_analyzing: 'Menilai jawaban dengan Penilaian Cerdas…',
+    voyages_grading_result_title: 'Hasil Penilaian Cerdas',
+    voyages_grading_strengths: 'Kelebihan Jawaban',
+    voyages_grading_improvements: 'Poin untuk Ditingkatkan',
+    voyages_grading_model: 'Dinilai oleh',
+    voyages_grading_failed: 'Gagal memproses penilaian otomatis. Coba lagi.',
+    voyages_grading_retry: 'Coba Lagi',
     voyages_start: 'Mulai Soal', voyages_continue: 'Lihat Lagi', voyages_completed: 'Selesai',
-    voyages_type_mc: 'Pilihan Ganda', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Esai',
+    voyages_type_mc: 'Pilihan Ganda', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Esai', voyages_type_programming: 'Kompetitif (Programming)',
+    voyages_bahasa: 'Bahasa',
+    voyages_run_samples: 'Jalankan', voyages_console_tests: 'Test Case', voyages_console_output: 'Konsol',
+    voyages_console_empty: 'Menunggu kode dijalankan…', voyages_console_running: 'Menjalankan kode…',
     voyages_submit: 'Kirim Jawaban', voyages_next: 'Selanjutnya', voyages_close: 'Tutup',
     voyages_correct: 'Jawaban benar!', voyages_incorrect: 'Belum tepat, coba lagi.',
     voyages_earned: 'deltas didapat', voyages_essay_sent: 'Esai terkirim untuk ditinjau pengurus.',
     voyages_choose_answer: 'Pilih salah satu jawaban di bawah.', voyages_choose_dropdown: 'Pilih jawaban dari menu di bawah.',
-    voyages_pick_placeholder: '-- Pilih jawaban --', voyages_your_answer: 'Jawaban esai kamu',
+    voyages_pick_placeholder: 'Pilih jawaban', voyages_your_answer: 'Jawaban esai kamu',
     voyages_essay_placeholder: 'Tulis jawaban esai kamu di sini…',
+    voyages_preview_label: 'Pratinjau', voyages_preview_empty: 'Pratinjau rumus akan muncul di sini…',
     voyages_already_done: 'Kamu sudah menyelesaikan soal ini sebelumnya.',
     leaderboard_title: 'Peringkat', leaderboard_desc: 'Peringkat deltas seluruh anggota KIR.',
     leaderboard_you: 'Kamu', leaderboard_rank: 'Peringkat', leaderboard_member: 'Anggota', leaderboard_deltas: 'Deltas',
     leaderboard_your_rank: 'Peringkat kamu', leaderboard_range_week: 'Minggu Ini', leaderboard_range_month: 'Bulan Ini', leaderboard_range_all: 'Sepanjang Waktu',
     leaderboard_search_placeholder: 'Cari anggota…', leaderboard_branch_all: 'Semua Cabang', leaderboard_no_results: 'Tidak ada anggota yang cocok.',
     comments_title: 'Komentar', comments_placeholder: 'Tulis komentar…', comments_send: 'Kirim',
-    comments_empty: 'Belum ada komentar. Jadilah yang pertama.', comments_attach: 'Lampirkan file',
+    comments_empty: 'Belum ada komentar. Inisiatif menjadi pertama!', comments_attach: 'Lampirkan file',
     comments_delete: 'Hapus', comments_too_large: 'Pilih file di bawah 1.5MB (prototipe menyimpan ini di browser kamu).',
     comments_reply: 'Balas', comments_reply_placeholder: 'Tulis balasan…', comments_cancel: 'Batal',
     theme_light: 'Mode Terang',
 
-    admin_title: 'Admin Panel', admin_desc: 'Tambahkan entri data baru ke sistem.',
+    admin_title: 'Admin Panel', admin_desc: 'Tinjau dan kelola pendaftaran anggota baru.',
     admin_tab_tasks: 'Tugas', admin_tab_schedule: 'Jadwal', admin_tab_materials: 'Materi', admin_tab_voyages: 'Voyages',
     admin_task_title_label: 'Judul Tugas', admin_task_title_placeholder: 'Masukkan judul…',
     admin_due_label: 'Tenggat Waktu (Due)', admin_pick_date: 'Pilih tanggal',
@@ -104,6 +135,7 @@ const I18N = {
     admin_assign_mode_label: 'Mode Penugasan', admin_assign_everyone: 'Semua Anggota Cabang', admin_assign_specific: 'Orang Tertentu',
     admin_assignee_label: 'Penerima (Assignee)', admin_assignee_placeholder: 'Nama anggota…', admin_assignee_hint: 'Masukkan satu atau lebih nama, pisahkan dengan koma.',
     admin_desc_label: 'Deskripsi', admin_desc_placeholder: 'Jelaskan detail tugas…',
+    admin_image_label: 'Gambar (Opsional)', admin_image_upload: 'Klik untuk unggah gambar…',
     admin_save_task: 'Simpan Tugas',
     admin_event_name_label: 'Nama Acara', admin_event_name_placeholder: 'Masukkan nama acara…',
     admin_datetime_label: 'Waktu & Tanggal', admin_time_label: 'Jam',
@@ -113,9 +145,11 @@ const I18N = {
     admin_material_desc_label: 'Deskripsi Singkat', admin_material_desc_placeholder: 'Ringkasan materi…',
     admin_action_type_label: 'Jenis Tindakan', admin_action_link: 'Buka Tautan', admin_action_upload: 'Unggah File',
     admin_url_label: 'Tautan / URL File', admin_file_upload_label: 'Unggah File',
+    admin_material_cabang_label: 'Cabang Materi', admin_material_cabang_all: 'Semua Cabang',
     admin_save_material: 'Simpan Materi',
+    materials_search_placeholder: 'Cari materi…', materials_filter_cabang: 'Cabang', materials_all_branches: 'Semua Cabang',
     admin_subject_label: 'Subjek', admin_subject_math: 'Matematika', admin_subject_physics: 'Fisika',
-    admin_subject_chemistry: 'Kimia', admin_subject_biology: 'Biologi', admin_subject_coding: 'Koding',
+    admin_subject_chemistry: 'Kimia', admin_subject_biology: 'Biologi', admin_subject_informatika: 'Informatika',
     admin_rating_label: 'Rating',
     admin_question_type_label: 'Tipe Soal', admin_type_mc: 'Pilihan Ganda', admin_type_dropdown: 'Dropdown', admin_type_essay: 'Esai',
     admin_question_title_label: 'Judul Soal', admin_question_title_placeholder: 'Masukkan judul pertanyaan…',
@@ -127,7 +161,7 @@ const I18N = {
     admin_essay_ref_label: 'Jawaban Referensi (Opsional)',
     admin_essay_ref_placeholder: 'Tulis kunci jawaban atau poin-poin penting untuk peninjauan pengurus…',
     admin_save_voyage: 'Simpan Voyage',
-    admin_view_json: 'Lihat/Edit JSON', admin_upload_json: 'Unggah JSON',
+    admin_view_json: 'Edit JSON', admin_upload_json: 'Unggah JSON',
     admin_json_editor_title: 'JSON Editor', admin_load_json: 'Muat dari JSON', admin_export_json: 'Ekspor ke JSON', admin_close: 'Tutup',
     admin_json_uploader_title: 'Unggah Voyage JSON', admin_drag_drop_json: 'Tarik file JSON di sini atau klik untuk memilih', admin_clear: 'Bersihkan',
     admin_math_frac: 'Pecahan', admin_math_pow: 'Pangkat', admin_math_sub: 'Subskrip', admin_math_sqrt: 'Akar', admin_math_greek: 'Yunani',
@@ -135,7 +169,8 @@ const I18N = {
     admin_toast_materials: 'Materi berhasil ditambahkan!', admin_toast_voyages: 'Voyage berhasil ditambahkan!',
     admin_error_need_2_options: 'Tambahkan minimal 2 opsi jawaban.', admin_error_need_correct: 'Pilih satu jawaban yang benar terlebih dahulu.',
     admin_error_need_date: 'Pilih tanggal terlebih dahulu.', admin_cal_today: 'Hari ini', admin_cal_clear: 'Hapus',
-    voyages_difficulty: 'Rating', voyages_osn_level: 'Level OSN'
+    voyages_difficulty: 'Rating', voyages_osn_level: 'Level OSN',
+    voyages_alt_precise_title: 'Geser presisi', voyages_alt_precise_body: 'Tahan Alt sambil menyeret untuk mengatur rating dengan presisi 2 desimal, bukan hanya angka bulat.'
   },
   en: {
     tugas: 'Tasks', materials: 'Materials', jadwal: 'Schedule', anggota: 'Members', pengaturan: 'Settings', beranda: 'Home', keluar: 'Log Out',
@@ -144,14 +179,15 @@ const I18N = {
     settings_desc: 'Manage your profile, branch, and account appearance.',
     active_branch: 'Active Branch', branch_desc: 'Your currently registered branch.',
     appearance_lang: 'Appearance & Language', change_lang: 'Change Language',
+    crop_title: 'Adjust Photo', crop_hint: 'Drag to reposition, use the slider to zoom.', crop_cancel: 'Cancel', crop_save: 'Save',
     dashboard_sub: "Here's what's happening in Orbit this week.",
     active_tasks: 'Active Tasks', due_this_week: 'due this week', late: 'late',
     upcoming_events: 'Upcoming Events', up_next: 'Up next:', recent_activity: 'Recent activity',
-    tasks_desc: 'Everything currently assigned to the club.', assigned_to: 'Assigned to', due: 'Due:', submitted: 'submission sent',
+    tasks_desc: 'Everything currently assigned to the extracurricular.', assigned_to: 'Assigned to', due: 'Due:', submitted: 'submission sent',
     status_progress: 'In Progress', status_review: 'Pending Review', status_late: 'Overdue', status_todo: 'Not Started', status_done: 'Completed',
     modal_desc: 'Task description', modal_ans: 'Your submission', modal_upload: 'Click to upload submission file\u2026', modal_proto: 'Prototype: files are not actually uploaded to a server, only the filename is stored in your browser.',
-    schedule_desc: 'Upcoming club events, in chronological order.', badge_next: 'Next',
-    members_desc: 'Everyone currently in KIR.', role_ketua: 'Club President', role_wakil: 'Vice President', role_bendahara: 'Treasurer', role_anggota: 'Member', you: '(you)',
+    schedule_desc: 'Upcoming extracurricular events, in chronological order.', badge_next: 'Next',
+    members_desc: 'Everyone currently in KIR.', role_ketua: 'Extracurricular President', role_wakil: 'Vice President', role_bendahara: 'Treasurer', role_anggota: 'Member', you: '(you)',
     materials_desc: 'Learning modules and references for club members.',
     idx_login: 'Log In', idx_register: 'Register', idx_dash_badge: 'Club Dashboard',
     idx_h1_a: 'One place for your', idx_h1_b: 'tasks, schedule, and team.',
@@ -175,39 +211,58 @@ const I18N = {
     galeri: 'Gallery', program_kerja: 'Work Programs',
     nav_beranda: 'Home', nav_galeri: 'Gallery', nav_proker: 'Work Programs',
     gallery_title: 'Gallery', gallery_desc: 'Documentation from club activities, organized into folders just like the files on your computer. Click a folder to open it, or ".." to go back.',
-    gallery_up: '.. Back', gallery_empty: 'This folder is still empty — photos coming soon.',
+    gallery_up: '.. Back', gallery_empty: 'This folder is still empty. Photos are coming soon.',
     gallery_items_one: 'item', gallery_items_other: 'items',
     proker_eyebrow: '2025/2026 School Year',
-    proker_title: 'Work Programs', proker_desc: 'The Robotics and Science branch work plans for this school year — from weekly training to competitions.',
+    proker_title: 'Work Programs', proker_desc: 'The Robotics and Science branch work plans for this school year range from weekly training to competitions.',
     proker_robotik_label: 'Robotics Branch', proker_sains_label: 'Science Branch',
-    proker_cta_title: 'Interested in joining a program?', proker_cta_desc: 'Register as a member and choose the branch you\'re interested in — your dashboard adjusts automatically.',
+    proker_cta_title: 'Interested in joining a program?', proker_cta_desc: 'Register as a member and choose your preferred branch to get an automatically adjusted dashboard.',
     proker_cta_btn: 'Register Now',
     voyage_category: 'Voyage', nav_voyages: 'Voyages', nav_leaderboard: 'Leaderboard',
-    voyages_title: 'Voyages', voyages_desc: 'MIPA and coding practice questions — solve them to earn deltas.',
-    voyages_filter_all: 'All', voyages_filter_math: 'Math', voyages_filter_physics: 'Physics', voyages_filter_coding: 'Coding', voyages_filter_selected: 'selected', voyages_filter_none: 'None',
+    voyages_title: 'Voyages', voyages_desc: 'MIPA and programming practice questions. Solve them to earn deltas.',
+    voyages_filter_all: 'All', voyages_filter_math: 'Math', voyages_filter_physics: 'Physics', voyages_filter_informatika: 'Informatics', voyages_filter_selected: 'selected', voyages_filter_none: 'None',
+    voyages_filter_subject_label: 'Subject', voyages_filter_type_label: 'Type',
+    voyages_expedition_mode_label: 'Expedition Mode', voyages_expedition_exit: 'Exit Expedition',
+    voyages_expedition_empty: 'Every voyage matching your filters is already done.',
+    voyages_expedition_fullscreen_required: 'Fullscreen is required to start an Expedition.',
+    voyages_expedition_fullscreen_unsupported: 'This device does not support fullscreen mode.',
+    voyages_expedition_complete: 'Expedition complete — you finished every matching voyage!',
     voyages_search_placeholder: 'Search questions…', voyages_search_label: 'Search',
+    voyages_sort_label: 'Sort by', voyages_sort_random: 'Random', voyages_sort_diff_asc: 'Rating: Low to High',
+    voyages_sort_diff_desc: 'Rating: High to Low', voyages_sort_title_az: 'Title: A to Z', voyages_sort_newest: 'Newest',
     voyages_filter_chemistry: 'Chemistry', voyages_filter_biology: 'Biology',
     voyages_difficulty: 'Rating', voyages_osn_level: 'OSN Level', voyages_reward: 'Reward',
+    voyages_grading_analyzing: 'Grading your answer with Smart Grading…',
+    voyages_grading_result_title: 'Smart Grading Result',
+    voyages_grading_strengths: 'Strengths',
+    voyages_grading_improvements: 'Points to Improve',
+    voyages_grading_model: 'Graded by',
+    voyages_grading_failed: 'Automatic grading failed. Please try again.',
+    voyages_grading_retry: 'Try Again',
     voyages_start: 'Start Question', voyages_continue: 'Review Again', voyages_completed: 'Completed',
-    voyages_type_mc: 'Multiple Choice', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Essay',
+    voyages_type_mc: 'Multiple Choice', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Essay', voyages_type_programming: 'Competitive (Programming)',
+    voyages_bahasa: 'Language',
+    voyages_run_samples: 'Run', voyages_console_tests: 'Test Cases', voyages_console_output: 'Console',
+    voyages_console_empty: 'Waiting for code to run…', voyages_console_running: 'Running code…',
     voyages_submit: 'Submit Answer', voyages_next: 'Next', voyages_close: 'Close',
     voyages_correct: 'Correct answer!', voyages_incorrect: 'Not quite, try again.',
     voyages_earned: 'deltas earned', voyages_essay_sent: 'Essay submitted for officer review.',
     voyages_choose_answer: 'Choose one answer below.', voyages_choose_dropdown: 'Pick an answer from the menu below.',
-    voyages_pick_placeholder: '-- Choose an answer --', voyages_your_answer: 'Your essay answer',
+    voyages_pick_placeholder: 'Choose an answer', voyages_your_answer: 'Your essay answer',
     voyages_essay_placeholder: 'Write your essay answer here…',
+    voyages_preview_label: 'Preview', voyages_preview_empty: 'Formula preview will appear here…',
     voyages_already_done: 'You already completed this question before.',
     leaderboard_title: 'Leaderboard', leaderboard_desc: 'Deltas ranking across all KIR members.',
     leaderboard_you: 'You', leaderboard_rank: 'Rank', leaderboard_member: 'Member', leaderboard_deltas: 'Deltas',
     leaderboard_your_rank: 'Your rank', leaderboard_range_week: 'This Week', leaderboard_range_month: 'This Month', leaderboard_range_all: 'All Time',
     leaderboard_search_placeholder: 'Search members…', leaderboard_branch_all: 'All Branches', leaderboard_no_results: 'No members match.',
     comments_title: 'Comments', comments_placeholder: 'Write a comment…', comments_send: 'Send',
-    comments_empty: 'No comments yet. Be the first.', comments_attach: 'Attach file',
+    comments_empty: 'No comments yet. Take the initiative to be the first!', comments_attach: 'Attach file',
     comments_delete: 'Delete', comments_too_large: 'Pick a file under 1.5MB (the prototype stores this in your browser).',
     comments_reply: 'Reply', comments_reply_placeholder: 'Write a reply…', comments_cancel: 'Cancel',
     theme_light: 'Light Mode',
 
-    admin_title: 'Admin Panel', admin_desc: 'Add new data entries to the system.',
+    admin_title: 'Admin Panel', admin_desc: 'Review and manage new member registrations.',
     admin_tab_tasks: 'Tasks', admin_tab_schedule: 'Schedule', admin_tab_materials: 'Materials', admin_tab_voyages: 'Voyages',
     admin_task_title_label: 'Task Title', admin_task_title_placeholder: 'Enter a title…',
     admin_due_label: 'Due Date', admin_pick_date: 'Pick a date',
@@ -216,6 +271,7 @@ const I18N = {
     admin_assign_mode_label: 'Assignment Mode', admin_assign_everyone: 'All Branch Members', admin_assign_specific: 'Specific People',
     admin_assignee_label: 'Assignee', admin_assignee_placeholder: 'Member name…', admin_assignee_hint: 'Enter one or more names, separated by commas.',
     admin_desc_label: 'Description', admin_desc_placeholder: 'Describe the task details…',
+    admin_image_label: 'Image (Optional)', admin_image_upload: 'Click to upload an image…',
     admin_save_task: 'Save Task',
     admin_event_name_label: 'Event Name', admin_event_name_placeholder: 'Enter an event name…',
     admin_datetime_label: 'Date & Time', admin_time_label: 'Time',
@@ -225,9 +281,11 @@ const I18N = {
     admin_material_desc_label: 'Short Description', admin_material_desc_placeholder: 'Material summary…',
     admin_action_type_label: 'Action Type', admin_action_link: 'Open Link', admin_action_upload: 'Upload File',
     admin_url_label: 'Link / File URL', admin_file_upload_label: 'Upload File',
+    admin_material_cabang_label: 'Material Branch', admin_material_cabang_all: 'All Branches',
     admin_save_material: 'Save Material',
+    materials_search_placeholder: 'Search materials…', materials_filter_cabang: 'Branch', materials_all_branches: 'All Branches',
     admin_subject_label: 'Subject', admin_subject_math: 'Math', admin_subject_physics: 'Physics',
-    admin_subject_chemistry: 'Chemistry', admin_subject_biology: 'Biology', admin_subject_coding: 'Coding',
+    admin_subject_chemistry: 'Chemistry', admin_subject_biology: 'Biology', admin_subject_informatika: 'Informatics',
     admin_rating_label: 'Rating',
     admin_question_type_label: 'Question Type', admin_type_mc: 'Multiple Choice', admin_type_dropdown: 'Dropdown', admin_type_essay: 'Essay',
     admin_question_title_label: 'Question Title', admin_question_title_placeholder: 'Enter a question title…',
@@ -239,7 +297,7 @@ const I18N = {
     admin_essay_ref_label: 'Reference Answer (Optional)',
     admin_essay_ref_placeholder: 'Write an answer key or key points for officer review…',
     admin_save_voyage: 'Save Voyage',
-    admin_view_json: 'View/Edit JSON', admin_upload_json: 'Upload JSON',
+    admin_view_json: 'Edit JSON', admin_upload_json: 'Upload JSON',
     admin_json_editor_title: 'JSON Editor', admin_load_json: 'Load from JSON', admin_export_json: 'Export to JSON', admin_close: 'Close',
     admin_json_uploader_title: 'Upload Voyage JSON', admin_drag_drop_json: 'Drag JSON files here or click to select', admin_clear: 'Clear',
     admin_math_frac: 'Fraction', admin_math_pow: 'Power', admin_math_sub: 'Subscript', admin_math_sqrt: 'Square Root', admin_math_greek: 'Greek',
@@ -247,7 +305,8 @@ const I18N = {
     admin_toast_materials: 'Material added successfully!', admin_toast_voyages: 'Voyage added successfully!',
     admin_error_need_2_options: 'Add at least 2 answer options.', admin_error_need_correct: 'Select a correct answer first.',
     admin_error_need_date: 'Please pick a date first.', admin_cal_today: 'Today', admin_cal_clear: 'Clear',
-    voyages_difficulty: 'Rating', voyages_osn_level: 'Provincial OSN Level'
+    voyages_difficulty: 'Rating', voyages_osn_level: 'Provincial OSN Level',
+    voyages_alt_precise_title: 'Precise drag', voyages_alt_precise_body: 'Hold Alt while dragging to set the rating with 2-decimal precision instead of snapping to whole numbers.'
   }
 };
 
@@ -295,26 +354,235 @@ function kirFormatActivityTime(date) {
   return `${dateFmt.format(date)} ${I18N[lang].activity_at} ${time}`;
 }
 
+/* ----------------------------------------------------------
+   Lightweight modal show/hide, self-contained in auth.js.
+   admin-shared.js has a fuller equivalent (kirModalShow/Hide,
+   with scroll locking), but it isn't loaded on every page —
+   auth.js is, and the global settings + avatar-crop modals
+   need to work everywhere.
+   ---------------------------------------------------------- */
+function kirLocalModalShow(el) {
+  if (!el) return;
+  el.classList.remove('hidden', 'modal-closing');
+  // Force a reflow between removing `hidden` and adding `modal-open` —
+  // otherwise the browser coalesces both class changes into a single
+  // paint and the opacity/transform transition never actually plays.
+  void el.offsetWidth;
+  el.classList.add('modal-open');
+}
+
+function kirLocalModalHide(el, durationMs = 200) {
+  if (!el) return;
+  el.classList.remove('modal-open');
+  el.classList.add('modal-closing');
+  setTimeout(() => {
+    el.classList.add('hidden');
+    el.classList.remove('modal-closing');
+  }, durationMs);
+}
+
 function toggleSettingsModal() {
   const modal = document.getElementById('global-settings-modal');
-  modal.classList.toggle('hidden');
-  if (!modal.classList.contains('hidden')) {
+  if (!modal) return;
+  if (modal.classList.contains('hidden')) {
+    kirLocalModalShow(modal);
     document.getElementById('modal-cabang-badge').textContent = kirCabangLabel(kirCurrentUserCabang());
     document.getElementById('modal-cabang-name').textContent = kirCabangLabel(kirCurrentUserCabang());
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) themeToggle.classList.toggle('on', kirCurrentTheme() === 'light');
+  } else {
+    kirLocalModalHide(modal);
   }
 }
 
 function handleQuickAvatarUpload(event) {
   const file = event.target.files[0];
+  event.target.value = ''; // allow re-selecting the same file next time
   if (!file) return;
+  kirOpenAvatarCrop(file);
+}
+
+/* ----------------------------------------------------------
+   Avatar cropper — opens whenever a new photo is picked (from
+   the sidebar avatar). Lets the person pan/zoom within a
+   circular frame before it's saved, instead of using the raw
+   upload as-is.
+
+   The crop viewport is a fixed-size circle (KIR_CROP_VIEWPORT).
+   The image is displayed at `baseScale` (enough to cover the
+   circle) times a user-controlled `zoom` (1x-3x), and can be
+   panned within bounds that always keep it covering the circle.
+   On confirm, the same math is replayed against a <canvas> to
+   cut out exactly what's visible and produce the final square
+   image (which renders as a circle everywhere via rounded-full).
+   ---------------------------------------------------------- */
+const KIR_CROP_VIEWPORT = 260; // px, must match the CSS width/height on #crop-viewport
+const KIR_CROP_OUTPUT = 480;   // px, output image size
+let kirCropState = null;       // { naturalW, naturalH, baseScale, zoom, panX, panY }
+let kirCropDrag = null;
+
+function kirOpenAvatarCrop(file) {
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) {
+    alert('Pilih gambar di bawah 8MB.');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
-    kirSetUserAvatar(reader.result);
-    kirRenderUserChrome();
+    const img = new Image();
+    img.onload = () => {
+      const naturalW = img.naturalWidth || 1;
+      const naturalH = img.naturalHeight || 1;
+      const baseScale = Math.max(KIR_CROP_VIEWPORT / naturalW, KIR_CROP_VIEWPORT / naturalH);
+      kirCropState = { img, naturalW, naturalH, baseScale, zoom: 1, panX: 0, panY: 0 };
+      const vp = document.getElementById('crop-viewport');
+      if (vp) {
+        vp.style.backgroundImage = `url("${reader.result}")`;
+        vp.style.backgroundRepeat = 'no-repeat';
+      }
+      const zoomInput = document.getElementById('crop-zoom');
+      if (zoomInput) zoomInput.value = '1';
+      kirRenderCropTransform();
+      kirLocalModalShow(document.getElementById('avatar-crop-modal'));
+    };
+    img.src = reader.result;
   };
   reader.readAsDataURL(file);
+}
+
+function kirRenderCropTransform() {
+  const s = kirCropState;
+  const vp = document.getElementById('crop-viewport');
+  if (!s || !vp) return;
+  const displayW = s.naturalW * s.baseScale * s.zoom;
+  const displayH = s.naturalH * s.baseScale * s.zoom;
+  const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
+  const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
+  // background-size takes an explicit width/height pair here (not the
+  // 'cover' keyword) so zoom is driven entirely by our own math — the
+  // browser never gets a chance to re-fit/stretch it on its own.
+  vp.style.backgroundSize = `${displayW}px ${displayH}px`;
+  vp.style.backgroundPosition = `${imageLeft}px ${imageTop}px`;
+}
+
+function kirCropPanBounds() {
+  const s = kirCropState;
+  const displayW = s.naturalW * s.baseScale * s.zoom;
+  const displayH = s.naturalH * s.baseScale * s.zoom;
+  return {
+    maxX: Math.max(0, (displayW - KIR_CROP_VIEWPORT) / 2),
+    maxY: Math.max(0, (displayH - KIR_CROP_VIEWPORT) / 2),
+  };
+}
+
+function kirClampCropPan() {
+  const s = kirCropState;
+  const { maxX, maxY } = kirCropPanBounds();
+  s.panX = Math.max(-maxX, Math.min(maxX, s.panX));
+  s.panY = Math.max(-maxY, Math.min(maxY, s.panY));
+}
+
+function handleCropZoomInput(event) {
+  if (!kirCropState) return;
+  kirCropState.zoom = parseFloat(event.target.value) || 1;
+  kirClampCropPan();
+  kirRenderCropTransform();
+}
+
+function kirInitCropDrag() {
+  const vp = document.getElementById('crop-viewport');
+  if (!vp || vp.__kirDragInit) return;
+  vp.__kirDragInit = true;
+
+  vp.addEventListener('pointerdown', (e) => {
+    if (!kirCropState) return;
+    kirCropDrag = { startX: e.clientX, startY: e.clientY, panX: kirCropState.panX, panY: kirCropState.panY };
+    vp.setPointerCapture(e.pointerId);
+    vp.classList.add('cursor-grabbing');
+  });
+  vp.addEventListener('pointermove', (e) => {
+    if (!kirCropDrag || !kirCropState) return;
+    kirCropState.panX = kirCropDrag.panX + (e.clientX - kirCropDrag.startX);
+    kirCropState.panY = kirCropDrag.panY + (e.clientY - kirCropDrag.startY);
+    kirClampCropPan();
+    kirRenderCropTransform();
+  });
+  const endDrag = () => {
+    kirCropDrag = null;
+    vp.classList.remove('cursor-grabbing');
+  };
+  vp.addEventListener('pointerup', endDrag);
+  vp.addEventListener('pointercancel', endDrag);
+  vp.addEventListener('pointerleave', endDrag);
+}
+
+function cancelAvatarCrop() {
+  kirLocalModalHide(document.getElementById('avatar-crop-modal'));
+  kirCropState = null;
+  kirCropDrag = null;
+  const vp = document.getElementById('crop-viewport');
+  if (vp) vp.style.backgroundImage = '';
+}
+
+async function confirmAvatarCrop() {
+  if (!kirCropState) return;
+  const saveBtn = document.getElementById('crop-save-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '...'; }
+
+  try {
+    const s = kirCropState;
+    const scaleFactor = s.baseScale * s.zoom;
+    const displayW = s.naturalW * scaleFactor;
+    const displayH = s.naturalH * scaleFactor;
+    const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
+    const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
+
+    // Map the visible circle-viewport window back into source-image
+    // pixel coordinates, so the canvas crop matches what was shown.
+    const sx = -imageLeft / scaleFactor;
+    const sy = -imageTop / scaleFactor;
+    const sw = KIR_CROP_VIEWPORT / scaleFactor;
+    const sh = KIR_CROP_VIEWPORT / scaleFactor;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = KIR_CROP_OUTPUT;
+    canvas.height = KIR_CROP_OUTPUT;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(s.img, sx, sy, sw, sh, 0, 0, KIR_CROP_OUTPUT, KIR_CROP_OUTPUT);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) throw new Error('Gagal memproses gambar.');
+
+    let avatarUrl = null;
+    if (window.supabaseClient) {
+      const { data: userData } = await supabaseClient.auth.getUser();
+      if (userData?.user) {
+        const filePath = `avatars/${userData.user.id}-${Date.now()}.jpg`;
+        const { error: uploadError } = await supabaseClient.storage
+          .from('assets')
+          .upload(filePath, blob, { contentType: 'image/jpeg' });
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = supabaseClient.storage.from('assets').getPublicUrl(filePath);
+        avatarUrl = publicUrlData.publicUrl;
+        await supabaseClient.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userData.user.id);
+      }
+    }
+
+    // No active/known session (or storage unavailable) — fall back to
+    // keeping the cropped image locally rather than losing the edit.
+    if (!avatarUrl) avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+    kirSetUserAvatar(avatarUrl);
+    kirRenderUserChrome();
+    kirLocalModalHide(document.getElementById('avatar-crop-modal'));
+    kirCropState = null;
+  } catch (err) {
+    console.error('Avatar upload failed:', err);
+    alert('Gagal menyimpan foto: ' + (err.message || err));
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+  }
 }
 
 function handleLanguageToggle() {
@@ -331,19 +599,37 @@ function handleThemeToggle() {
 }
 
 function kirInjectSidebar(activeTab) {
+  kirRenderSidebarNow(activeTab);
+
+  // Don't block the first paint on a network round-trip — render
+  // instantly from whatever's cached, then quietly re-render only if
+  // the authoritative profile (once it loads) actually changed
+  // something (e.g. an admin promotion). In the normal case nothing
+  // changed, so there's no visible flash on every page navigation.
+  if (window.__kirProfileReady) {
+    const before = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
+    window.__kirProfileReady.then(() => {
+      const after = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
+      if (after !== before) kirRenderSidebarNow(activeTab);
+    });
+  }
+}
+
+function kirRenderSidebarNow(activeTab) {
   const sidebarHtml = `
   <aside id="sidebar" class="hidden lg:flex lg:flex-col w-full lg:w-64 lg:min-h-screen glass border-y-0 border-l-0 px-4 py-6 lg:sticky lg:top-0 relative ${localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true' ? 'sidebar-collapsed' : ''}">
+    <span id="nav-active-pill" class="nav-active-pill"></span>
     <button id="sidebar-collapse-btn" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-accent-gradient text-white flex items-center justify-center z-50 hover:brightness-110 cursor-pointer touch-none">
       <svg class="w-3 h-3 collapse-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
     </button>
     <a href="index.html" class="hidden lg:flex items-center gap-2.5 px-2 mb-8 overflow-hidden">
       <!-- Removed bg-zinc-900, shadow-glow-sm, and border -->
       <div class="w-9 h-9 shrink-0 flex items-center justify-center">
-        <img src="assets/KIR_light_heavy.png" alt="Orbit Logo" class="w-8 h-8 object-contain" />
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
       </div>
       <div class="sidebar-header-text shrink-0">
         <div class="flex items-center gap-1.5">
-          <p class="font-display font-semibold leading-none tracking-wider">orbit.io</p>
+          <p class="font-display font-semibold leading-none tracking-wider text-gradient-accent">orbit.io</p>
           <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round"/>
             <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
@@ -374,10 +660,13 @@ function kirInjectSidebar(activeTab) {
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
         <span class="nav-label" data-i18n="anggota">Anggota</span>
       </a>
-      ${kirCurrentUserName() === 'Admin' ? `
+      ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
       <a href="admin.html" class="nav-link ${activeTab === 'admin' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-        <span class="nav-label">Admin</span>
+        <span class="relative shrink-0 inline-flex">
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span id="admin-ping-badge" class="nav-ping-badge hidden"></span>
+        </span>
+        <span class="nav-label" data-i18n="admin_title">Admin Panel</span>
       </a>` : ''}
       </nav>
     <nav class="flex flex-col gap-1.5 mt-6">
@@ -455,7 +744,34 @@ function kirInjectSidebar(activeTab) {
   </div>
   `;
 
-  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml;
+  const avatarCropModalHtml = `
+  <div id="avatar-crop-modal" class="modal-overlay hidden" onclick="if(event.target===this) cancelAvatarCrop()">
+    <div class="modal-card p-6" style="max-width:22rem;">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="font-display text-lg font-semibold" data-i18n="crop_title">Sesuaikan Foto</h2>
+        <button onclick="cancelAvatarCrop()" class="text-zinc-500 hover:text-zinc-300 p-1">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div id="crop-viewport" class="relative mx-auto rounded-full overflow-hidden cursor-grab select-none" style="width:${KIR_CROP_VIEWPORT}px;height:${KIR_CROP_VIEWPORT}px;background-color:rgba(255,255,255,0.05);touch-action:none;"></div>
+      <div class="flex items-center gap-3 mt-5">
+        <svg class="w-4 h-4 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" stroke-linecap="round" stroke-linejoin="round"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+        <input id="crop-zoom" type="range" min="1" max="3" step="0.01" value="1" oninput="handleCropZoomInput(event)"
+          class="kir-range flex-1 h-1.5 rounded-full appearance-none bg-white/10 cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0" />
+        <svg class="w-5 h-5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" stroke-linecap="round" stroke-linejoin="round"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/><path stroke-linecap="round" d="M8 11h6"/><path stroke-linecap="round" d="M11 8v6"/></svg>
+      </div>
+      <p class="text-[11px] text-zinc-500 text-center mt-3" data-i18n="crop_hint">Seret untuk menggeser, geser slider untuk memperbesar.</p>
+      <div class="flex items-center gap-2.5 mt-5">
+        <button onclick="cancelAvatarCrop()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition" data-i18n="crop_cancel">Batal</button>
+        <button id="crop-save-btn" onclick="confirmAvatarCrop()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="crop_save">Simpan</button>
+      </div>
+    </div>
+  </div>
+  `;
+
+  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + avatarCropModalHtml;
+  kirApplyTranslations();
+  kirApplyBrandAssets();
   
   const badge = document.getElementById('sidebar-cabang-badge');
   if (badge) badge.textContent = kirCabangLabel(kirCurrentUserCabang());
@@ -463,6 +779,122 @@ function kirInjectSidebar(activeTab) {
   kirApplyTranslations();
   kirRenderUserChrome();
   kirInitSidebarDrag();
+  kirInitSidebarShortcuts();
+  kirInitCropDrag();
+  kirSettleNavPill();
+  kirRefreshAdminPingBadge();
+}
+
+/* ----------------------------------------------------------
+   Admin sidebar "ping" — a small red count badge on the Admin
+   Panel link (Discord-style unread ping) so admins can tell at a
+   glance, from any page, whether members are waiting to be
+   approved without having to open Admin Panel first.
+
+   Counts profiles rows whose status isn't 'approved' yet, same
+   definition admin.html itself uses for "Menunggu". Only runs when
+   the admin-only nav link (and its badge span) actually exist in
+   the DOM, i.e. only for admins.
+   ---------------------------------------------------------- */
+async function kirRefreshAdminPingBadge() {
+  const badge = document.getElementById('admin-ping-badge');
+  if (!badge || !window.supabaseClient) return;
+
+  const { count, error } = await supabaseClient
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    // Mirrors admin.html's client-side `a.status !== 'approved'` check:
+    // .neq() alone would silently exclude rows where status is NULL
+    // (SQL's <> yields UNKNOWN, not TRUE, against NULL), so an
+    // unapproved-but-not-yet-status-set row would be missed.
+    .or('status.neq.approved,status.is.null');
+
+  if (error) {
+    console.error('Error fetching pending applicant count:', error);
+    return;
+  }
+
+  if (!count) {
+    badge.classList.add('hidden');
+    badge.textContent = '';
+    return;
+  }
+
+  badge.textContent = count > 9 ? '9+' : String(count);
+  badge.classList.remove('hidden');
+}
+
+/* ----------------------------------------------------------
+   Settle the pill into place once layout is actually final.
+   Tailwind's CDN runtime applies utility CSS for freshly-injected
+   markup (like this sidebar, built via innerHTML) through an async
+   MutationObserver, not synchronously — so measuring nav-link
+   positions right after injection can catch them before their real
+   padding/spacing exists. That stale measurement was the cause of
+   the pill rendering near the top of the sidebar and then visibly
+   animating down once Tailwind caught up a moment later.
+
+   The pill starts invisible (its default CSS state), so waiting a
+   couple of frames before the first kirPositionNavPill/kirWatchNavPill
+   call means it only ever becomes visible already in its correct
+   spot — it never has a wrong position to animate away from.
+   ---------------------------------------------------------- */
+function kirSettleNavPill() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      kirPositionNavPill(false);
+      kirWatchNavPill();
+    });
+  });
+}
+
+/* ----------------------------------------------------------
+   Traveling nav highlight — one shared "pill" sits behind
+   whichever .nav-link is active and gets repositioned to match
+   it, instead of each link owning its own static background.
+   Repositioning animates via CSS (.nav-active-pill in style.css),
+   so switching pages makes the highlight slide/resize into place.
+   A ResizeObserver keeps it aligned through the sidebar
+   collapse/expand animation and window resizes too.
+   ---------------------------------------------------------- */
+function kirPositionNavPill(animate) {
+  const sidebar = document.getElementById('sidebar');
+  const pill = document.getElementById('nav-active-pill');
+  if (!sidebar || !pill) return;
+  const active = sidebar.querySelector('.nav-link.active');
+  if (!active) {
+    pill.style.opacity = '0';
+    return;
+  }
+  if (!animate) pill.style.transition = 'none';
+
+  const sidebarRect = sidebar.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  pill.style.top = (activeRect.top - sidebarRect.top) + 'px';
+  pill.style.left = (activeRect.left - sidebarRect.left) + 'px';
+  pill.style.width = activeRect.width + 'px';
+  pill.style.height = activeRect.height + 'px';
+  pill.style.opacity = '1';
+
+  if (!animate) {
+    void pill.offsetHeight; // force reflow so removing the transition takes effect immediately
+    pill.style.transition = '';
+  }
+}
+
+function kirWatchNavPill() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar || !window.ResizeObserver) return;
+  if (sidebar.__kirPillObserver) sidebar.__kirPillObserver.disconnect();
+  const ro = new ResizeObserver(() => {
+    // Always snap instantly during resize events so the pill stays tightly 
+    // bound to the link frame-by-frame during the collapse/uncollapse animation.
+    kirPositionNavPill(false);
+  });
+  ro.observe(sidebar);
+  sidebar.__kirPillObserver = ro;
 }
 
 function kirInitSidebarDrag() {
@@ -522,11 +954,147 @@ function kirToggleSidebarCollapse() {
   const sidebar = document.getElementById('sidebar');
   const collapsed = sidebar.classList.toggle('sidebar-collapsed');
   localStorage.setItem(KIR_SIDEBAR_COLLAPSED_KEY, collapsed ? 'true' : 'false');
+  if (window.supabaseClient) {
+    supabaseClient.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) supabaseClient.from('profiles').update({ sidebar_collapsed: collapsed }).eq('id', userData.user.id).then();
+    });
+  }
+}
+
+function kirInitSidebarShortcuts() {
+  // Prevent duplicate global event listeners if the sidebar re-injects
+  if (window.kirSidebarShortcutsInit) return;
+  window.kirSidebarShortcutsInit = true;
+
+  // Inject the visual tactile state for held items
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .nav-link.shortcut-highlight {
+      background: rgba(128, 128, 128, 0.15) !important;
+      opacity: 1 !important;
+      transform: scale(0.96);
+      transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.1s ease;
+    }
+  `;
+  document.head.appendChild(style);
+
+  let activeShortcutKey = null;
+  let activeShortcutTarget = null;
+
+  document.addEventListener('keydown', (e) => {
+    // Abort if typing inside an input field or using modifier keys
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const key = e.key;
+    if (/^[0-9]$/.test(key)) {
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar) return; // Disables shortcuts on index, gallery, and program kerja
+
+      const links = Array.from(sidebar.querySelectorAll('.nav-link'));
+      // Map 1-9 to index 0-8, and map 0 to the 10th item (index 9)
+      const index = key === '0' ? 9 : parseInt(key, 10) - 1;
+
+      if (links[index]) {
+        e.preventDefault();
+        
+        // Update the active tracking state to the newest key held
+        activeShortcutKey = key;
+        activeShortcutTarget = links[index];
+
+        links.forEach(l => l.classList.remove('shortcut-highlight'));
+        activeShortcutTarget.classList.add('shortcut-highlight');
+      }
+    }
+  });
+
+  document.addEventListener('keyup', (e) => {
+    // Only fire the click if the key released matches the CURRENT active highlight
+    // This allows rolling your fingers over 1 then 2 without triggering 1 when released.
+    if (e.key === activeShortcutKey && activeShortcutTarget) {
+      const target = activeShortcutTarget;
+      
+      activeShortcutKey = null;
+      activeShortcutTarget = null;
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('shortcut-highlight'));
+      
+      target.click();
+    }
+  });
+
+  // Failsafe: Clear visual state if the user alt-tabs away while holding a key
+  window.addEventListener('blur', () => {
+    activeShortcutKey = null;
+    activeShortcutTarget = null;
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('shortcut-highlight'));
+  });
 }
 
 function kirSetLang(lang) {
   localStorage.setItem(KIR_LANG_KEY, lang);
   kirApplyTranslations();
+  if (window.supabaseClient) {
+    supabaseClient.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) supabaseClient.from('profiles').update({ lang: lang }).eq('id', userData.user.id).then();
+    });
+  }
+}
+
+function kirPageTitleKey() {
+  const filename = window.location.pathname.split('/').pop() || 'index.html';
+  const titleMap = {
+    'index.html': 'page_title_home',
+    'dashboard.html': 'page_title_dashboard',
+    'tasks.html': 'page_title_tasks',
+    'materials.html': 'page_title_materials',
+    'schedule.html': 'page_title_schedule',
+    'members.html': 'page_title_members',
+    'voyages.html': 'page_title_voyages',
+    'leaderboard.html': 'page_title_leaderboard',
+    'program-kerja.html': 'page_title_program_kerja',
+    'gallery.html': 'page_title_gallery',
+    'auth.html': 'page_title_auth',
+  };
+  return titleMap[filename] || 'page_title_home';
+}
+
+function kirApplyPageTitle(lang = null) {
+  const resolvedLang = lang || localStorage.getItem(KIR_LANG_KEY) || 'id';
+  const key = kirPageTitleKey();
+  const title = I18N[resolvedLang][key] || I18N[resolvedLang].page_title_home || 'Orbit';
+  const titleEl = document.querySelector('title');
+  if (titleEl) titleEl.textContent = title;
+  document.title = title;
+}
+
+function resolveBrandAssetName(type = 'icon') {
+  const loggedIn = localStorage.getItem(KIR_SESSION_KEY) === 'true';
+  const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
+  const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
+  const suffix = type === 'glow' ? '_glow' : '';
+
+  if (loggedIn && cabang === 'robotik') return `assets/robotik${suffix}.PNG`;
+  if (loggedIn && cabang === 'sains') return `assets/sains${suffix}.PNG`;
+  if (loggedIn && cabang === 'both') return `assets/hybrid${suffix}.PNG`;
+  if (theme === 'light') return `assets/kir_dark${suffix}.PNG`;
+  return `assets/kir_light${suffix}.PNG`;
+}
+
+function kirApplyBrandAssets() {
+  const faviconLink = document.querySelector('link[rel="icon"]');
+  if (faviconLink) {
+    faviconLink.href = resolveBrandAssetName('icon');
+  } else {
+    const newLink = document.createElement('link');
+    newLink.rel = 'icon';
+    newLink.type = 'image/png';
+    newLink.href = resolveBrandAssetName('icon');
+    document.head.appendChild(newLink);
+  }
+
+  document.querySelectorAll('img[data-kir-brand-logo]').forEach(img => {
+    img.src = resolveBrandAssetName('glow');
+  });
 }
 
 function kirApplyTranslations() {
@@ -539,6 +1107,8 @@ function kirApplyTranslations() {
     const key = el.getAttribute('data-i18n-placeholder');
     if (I18N[lang][key]) el.setAttribute('placeholder', I18N[lang][key]);
   });
+  kirApplyPageTitle(lang);
+  kirApplyBrandAssets();
 }
 
 /* ----------------------------------------------------------
@@ -560,6 +1130,9 @@ function kirApplyTranslations() {
   } else {
     document.documentElement.removeAttribute('data-cabang');
   }
+
+  kirApplyPageTitle();
+  kirApplyBrandAssets();
 })();
 
 /* ----------------------------------------------------------
@@ -581,27 +1154,115 @@ function kirLogin(name, cabang) {
   localStorage.setItem(KIR_CABANG_KEY, resolvedCabang);
   localStorage.setItem(KIR_LAST_CABANG_KEY, resolvedCabang);
   document.documentElement.setAttribute('data-cabang', resolvedCabang);
+  kirApplyBrandAssets();
 }
 
 function kirLastKnownCabang() {
   return localStorage.getItem(KIR_LAST_CABANG_KEY) || 'robotik';
 }
 
-function kirLogout() {
-  // TODO(real auth): invalidate the real session on the server too.
+async function kirLogout() {
+  await supabaseClient.auth.signOut();
   localStorage.removeItem(KIR_SESSION_KEY);
   localStorage.removeItem(KIR_NAME_KEY);
+  localStorage.removeItem(KIR_ROLE_KEY);
   localStorage.removeItem(KIR_CABANG_KEY);
   localStorage.removeItem(KIR_AVATAR_KEY);
+  document.documentElement.removeAttribute('data-cabang');
+  kirApplyBrandAssets();
   window.location.href = 'index.html';
 }
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || !session) {
+    localStorage.removeItem(KIR_SESSION_KEY);
+  }
+});
 
 /* Call this at the very top of any protected page's <head>,
    right after loading this script, so it runs before the
    page paints. It sends logged-out visitors to auth.html. */
-function kirRequireAuth() {
-  if (!kirIsLoggedIn()) {
+async function kirRequireAuth() {
+  if (kirIsLoggedIn()) {
+    // Optimistic path: we already have a cached session, so let the page
+    // start painting immediately, then verify + refresh in the background.
+    // If a pengurus has since revoked/un-approved this account,
+    // kirRefreshCurrentProfile below will sign them out and redirect.
+    window.__kirProfileReady = kirRefreshCurrentProfile();
+    await window.__kirProfileReady;
+    return;
+  }
+
+  // No cached session — but don't assume logged-out yet. If a real
+  // Supabase session already exists (e.g. they registered earlier and
+  // were waiting on approval, or logged in on another tab), this picks
+  // it up and — if the account is now approved — lets them straight in
+  // with no re-entering credentials required.
+  window.__kirProfileReady = kirRefreshCurrentProfile();
+  const result = await window.__kirProfileReady;
+  // 'pending' already triggered its own redirect inside
+  // kirRefreshCurrentProfile — only the "no session at all" case is
+  // still ours to handle, so we don't clobber that redirect with this one.
+  if (result !== 'approved' && result !== 'pending') {
     window.location.href = 'auth.html';
+  }
+}
+
+async function kirRefreshCurrentProfile() {
+  if (!supabaseClient) return 'none';
+  try {
+    const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      localStorage.removeItem(KIR_SESSION_KEY);
+      return 'none';
+    }
+    const { data: profile, error: profileErr } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', userData.user.id)
+      .single();
+    if (profileErr || !profile) return 'none';
+
+    // Accounts that haven't been approved by a pengurus yet (or have had
+    // approval revoked) never get a live session on protected pages —
+    // send them back to the waiting screen instead.
+    if (profile.status && profile.status !== 'approved') {
+      localStorage.removeItem(KIR_SESSION_KEY);
+      if (!/\/?auth\.html/.test(window.location.pathname)) {
+        window.location.href = 'auth.html?pending=1';
+      }
+      return 'pending';
+    }
+
+    localStorage.setItem(KIR_SESSION_KEY, 'true');
+    localStorage.setItem(KIR_NAME_KEY, profile.name);
+    localStorage.setItem(KIR_ROLE_KEY, profile.role || 'Anggota');
+    localStorage.setItem(KIR_CABANG_KEY, profile.cabang);
+    localStorage.setItem(KIR_LAST_CABANG_KEY, profile.cabang);
+    if (profile.avatar_url) localStorage.setItem(KIR_AVATAR_KEY, profile.avatar_url);
+    else localStorage.removeItem(KIR_AVATAR_KEY);
+    
+    if (profile.dashboard_layout) localStorage.setItem('kir_dashboard_layout_v1', JSON.stringify(profile.dashboard_layout));
+    if (profile.dashboard_note) localStorage.setItem('kir_dashboard_note', profile.dashboard_note);
+    localStorage.setItem(KIR_DELTAS_KEY, String(profile.deltas_total || 0));
+
+    if (profile.lang && localStorage.getItem(KIR_LANG_KEY) === null) {
+      localStorage.setItem(KIR_LANG_KEY, profile.lang);
+      kirApplyTranslations();
+    }
+    if (profile.theme && localStorage.getItem(KIR_THEME_KEY) === null) {
+      localStorage.setItem(KIR_THEME_KEY, profile.theme);
+      document.documentElement.setAttribute('data-theme', profile.theme);
+    }
+    if (typeof profile.sidebar_collapsed === 'boolean' && localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === null) {
+      localStorage.setItem(KIR_SIDEBAR_COLLAPSED_KEY, profile.sidebar_collapsed ? 'true' : 'false');
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.toggle('sidebar-collapsed', profile.sidebar_collapsed);
+    }
+    return 'approved';
+  } catch (e) {
+    console.error('Failed to refresh current profile', e);
+    return 'none';
   }
 }
 
@@ -616,6 +1277,16 @@ function kirSetUserName(name) {
   localStorage.setItem(KIR_NAME_KEY, name || 'Anggota');
 }
 
+function kirCurrentUserRole() {
+  return localStorage.getItem(KIR_ROLE_KEY) || 'Anggota';
+}
+
+function kirIsAdmin() {
+  const name = kirCurrentUserName();
+  const role = kirCurrentUserRole();
+  return name === 'Admin' || role === 'Ketua Ekstrakurikuler';
+}
+
 function kirCurrentUserCabang() {
   return localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
 }
@@ -626,6 +1297,7 @@ function kirSetUserCabang(cabang) {
   if (kirIsLoggedIn()) {
     document.documentElement.setAttribute('data-cabang', cabang);
   }
+  kirApplyBrandAssets();
 }
 
 /* Human-readable label + badge class for a cabang value. */
@@ -658,6 +1330,12 @@ function kirCurrentTheme() {
 function kirSetTheme(theme) {
   localStorage.setItem(KIR_THEME_KEY, theme);
   document.documentElement.setAttribute('data-theme', theme);
+  kirApplyBrandAssets();
+  if (window.supabaseClient) {
+    supabaseClient.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) supabaseClient.from('profiles').update({ theme: theme }).eq('id', userData.user.id).then();
+    });
+  }
 }
 
 /* ----------------------------------------------------------
@@ -673,22 +1351,60 @@ const KIR_VOYAGE_DONE_PREFIX = 'kir_voyage_done_';
 
 function kirDeltasTotal() {
   const raw = localStorage.getItem(KIR_DELTAS_KEY);
-  return raw === null ? 1240 : parseInt(raw, 10) || 0;
+  return raw === null ? 0 : parseInt(raw, 10) || 0;
 }
 
 function kirAddDeltas(amount) {
   const next = kirDeltasTotal() + amount;
   localStorage.setItem(KIR_DELTAS_KEY, String(next));
+  
+  supabaseClient.auth.getUser().then(({ data: userData }) => {
+    if (userData?.user) {
+      supabaseClient.from('profiles').select('deltas_total, deltas_week, deltas_lifetime')
+        .eq('id', userData.user.id).single()
+        .then(({ data: profile }) => {
+          if (profile) {
+            const week = profile.deltas_week || [0,0,0,0,0,0,0];
+            const life = profile.deltas_lifetime || [0,0,0,0,0,0,0,0,0,0,0,0];
+            week[week.length - 1] += amount;
+            life[life.length - 1] += amount;
+            
+            supabaseClient.from('profiles')
+              .update({ 
+                deltas_total: next,
+                deltas_week: week,
+                deltas_lifetime: life
+              })
+              .eq('id', userData.user.id)
+              .then();
+          }
+        });
+    }
+  });
+  
   return next;
 }
 
 function kirVoyageCompletion(voyageId) {
+  if (typeof window.USER_COMPLETIONS !== 'undefined') return window.USER_COMPLETIONS[voyageId] || null;
   const raw = localStorage.getItem(KIR_VOYAGE_DONE_PREFIX + voyageId);
   return raw ? JSON.parse(raw) : null; // { deltas, completedAt } or null
 }
 
-function kirMarkVoyageCompleted(voyageId, deltas) {
+async function kirMarkVoyageCompleted(voyageId, deltas) {
   localStorage.setItem(KIR_VOYAGE_DONE_PREFIX + voyageId, JSON.stringify({ deltas, completedAt: Date.now() }));
+  if (typeof window.USER_COMPLETIONS !== 'undefined') {
+    window.USER_COMPLETIONS[voyageId] = { deltas, completedAt: Date.now() };
+  }
+  
+  const { data: userData } = await supabaseClient.auth.getUser();
+  if (userData?.user) {
+    await supabaseClient.from('voyage_completions').insert({
+      user_id: userData.user.id,
+      voyage_id: voyageId,
+      deltas_earned: deltas
+    });
+  }
 }
 
 /* ----------------------------------------------------------
@@ -701,8 +1417,30 @@ function kirMarkVoyageCompleted(voyageId, deltas) {
    TODO(real backend): swap for a real comments API.
    ---------------------------------------------------------- */
 const KIR_COMMENTS_PREFIX = 'kir_comments_';
-const KIR_COMMENT_MAX_ATTACHMENT_BYTES = 1.5 * 1024 * 1024; // 1.5MB, same cap as avatar upload
-const kirPendingCommentAttachments = {}; // containerId -> { name, type, size, dataUrl } | undefined
+const KIR_COMMENT_MAX_ATTACHMENT_BYTES = 1.5 * 1024 * 1024;
+const kirPendingCommentAttachments = {};
+
+async function kirUploadFile(file, folder) {
+  if (!window.supabaseClient) return null;
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+  const filePath = `${folder}/${fileName}`;
+
+  const { data, error } = await supabaseClient.storage
+    .from('assets')
+    .upload(filePath, file);
+
+  if (error) {
+    console.error('File upload error:', error.message);
+    return null;
+  }
+
+  const { data: publicUrlData } = supabaseClient.storage
+    .from('assets')
+    .getPublicUrl(filePath);
+
+  return publicUrlData.publicUrl;
+}
 
 function kirEscapeHtml(str) {
   return String(str)
@@ -714,36 +1452,6 @@ function kirEscapeHtml(str) {
 
 function kirCommentsKey(scope, itemId) {
   return KIR_COMMENTS_PREFIX + scope + '_' + itemId;
-}
-
-function kirGetComments(scope, itemId) {
-  const raw = localStorage.getItem(kirCommentsKey(scope, itemId));
-  return raw ? JSON.parse(raw) : [];
-}
-
-function kirSaveComments(scope, itemId, list) {
-  localStorage.setItem(kirCommentsKey(scope, itemId), JSON.stringify(list));
-}
-
-function kirAddComment(scope, itemId, { text, attachment, parentId }) {
-  const list = kirGetComments(scope, itemId);
-  const entry = {
-    id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-    author: kirCurrentUserName(),
-    avatar: kirCurrentUserAvatar(),
-    text: (text || '').trim(),
-    attachment: attachment || null,
-    createdAt: Date.now(),
-    parentId: parentId || null,
-  };
-  list.push(entry);
-  kirSaveComments(scope, itemId, list);
-  return entry;
-}
-
-function kirDeleteComment(scope, itemId, commentId) {
-  const list = kirGetComments(scope, itemId).filter(c => c.id !== commentId);
-  kirSaveComments(scope, itemId, list);
 }
 
 function kirFormatFileSize(bytes) {
@@ -763,9 +1471,6 @@ function kirCommentAttachmentHtml(att) {
   </span>`;
 }
 
-/* Builds and injects the full comment thread + composer into
-   `containerId`. Call this every time a modal opens (or after
-   any comment is added/removed) to keep it in sync. */
 function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply) {
   const isYou = c.author === you;
   const initial = c.author.charAt(0).toUpperCase();
@@ -796,25 +1501,57 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply)
     </div>`;
 }
 
-function kirRenderCommentSection(containerId, scope, itemId) {
+async function kirRenderCommentSection(containerId, scope, itemId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
-  const comments = kirGetComments(scope, itemId);
   const you = kirCurrentUserName();
 
-  const topLevel = comments.filter(c => !c.parentId);
-  const repliesOf = pid => comments.filter(c => c.parentId === pid);
+  container.innerHTML = `<p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2">${I18N[lang].comments_title}</p><p class="text-xs text-zinc-500">Memuat...</p>`;
+
+  const { data: comments, error } = await supabaseClient
+    .from('comments')
+    .select('*, profiles(name, avatar_url)')
+    .eq('scope', scope)
+    .eq('item_id', itemId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    container.innerHTML = `<p class="text-xs text-red-400">Gagal memuat komentar.</p>`;
+    return;
+  }
+
+  const formatted = comments.map(c => ({
+    id: c.id,
+    author: c.profiles?.name || 'Anggota',
+    avatar: c.profiles?.avatar_url || '',
+    text: c.text,
+    attachment: c.attachment_url ? { name: 'File', type: 'image/jpeg', dataUrl: c.attachment_url } : null,
+    createdAt: c.created_at,
+    parentId: c.parent_id,
+    userId: c.user_id
+  }));
+
+  // Build a parent -> children map so replies-of-replies (and deeper)
+  // nest correctly, instead of only ever showing one level of replies.
+  const byParent = {};
+  formatted.forEach(c => {
+    if (!c.parentId) return;
+    (byParent[c.parentId] = byParent[c.parentId] || []).push(c);
+  });
+  const topLevel = formatted.filter(c => !c.parentId);
+
+  const renderThread = (c, isReply) => {
+    const children = byParent[c.id] || [];
+    const childrenHtml = children.length
+      ? `<div class="comment-replies">${children.map(child => renderThread(child, true)).join('')}</div>`
+      : '';
+    return kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply) + childrenHtml;
+  };
 
   const listHtml = topLevel.length === 0
     ? `<p class="text-zinc-600 text-xs py-1" data-i18n="comments_empty">${I18N[lang].comments_empty}</p>`
-    : topLevel.map(c => {
-        const replies = repliesOf(c.id);
-        const repliesHtml = replies.length
-          ? `<div class="comment-replies">${replies.map(r => kirRenderCommentItem(containerId, scope, itemId, r, lang, you, true)).join('')}</div>`
-          : '';
-        return kirRenderCommentItem(containerId, scope, itemId, c, lang, you, false) + repliesHtml;
-      }).join('');
+    : topLevel.map(c => renderThread(c, false)).join('');
 
   container.innerHTML = `
     <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="comments_title">${I18N[lang].comments_title}</p>
@@ -828,16 +1565,13 @@ function kirRenderCommentSection(containerId, scope, itemId) {
           <span data-i18n="comments_attach">${I18N[lang].comments_attach}</span>
           <input type="file" class="hidden" onchange="kirHandleCommentAttachmentChange(event, '${containerId}')" />
         </label>
-        <button onclick="kirSubmitComment('${containerId}', '${scope}', '${itemId}')" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent-gradient text-white hover:brightness-110 shadow-glow-sm transition" data-i18n="comments_send">${I18N[lang].comments_send}</button>
+        <button id="${containerId}-send-btn" onclick="kirSubmitComment('${containerId}', '${scope}', '${itemId}')" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent-gradient text-white hover:brightness-110 shadow-glow-sm transition" data-i18n="comments_send">${I18N[lang].comments_send}</button>
       </div>
     </div>`;
 
   delete kirPendingCommentAttachments[containerId];
 }
 
-/* Shows/hides the inline reply composer under a given comment.
-   Only one reply box is kept open at a time per container to
-   keep the thread tidy. */
 function kirToggleReplyBox(containerId, scope, itemId, commentId) {
   const boxId = `${containerId}-replybox-${commentId}`;
   const box = document.getElementById(boxId);
@@ -851,12 +1585,21 @@ function kirToggleReplyBox(containerId, scope, itemId, commentId) {
   }
 }
 
-function kirSubmitReply(containerId, scope, itemId, commentId) {
+async function kirSubmitReply(containerId, scope, itemId, commentId) {
   const textarea = document.getElementById(`${containerId}-replybox-${commentId}-text`);
   const text = textarea ? textarea.value.trim() : '';
   if (!text) return;
-  kirAddComment(scope, itemId, { text, attachment: null, parentId: commentId });
-  kirRenderCommentSection(containerId, scope, itemId);
+  
+  const { data: userData } = await supabaseClient.auth.getUser();
+  await supabaseClient.from('comments').insert({
+    scope: scope,
+    item_id: itemId,
+    user_id: userData.user.id,
+    text: text,
+    parent_id: commentId
+  });
+
+  await kirRenderCommentSection(containerId, scope, itemId);
 }
 
 function kirHandleCommentAttachmentChange(event, containerId) {
@@ -871,7 +1614,7 @@ function kirHandleCommentAttachmentChange(event, containerId) {
   const reader = new FileReader();
   reader.onload = () => {
     kirPendingCommentAttachments[containerId] = {
-      name: file.name, type: file.type, size: file.size, dataUrl: reader.result,
+      name: file.name, type: file.type, size: file.size, dataUrl: reader.result, rawFile: file
     };
     const preview = document.getElementById(containerId + '-attach-preview');
     if (preview) {
@@ -890,18 +1633,35 @@ function kirClearCommentAttachment(containerId) {
   if (preview) { preview.classList.add('hidden'); preview.innerHTML = ''; }
 }
 
-function kirSubmitComment(containerId, scope, itemId) {
+async function kirSubmitComment(containerId, scope, itemId) {
   const textarea = document.getElementById(containerId + '-text');
   const text = textarea ? textarea.value.trim() : '';
   const attachment = kirPendingCommentAttachments[containerId];
   if (!text && !attachment) return;
-  kirAddComment(scope, itemId, { text, attachment });
-  kirRenderCommentSection(containerId, scope, itemId);
+
+  const btn = document.getElementById(containerId + '-send-btn');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+
+  let attachUrl = null;
+  if (attachment && attachment.rawFile) {
+    attachUrl = await kirUploadFile(attachment.rawFile, 'comments');
+  }
+
+  const { data: userData } = await supabaseClient.auth.getUser();
+  await supabaseClient.from('comments').insert({
+    scope: scope,
+    item_id: itemId,
+    user_id: userData.user.id,
+    text: text,
+    attachment_url: attachUrl
+  });
+
+  await kirRenderCommentSection(containerId, scope, itemId);
 }
 
-function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId) {
-  kirDeleteComment(scope, itemId, commentId);
-  kirRenderCommentSection(containerId, scope, itemId);
+async function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId) {
+  await supabaseClient.from('comments').delete().eq('id', commentId);
+  await kirRenderCommentSection(containerId, scope, itemId);
 }
 
 /* ----------------------------------------------------------
@@ -982,13 +1742,13 @@ function kirRefreshCustomSelect(selectId) {
   const isPlaceholder = !select.value;
 
   wrapper.innerHTML = `
-    <button type="button" class="kir-select-trigger${isPlaceholder ? ' placeholder' : ''}" aria-haspopup="listbox" aria-expanded="false">
+    <button type="button" class="kir-select-trigger${isPlaceholder ? ' placeholder' : ''}" aria-haspopup="listbox" aria-expanded="false" ${select.disabled ? 'disabled' : ''}>
       <span class="kir-select-trigger-label">${selectedOption ? kirEscapeHtml(selectedOption.textContent) : ''}</span>
       <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
     </button>
     <div class="kir-select-panel hidden" role="listbox">
-      ${options.filter(o => !o.disabled).map(o => `
-        <div class="kir-select-option${o.value === select.value ? ' selected' : ''}" data-value="${kirEscapeHtml(o.value)}" role="option" aria-selected="${o.value === select.value}">
+      ${options.map(o => `
+        <div class="kir-select-option${o.value === select.value ? ' selected' : ''}${o.disabled ? ' disabled' : ''}" data-value="${kirEscapeHtml(o.value)}" role="option" aria-selected="${o.value === select.value}" aria-disabled="${o.disabled ? 'true' : 'false'}">
           ${kirEscapeHtml(o.textContent)}
         </div>`).join('')}
     </div>`;
@@ -1007,7 +1767,10 @@ function kirRefreshCustomSelect(selectId) {
     }
   };
 
-  wrapper.querySelectorAll('.kir-select-option').forEach(opt => {
+  // Disabled options stay in the list (grayed out via CSS) so it's
+  // clear the choice exists — they just don't get a click handler,
+  // same intent as the native <option disabled> they mirror.
+  wrapper.querySelectorAll('.kir-select-option:not(.disabled)').forEach(opt => {
     opt.onclick = (e) => {
       e.stopPropagation();
       select.value = opt.getAttribute('data-value');
