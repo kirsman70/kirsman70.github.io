@@ -103,6 +103,8 @@ const I18N = {
     voyages_grading_model: 'Dinilai oleh',
     voyages_grading_failed: 'Gagal memproses penilaian otomatis. Coba lagi.',
     voyages_grading_retry: 'Coba Lagi',
+    voyages_grading_locked: 'Nilai Sempurna',
+    voyages_earned_label: 'Ganjaran didapat',
     voyages_start: 'Mulai Soal', voyages_continue: 'Lihat Lagi', voyages_completed: 'Selesai',
     voyages_type_mc: 'Pilihan Ganda', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Esai', voyages_type_programming: 'Kompetitif (Programming)',
     voyages_bahasa: 'Bahasa',
@@ -239,6 +241,8 @@ const I18N = {
     voyages_grading_model: 'Graded by',
     voyages_grading_failed: 'Automatic grading failed. Please try again.',
     voyages_grading_retry: 'Try Again',
+    voyages_grading_locked: 'Perfect Grade',
+    voyages_earned_label: 'Reward earned',
     voyages_start: 'Start Question', voyages_continue: 'Review Again', voyages_completed: 'Completed',
     voyages_type_mc: 'Multiple Choice', voyages_type_dropdown: 'Dropdown', voyages_type_essay: 'Essay', voyages_type_programming: 'Competitive (Programming)',
     voyages_bahasa: 'Language',
@@ -599,6 +603,49 @@ function handleThemeToggle() {
 }
 
 function kirInjectSidebar(activeTab) {
+  // router.js preserves the actual #sidebar DOM node across same-shape
+  // SPA navigations (see navigate()'s sidebar-preservation block), so if
+  // it's already here, this is a client-side nav to a page we're already
+  // chrome-wise set up for — just move the active tab / pill instead of
+  // tearing the whole sidebar down and rebuilding it from scratch. That's
+  // what lets .nav-active-pill's CSS transition (and kirPositionNavPill's
+  // animate=true path) actually have something persistent to slide from,
+  // instead of always popping into place already correct.
+  //
+  // On a true hard page load #sidebar doesn't exist yet, so this always
+  // falls through to the full kirRenderSidebarNow() build below.
+  const existingSidebar = document.getElementById('sidebar');
+  if (existingSidebar) {
+    existingSidebar.querySelectorAll('.nav-link[data-tab]').forEach(a => {
+      a.classList.toggle('active', a.dataset.tab === activeTab);
+    });
+    requestAnimationFrame(() => kirPositionNavPill(true));
+
+    kirRenderUserChrome();
+    kirRefreshAdminPingBadge();
+    const cabangBadge = document.getElementById('sidebar-cabang-badge');
+    if (cabangBadge) cabangBadge.textContent = kirCabangLabel(kirCurrentUserCabang());
+
+    if (window.__kirProfileReady) {
+      window.__kirProfileReady.then(() => {
+        // Admin status can only change the *set* of nav links (the Admin
+        // Panel entry appearing/disappearing), which the lightweight
+        // class-toggle path above can't handle — fall back to a full
+        // rebuild in that one case. Otherwise just refresh the bits that
+        // could've changed (name/avatar/cabang).
+        const nowAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
+        const hasAdminLink = !!existingSidebar.querySelector('.nav-link[data-tab="admin"]');
+        if (nowAdmin !== hasAdminLink) {
+          kirRenderSidebarNow(activeTab);
+        } else {
+          kirRenderUserChrome();
+          if (cabangBadge) cabangBadge.textContent = kirCabangLabel(kirCurrentUserCabang());
+        }
+      });
+    }
+    return;
+  }
+
   kirRenderSidebarNow(activeTab);
 
   // Don't block the first paint on a network round-trip — render
@@ -640,28 +687,28 @@ function kirRenderSidebarNow(activeTab) {
     </a>
     <nav class="flex flex-col gap-1.5">
       <p class="text-[11px] font-medium text-zinc-600 uppercase tracking-wider px-3 mb-1" data-i18n="menu">Menu</p>
-      <a href="dashboard.html" class="nav-link ${activeTab === 'dashboard' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="dashboard.html" data-tab="dashboard" class="nav-link ${activeTab === 'dashboard' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
         <span class="nav-label" data-i18n="beranda">Beranda</span>
       </a>
-      <a href="tasks.html" class="nav-link ${activeTab === 'tasks' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="tasks.html" data-tab="tasks" class="nav-link ${activeTab === 'tasks' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
         <span class="nav-label" data-i18n="tugas">Tugas</span>
       </a>
-      <a href="materials.html" class="nav-link ${activeTab === 'materials' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="materials.html" data-tab="materials" class="nav-link ${activeTab === 'materials' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
         <span class="nav-label" data-i18n="materials">Materials</span>
       </a>
-      <a href="schedule.html" class="nav-link ${activeTab === 'schedule' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="schedule.html" data-tab="schedule" class="nav-link ${activeTab === 'schedule' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
         <span class="nav-label" data-i18n="jadwal">Jadwal</span>
       </a>
-      <a href="members.html" class="nav-link ${activeTab === 'members' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="members.html" data-tab="members" class="nav-link ${activeTab === 'members' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
         <span class="nav-label" data-i18n="anggota">Anggota</span>
       </a>
       ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
-      <a href="admin.html" class="nav-link ${activeTab === 'admin' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="admin.html" data-tab="admin" class="nav-link ${activeTab === 'admin' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <span class="relative shrink-0 inline-flex">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <span id="admin-ping-badge" class="nav-ping-badge hidden"></span>
@@ -671,11 +718,11 @@ function kirRenderSidebarNow(activeTab) {
       </nav>
     <nav class="flex flex-col gap-1.5 mt-6">
       <p class="text-[11px] font-medium text-zinc-600 uppercase tracking-wider px-3 mb-1" data-i18n="voyage_category">Voyage</p>
-      <a href="voyages.html" class="nav-link ${activeTab === 'voyages' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="voyages.html" data-tab="voyages" class="nav-link ${activeTab === 'voyages' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.5c2.5 2.2 4 5.4 4 8.9 0 2.1-.6 4-1.6 5.6L12 21.5l-2.4-4.5A10.6 10.6 0 018 11.4c0-3.5 1.5-6.7 4-8.9z" /><circle cx="12" cy="11" r="2" stroke-linecap="round" stroke-linejoin="round" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 15.5c-1.8.7-3 1.8-3 3 0 1.7 3 3 6.5 3s6.5-1.3 6.5-3c0-1.2-1.2-2.3-3-3" /></svg>
         <span class="nav-label" data-i18n="nav_voyages">Voyages</span>
       </a>
-      <a href="leaderboard.html" class="nav-link ${activeTab === 'leaderboard' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="leaderboard.html" data-tab="leaderboard" class="nav-link ${activeTab === 'leaderboard' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>
         <span class="nav-label" data-i18n="nav_leaderboard">Leaderboard</span>
       </a>
@@ -1710,6 +1757,42 @@ function kirRenderUserChrome() {
    a custom-styled sibling widget that mirrors it and writes back
    into it when the user picks an option.
    ---------------------------------------------------------- */
+/* Panels now size themselves to fit their content (see .kir-select-panel
+   in style.css — no more max-height/scrollbar, and width can exceed the
+   trigger's). That means a panel CAN spill past the viewport edge in a
+   way the old fixed-to-trigger-width version never could: a narrow
+   trigger near the right edge of the screen, or a trigger near the
+   bottom, needs its panel shifted/flipped rather than clipped.
+   Called right after a panel is un-hidden; getBoundingClientRect()
+   forces the layout it needs to measure. */
+function kirPositionSelectPanel(panel, trigger) {
+  panel.style.left = '';
+  panel.style.right = '';
+  panel.style.top = '';
+  panel.style.bottom = '';
+
+  const margin = 8;
+  const triggerRect = trigger.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+
+  // Grows from the trigger's left edge by default; if that would push
+  // it past the right edge of the viewport, anchor to the trigger's
+  // right edge instead so it grows leftward.
+  if (triggerRect.left + panelRect.width > window.innerWidth - margin) {
+    panel.style.left = 'auto';
+    panel.style.right = '0';
+  }
+
+  // Opens below the trigger by default; if there's not enough room
+  // below but there IS more room above, flip it above instead.
+  const spaceBelow = window.innerHeight - triggerRect.bottom;
+  const spaceAbove = triggerRect.top;
+  if (panelRect.height > spaceBelow - margin && spaceAbove > spaceBelow) {
+    panel.style.top = 'auto';
+    panel.style.bottom = 'calc(100% + 6px)';
+  }
+}
+
 function kirCloseAllCustomSelects(exceptWrapper) {
   document.querySelectorAll('.kir-select-panel').forEach(p => {
     if (!exceptWrapper || !exceptWrapper.contains(p)) p.classList.add('hidden');
@@ -1764,6 +1847,7 @@ function kirRefreshCustomSelect(selectId) {
       panel.classList.remove('hidden');
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
+      kirPositionSelectPanel(panel, trigger);
     }
   };
 
@@ -1840,7 +1924,10 @@ function kirRefreshMultiSelect(selectId) {
 
   const trigger = wrapper.querySelector('.kir-select-trigger');
   const panel = wrapper.querySelector('.kir-select-panel');
-  if (wasOpen) trigger.classList.add('open');
+  if (wasOpen) {
+    trigger.classList.add('open');
+    kirPositionSelectPanel(panel, trigger); // re-render keeps it open; content/width may have changed
+  }
 
   trigger.onclick = (e) => {
     e.stopPropagation();
@@ -1850,6 +1937,7 @@ function kirRefreshMultiSelect(selectId) {
       panel.classList.remove('hidden');
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
+      kirPositionSelectPanel(panel, trigger);
     }
   };
 

@@ -593,21 +593,19 @@ function kirAdminTooltipHide() {
 }
 
 /* ----------------------------------------------------------
-   Math editor — a lightweight "Word-style" toolbar over a plain
-   textarea, for fields that need LaTeX (rendered by MathJax on
-   voyages.html) without asking anyone to memorize TeX syntax.
-   Each toolbar button inserts a snippet at the cursor; a `§`
-   marker in the template marks where the caret should land
-   afterwards (or, if text is selected, gets replaced by that
-   selection — e.g. selecting "x" and clicking x² wraps it).
+   Math snippets — the "Word-style" toolbar template list for
+   fields that need LaTeX (rendered by MathJax on voyages.html)
+   without asking anyone to memorize TeX syntax. Placeholders are
+   marked ‹a›, ‹b›, … in the template.
+
+   The actual insertion behavior lives in js/wysiwyg-editor.js
+   (kirRichToolbarMathInsert), which turns each ‹x› placeholder
+   into a real fillable box in the editor — Word's equation-builder
+   affordance — rather than a plain visible letter sitting in raw
+   text. Kept here, separate from that file, since it's also
+   reused as a plain lookup table for snippet titles/labels when
+   rendering the toolbar HTML below.
    ---------------------------------------------------------- */
-/* Placeholders are marked ‹a›, ‹b›, … in the template. On insert they
-   become plain, visible letters (so multi-slot snippets like \frac
-   show you exactly where the numerator/denominator go) and the FIRST
-   placeholder is selected in the textarea so you can immediately type
-   over it — or, if text was selected when the button was clicked,
-   that selection fills the first placeholder instead (e.g. selecting
-   "x" and clicking x² gives x^{x-selected-text}). */
 const KIR_MATH_SNIPPETS = [
   { label: 'x²', title: 'Pangkat (superscript)', tex: '^{‹a›}' },
   { label: 'x₂', title: 'Bawah (subscript)', tex: '_{‹a›}' },
@@ -620,75 +618,28 @@ const KIR_MATH_SNIPPETS = [
   { label: 'Δ', title: 'Delta', tex: '\\Delta ‹a›' },
   { label: '≤', title: 'Kurang dari sama dengan', tex: '\\leq ‹a›' },
   { label: '≥', title: 'Lebih dari sama dengan', tex: '\\geq ‹a›' },
-  { label: '$…$', title: 'Blok rumus baru', tex: '$‹a›$' },
+  { label: '$…$', title: 'Rumus baru (bebas)', tex: '$‹a›$' },
 ];
-
-function kirMathInsert(inputId, snippetIndex) {
-  const ta = document.getElementById(inputId);
-  const snippet = KIR_MATH_SNIPPETS[snippetIndex];
-  if (!ta || !snippet) return;
-
-  const start = ta.selectionStart || 0;
-  const end = ta.selectionEnd || 0;
-  const selected = ta.value.slice(start, end);
-
-  // Resolve ‹a›, ‹b›, … placeholders into plain letters. The first one
-  // absorbs the current text selection (if any); the rest stay as
-  // visible letters the person can click into and overwrite.
-  const placeholderRe = /‹([a-z])›/g;
-  let plain = '';
-  let lastIndex = 0;
-  let firstRange = null;
-  let match;
-  while ((match = placeholderRe.exec(snippet.tex)) !== null) {
-    plain += snippet.tex.slice(lastIndex, match.index);
-    const isFirst = firstRange === null;
-    const fillText = isFirst && selected ? selected : match[1];
-    if (isFirst) firstRange = { start: plain.length, end: plain.length + fillText.length };
-    plain += fillText;
-    lastIndex = placeholderRe.lastIndex;
-  }
-  plain += snippet.tex.slice(lastIndex);
-
-  // Auto-wrap in $...$ so the snippet actually renders as math — unless
-  // we're already inside a $...$ block, or this *is* the $…$ button
-  // (which supplies its own delimiters).
-  const suppliesOwnDelimiters = snippet.tex.startsWith('$') && snippet.tex.endsWith('$');
-  const dollarsBefore = (ta.value.slice(0, start).match(/\$/g) || []).length;
-  const insideMathBlock = dollarsBefore % 2 === 1;
-  if (!suppliesOwnDelimiters && !insideMathBlock) {
-    plain = '$' + plain + '$';
-    if (firstRange) { firstRange.start += 1; firstRange.end += 1; }
-  }
-
-  ta.value = ta.value.slice(0, start) + plain + ta.value.slice(end);
-  ta.focus();
-  if (firstRange) {
-    ta.setSelectionRange(start + firstRange.start, start + firstRange.end);
-  } else {
-    const caretPos = start + plain.length;
-    ta.setSelectionRange(caretPos, caretPos);
-  }
-  kirMathHighlightSync(inputId);
-  kirMathPreviewUpdate(inputId);
-}
 
 /* ----------------------------------------------------------
    Shared markdown+math rendering. This is the single source of
    truth for turning a mathtext field's raw value into displayable
-   HTML — used both for the live preview under the editor here AND
-   (via delegation — see kirRenderVoyageMarkdown in voyages.html) for
-   the actual voyage/material cards members see, so the preview is
-   never lying about how the text will really render.
+   HTML — used both for the WYSIWYG editor's in-place chip
+   rendering (indirectly, via MathJax typesetting the same $...$
+   the editor stores) AND (via delegation — see
+   kirRenderVoyageMarkdown in voyages.html) for the actual
+   voyage/material cards members see, so the editor is never lying
+   about how the text will really render.
 
-   The editor shows every line break as a literal, greyed-out "\n"
-   rather than an actual blank line (see kirMathEditorBind below) so
-   that typing stays compact and it's unambiguous where breaks are.
-   That's what ends up stored in the DB, so this is also the one
-   place that turns those markers back into real newlines before
-   handing text to `marked`. Any *actual* newline characters already
-   present (rows saved before this existed, or pasted/imported JSON)
-   pass through untouched — this is purely additive.
+   The stored value shows every line break as a literal "\n"
+   marker rather than an actual newline character (see
+   kirRichEditorInit in wysiwyg-editor.js) so that pasted/typed
+   content stays unambiguous. That's what ends up in the DB, so
+   this is also the one place that turns those markers back into
+   real newlines before handing text to `marked`. Any *actual*
+   newline characters already present (rows saved before this
+   existed, or pasted/imported JSON) pass through untouched — this
+   is purely additive.
    ---------------------------------------------------------- */
 function kirMathtextBreaksToNewlines(raw) {
   return String(raw == null ? '' : raw).replace(/\\n/g, '\n');
@@ -727,189 +678,22 @@ function kirRenderMarkdownWithMath(raw) {
 }
 
 /* ----------------------------------------------------------
-   Syntax dimming for the editor textarea itself — everything that
-   ISN'T plain content (markdown punctuation, LaTeX commands, math
-   delimiters, the "\n" break marker) is rendered in a muted color so
-   the actual words stand out. This runs against a backdrop <div>
-   stacked exactly behind the (text-made-transparent) textarea; see
-   the .math-editor-highlight / .math-editor-textarea CSS.
-
-   Rules, left to right:
-   - "\<letters>"  → one dimmed token (LaTeX commands like \frac,
-     \sqrt, \pi, AND our own \n break marker all take this shape).
-   - "\<anything else>" → an escape: the backslash + the character it
-     escapes are shown as plain, un-dimmed text (that's the point of
-     escaping — \* should read as a literal asterisk, not bold syntax).
-   - "$"           → dimmed, and toggles "inside math" mode.
-   - inside math, "{ } ^ _" → dimmed (structure), everything else
-     (letters, digits, operators, spaces) stays plain — so
-     "$\frac{a}{b}$" dims everything except the a and the b.
-   - outside math, any of  * _ ~ ` # > [ ] ( )  → dimmed (markdown
-     punctuation); everything else stays plain.
+   Toolbar markup shared by every WYSIWYG mathtext editor instance
+   (admin "Teks Soal" / "Jawaban Referensi" fields here, and the
+   member-facing essay answer in voyages.html). The buttons call
+   into js/wysiwyg-editor.js, which is what actually inserts a
+   fillable formula/code chip at the cursor.
    ---------------------------------------------------------- */
-const KIR_MATHTEXT_MARK_CHARS = new Set(['*', '_', '~', '`', '#', '>', '[', ']', '(', ')']);
-
-function kirMathtextHighlightHtml(raw) {
-  const text = String(raw == null ? '' : raw);
-  let out = '';
-  let plainBuf = '';
-  let dimBuf = '';
-  let inMath = false;
-  const flushPlain = () => { if (plainBuf) { out += kirEscapeHtml(plainBuf); plainBuf = ''; } };
-  const flushDim = () => { if (dimBuf) { out += `<span class="mte-dim">${kirEscapeHtml(dimBuf)}</span>`; dimBuf = ''; } };
-
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-
-    if (ch === '\\') {
-      const next = text[i + 1];
-      // The literal "\n" marker (see kirMathtextEscapeBreaksForEditor) is
-      // always exactly backslash+n and stands for a line break — it must
-      // be dimmed as its own two-character token, never merged with
-      // whatever plain text happens to follow it directly (e.g. typing
-      // straight through Enter into "line two" would otherwise dim
-      // "\nline" as if "line" were part of a LaTeX command name, just
-      // because both start with letters). Real LaTeX commands that
-      // happen to start with "n" (\nabla, \neg, …) are rare enough in
-      // this context that losing their extra dimming is the right
-      // trade-off against the marker collision.
-      if (next === 'n') {
-        flushPlain();
-        dimBuf += '\\n';
-        i += 2;
-        continue;
-      }
-      if (next && /[a-zA-Z]/.test(next)) {
-        flushPlain();
-        let j = i + 1;
-        while (j < text.length && /[a-zA-Z]/.test(text[j])) j++;
-        dimBuf += text.slice(i, j);
-        i = j;
-        continue;
-      }
-      if (next !== undefined) {
-        flushDim();
-        plainBuf += ch + next;
-        i += 2;
-        continue;
-      }
-      flushDim();
-      plainBuf += ch;
-      i += 1;
-      continue;
-    }
-
-    if (ch === '$') {
-      flushPlain();
-      dimBuf += ch;
-      inMath = !inMath;
-      i += 1;
-      continue;
-    }
-
-    if (inMath && (ch === '{' || ch === '}' || ch === '^' || ch === '_')) {
-      flushPlain();
-      dimBuf += ch;
-      i += 1;
-      continue;
-    }
-
-    if (!inMath && KIR_MATHTEXT_MARK_CHARS.has(ch)) {
-      flushPlain();
-      dimBuf += ch;
-      i += 1;
-      continue;
-    }
-
-    flushDim();
-    plainBuf += ch;
-    i += 1;
-  }
-  flushPlain();
-  flushDim();
-  return out;
-}
-
-function kirMathHighlightSync(inputId) {
-  const ta = document.getElementById(inputId);
-  const hl = document.getElementById(`${inputId}-highlight`);
-  if (!ta || !hl) return;
-  hl.innerHTML = kirMathtextHighlightHtml(ta.value);
-  hl.scrollTop = ta.scrollTop;
-  hl.scrollLeft = ta.scrollLeft;
-}
-
-// Inserts text at the current selection the same way typing would,
-// so it lands on the native undo/redo stack — a plain ta.value splice
-// would work too but silently wipes "undo" back to nothing.
-function kirMathEditorInsertLiteral(ta, text) {
-  const start = ta.selectionStart || 0;
-  const end = ta.selectionEnd || 0;
-  ta.focus();
-  ta.setSelectionRange(start, end);
-  let handled = false;
-  try { handled = document.execCommand('insertText', false, text); } catch (e) { handled = false; }
-  if (!handled) {
-    ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-    const caret = start + text.length;
-    ta.setSelectionRange(caret, caret);
-  }
-}
-
-// Wires up the one-time behavior a mathtext textarea needs beyond a
-// plain <textarea>: Enter inserts the literal "\n" marker instead of
-// an actual line break, pasted text has any real newlines normalized
-// to that same marker, and the highlight backdrop + preview stay in
-// sync as the person types or scrolls.
-function kirMathEditorBind(inputId) {
-  const ta = document.getElementById(inputId);
-  if (!ta || ta.dataset.mteBound) return;
-  ta.dataset.mteBound = '1';
-
-  const sync = () => { kirMathHighlightSync(inputId); kirMathPreviewUpdate(inputId); };
-
-  ta.addEventListener('input', sync);
-  ta.addEventListener('scroll', () => kirMathHighlightSync(inputId));
-
-  ta.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    kirMathEditorInsertLiteral(ta, '\\n');
-    sync();
-  });
-
-  ta.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const clip = e.clipboardData || window.clipboardData;
-    const text = clip ? clip.getData('text') : '';
-    kirMathEditorInsertLiteral(ta, text.replace(/\r\n|\r|\n/g, '\\n'));
-    sync();
-  });
-
-  kirMathHighlightSync(inputId);
-}
-
-let kirMathPreviewDebounce = {};
-function kirMathPreviewUpdate(inputId) {
-  clearTimeout(kirMathPreviewDebounce[inputId]);
-  kirMathPreviewDebounce[inputId] = setTimeout(() => {
-    const ta = document.getElementById(inputId);
-    const preview = document.getElementById(`${inputId}-preview`);
-    if (!ta || !preview) return;
-    const text = ta.value.trim();
-    if (!text) {
-      const lang = localStorage.getItem('kir_lang') || 'id';
-      const emptyMsg = (window.I18N && I18N[lang] && I18N[lang].voyages_preview_empty) || 'Pratinjau rumus akan muncul di sini…';
-      preview.innerHTML = `<span class="math-editor-preview-empty">${kirEscapeHtml(emptyMsg)}</span>`;
-      return;
-    }
-    preview.innerHTML = `<div class="kir-markdown">${kirRenderMarkdownWithMath(text)}</div>`;
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      if (window.MathJax.typesetClear) window.MathJax.typesetClear([preview]);
-      window.MathJax.typesetPromise([preview]).catch(() => {});
-    }
-  }, 250);
+function kirWceToolbarHtml(inputId) {
+  const mathButtons = KIR_MATH_SNIPPETS.map((s, i) =>
+    `<button type="button" class="math-toolbar-btn" title="${kirEscapeHtml(s.title)}" onmousedown="event.preventDefault()" onclick="kirRichToolbarMathInsert('${inputId}', ${i})">${s.label}</button>`
+  ).join('');
+  return `
+    <div class="math-editor-toolbar" role="toolbar" aria-label="Sisipkan notasi matematika dan kode">
+      ${mathButtons}
+      <button type="button" class="math-toolbar-btn math-toolbar-btn-wide" title="Sisipkan kode (satu baris)" onmousedown="event.preventDefault()" onclick="kirRichToolbarCodeInsert('${inputId}', 'inline')">&lt;/&gt;</button>
+      <button type="button" class="math-toolbar-btn math-toolbar-btn-wide" title="Sisipkan blok kode" onmousedown="event.preventDefault()" onclick="kirRichToolbarCodeInsert('${inputId}', 'block')">{ }</button>
+    </div>`;
 }
 
 function kirAdminFieldHtml(field) {
@@ -923,19 +707,9 @@ function kirAdminFieldHtml(field) {
   switch (field.type) {
     case 'mathtext': {
       controlHtml = `
-        <div class="math-editor">
-          <div class="math-editor-toolbar" role="toolbar" aria-label="Sisipkan notasi matematika">
-            ${KIR_MATH_SNIPPETS.map((s, i) => `<button type="button" class="math-toolbar-btn" title="${kirEscapeHtml(s.title)}" onclick="kirMathInsert('${inputId}', ${i})">${s.label}</button>`).join('')}
-          </div>
-          <div class="math-editor-textarea-wrap">
-            <div id="${inputId}-highlight" class="math-editor-highlight text-sm" aria-hidden="true"></div>
-            <textarea id="${inputId}" rows="${field.rows || 4}" class="glass-input w-full text-sm math-editor-textarea" spellcheck="false" placeholder="${kirEscapeHtml(field.placeholder || '')}">${kirEscapeHtml(kirMathtextEscapeBreaksForEditor(value))}</textarea>
-          </div>
-          <div class="math-editor-preview-bar">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span>Pratinjau</span>
-          </div>
-          <div id="${inputId}-preview" class="math-editor-preview"><span class="math-editor-preview-empty">Pratinjau rumus akan muncul di sini…</span></div>
+        <div class="wce-editor">
+          ${kirWceToolbarHtml(inputId)}
+          <textarea id="${inputId}" rows="${field.rows || 4}" class="wce-source" placeholder="${kirEscapeHtml(field.placeholder || '')}">${kirEscapeHtml(kirMathtextEscapeBreaksForEditor(value))}</textarea>
         </div>`;
       break;
     }
@@ -1682,13 +1456,12 @@ function kirOpenAdminModal({ title, fields = [], values = null, saveLabel = 'Sim
     kirAdminDpInit(f.id, f.type === 'datetime-local');
   });
 
-  // Wire up each 'mathtext' field's editor behavior and render its
-  // initial preview (matters most when editing — the textarea is
-  // prefilled but its preview/highlight start empty until something
-  // triggers them).
+  // Wire up each 'mathtext' field's WYSIWYG editor behavior and parse
+  // its initial value into chips (matters most when editing — the
+  // hidden textarea is prefilled but the visible surface starts empty
+  // until something builds it).
   fields.filter(f => f.type === 'mathtext').forEach(f => {
-    kirMathEditorBind(`admin-field-${f.id}`);
-    kirMathPreviewUpdate(`admin-field-${f.id}`);
+    kirRichEditorInit(`admin-field-${f.id}`, { placeholder: f.placeholder || '' });
   });
 
   kirAdminRefreshVisibility();
@@ -1780,7 +1553,14 @@ function kirAdminCollectFieldValues(fields) {
   });
 
   if (firstInvalid) {
-    firstInvalid.focus();
+    // A 'mathtext' field's real <textarea> is visually hidden (see
+    // .wce-source in css/admin-shared.css) — focusing it directly
+    // wouldn't show the person anything, so send focus to its visible
+    // WYSIWYG surface instead when there is one.
+    const surface = firstInvalid.dataset && firstInvalid.dataset.wceBound
+      ? document.getElementById(`${firstInvalid.id}-surface`)
+      : null;
+    (surface || firstInvalid).focus();
     return null;
   }
   return payload;
@@ -1903,8 +1683,7 @@ function kirAdminExitJsonMode() {
     kirAdminDpInit(f.id, f.type === 'datetime-local');
   });
   fields.filter(f => f.type === 'mathtext').forEach(f => {
-    kirMathEditorBind(`admin-field-${f.id}`);
-    kirMathPreviewUpdate(`admin-field-${f.id}`);
+    kirRichEditorInit(`admin-field-${f.id}`, { placeholder: f.placeholder || '' });
   });
   kirAdminRefreshVisibility();
 
@@ -2172,28 +1951,34 @@ function kirCloseJsonImportModal() {
    (columns, enums, JSON shape, difficulty scale, etc.) to the
    clipboard so the admin can paste it into an LLM and get back
    JSON that's guaranteed to match what `transform` expects.
-   aiContext can be a plain string or a () => string (handy if the
-   caller wants to interpolate live constants, e.g. subject lists).
+   aiContext can be a plain string, a () => string, or a
+   () => Promise<string> (e.g. voyageJsonAiContext, which does a DB
+   round-trip to pull real calibration examples first) — `await`
+   works unchanged on a non-Promise value, so all three shapes are
+   handled by the same line below.
    ---------------------------------------------------------- */
 async function kirJsonImportCopyAiContext() {
   if (!kirJsonImportConfig || !kirJsonImportConfig.aiContext) return;
-  const text = typeof kirJsonImportConfig.aiContext === 'function'
-    ? kirJsonImportConfig.aiContext()
-    : kirJsonImportConfig.aiContext;
 
   const btn = document.querySelector('.admin-json-ai-context-btn');
   const restoreLabel = btn ? btn.querySelector('span').textContent : '';
+  const setLabel = (label) => { if (btn) btn.querySelector('span').textContent = label; };
   const flashCopied = () => {
     if (!btn) return;
     btn.classList.add('is-copied');
-    btn.querySelector('span').textContent = 'Tersalin!';
+    setLabel('Tersalin!');
     setTimeout(() => {
       btn.classList.remove('is-copied');
-      btn.querySelector('span').textContent = restoreLabel;
+      setLabel(restoreLabel);
     }, 1600);
   };
 
+  if (btn) { btn.disabled = true; setLabel('Menyiapkan…'); }
   try {
+    const text = typeof kirJsonImportConfig.aiContext === 'function'
+      ? await kirJsonImportConfig.aiContext()
+      : kirJsonImportConfig.aiContext;
+
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
     } else {
@@ -2213,6 +1998,9 @@ async function kirJsonImportCopyAiContext() {
   } catch (e) {
     console.error('Gagal menyalin context AI:', e);
     kirAdminToast('Gagal menyalin ke clipboard.', 'error');
+    setLabel(restoreLabel);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
