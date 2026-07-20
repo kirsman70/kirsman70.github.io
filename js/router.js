@@ -290,7 +290,22 @@
       syncOrbitAnimations(fragment);
 
       document.body.replaceChildren(fragment);
-      document.body.className = doc.body.className;
+      // Mirror ALL of the new page's <body> attributes — not just
+      // className. auth.html's <body> tag has `style="touch-action:
+      // pan-y;"` on it directly in the markup; the previous version
+      // only copied `.className`, so that (and any other non-class
+      // body attribute a page sets — data-*, aria-*, inline style)
+      // silently never applied when arriving via a router nav, only
+      // on a real full-page load. That's a real gap between SPA nav
+      // and hard nav that's worth closing regardless of what else is
+      // going on with the black bar.
+      const newBodyAttrNames = new Set(Array.from(doc.body.attributes).map((a) => a.name));
+      Array.from(document.body.attributes).forEach((attr) => {
+        if (!newBodyAttrNames.has(attr.name)) document.body.removeAttribute(attr.name);
+      });
+      Array.from(doc.body.attributes).forEach((attr) => {
+        document.body.setAttribute(attr.name, attr.value);
+      });
 
       if (preserveSidebar) {
         const freshSidebarRoot = document.getElementById('sidebar-root');
