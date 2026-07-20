@@ -344,11 +344,24 @@ body {
 }
 .kir-select-trigger.open .kir-select-chevron { transform: rotate(180deg); }
 
+/* min-width keeps it at least as wide as the trigger; width: max-content
+   lets it grow WIDER than the trigger to fit its longest option instead
+   of wrapping/clipping (the trigger itself can be as narrow as 7rem —
+   see e.g. Voyages' SUBJEK filter — while an option like "Informatika"
+   needs more room than that). max-width plus normal white-space keeps
+   it from running off-screen or off a single line if an option is ever
+   genuinely long: it wraps instead of overflowing.
+   No max-height/overflow-y here on purpose — panels grow to fit every
+   option instead of scrolling. kirPositionSelectPanel (auth.js) flips
+   the panel above the trigger, and/or shifts it left, whenever growing
+   would push it past the viewport edge. */
 .kir-select-panel {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  min-width: 100%; width: max-content; max-width: min(24rem, calc(100vw - 2rem));
   background: var(--bg-color); border: 1px solid var(--glass-border);
-  border-radius: 0.65rem; padding: 0.35rem; max-height: 13rem; overflow-y: auto;
+  border-radius: 0.65rem; padding: 0.35rem;
   box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  white-space: normal;
 }
 .kir-select-option {
   padding: 0.5rem 0.7rem; border-radius: 0.45rem; font-size: 0.85rem;
@@ -369,6 +382,7 @@ body {
 
 /* Multi-select variant — checkbox rows that stay open across picks */
 .kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
+.kir-select-option.multi > span:last-child { min-width: 0; overflow-wrap: break-word; }
 .kir-select-checkbox {
   width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0;
   border: 1.5px solid var(--glass-border); position: relative;

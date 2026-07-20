@@ -39,12 +39,13 @@
    variant with an extra class if the fab would otherwise overlap. */
 .admin-fab.admin-fab-raised { bottom: 5.5rem; }
 
-/* Secondary/tertiary stacked circular actions — sit directly above
-   the main "+" fab (same right alignment), icon-only, smaller and
+/* Secondary/tertiary/quaternary stacked circular actions — sit directly
+   above the main "+" fab (same right alignment), icon-only, smaller and
    quieter (glass instead of the accent gradient) so they read as
-   secondary. e.g. on Voyages: Ekspedisi (primary slot) -> Tambah
-   voyage (secondary) -> Impor JSON (tertiary), stacked bottom to top. */
-.admin-fab-secondary, .admin-fab-tertiary {
+   secondary. e.g. on Voyages: Ekspedisi (primary slot) -> Tambah voyage
+   (secondary) -> Impor JSON (tertiary) -> Tinjau integritas (quaternary),
+   stacked bottom to top. */
+.admin-fab-secondary, .admin-fab-tertiary, .admin-fab-quaternary {
   position: fixed;
   right: 1.5rem;
   z-index: 40;
@@ -59,9 +60,10 @@
 }
 .admin-fab-secondary { bottom: 5.5rem; }
 .admin-fab-tertiary { bottom: 9rem; }
-.admin-fab-secondary:hover, .admin-fab-tertiary:hover { filter: brightness(1.15); transform: translateY(-2px); }
-.admin-fab-secondary:active, .admin-fab-tertiary:active { transform: translateY(0); }
-.admin-fab-secondary svg, .admin-fab-tertiary svg { width: 1.15rem; height: 1.15rem; }
+.admin-fab-quaternary { bottom: 12.5rem; }
+.admin-fab-secondary:hover, .admin-fab-tertiary:hover, .admin-fab-quaternary:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.admin-fab-secondary:active, .admin-fab-tertiary:active, .admin-fab-quaternary:active { transform: translateY(0); }
+.admin-fab-secondary svg, .admin-fab-tertiary svg, .admin-fab-quaternary svg { width: 1.15rem; height: 1.15rem; }
 
 /* ----------------------------------------------------------
    Per-item edit / delete buttons
@@ -315,6 +317,7 @@
   transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 .admin-json-ai-context-btn:hover { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.14); }
+.admin-json-ai-context-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
 .admin-json-ai-context-btn.is-copied {
   border-color: rgba(34, 197, 94, 0.5);
   background: rgba(34, 197, 94, 0.12);
@@ -556,20 +559,25 @@
 .admin-image-preview-wrap.admin-image-preview-broken .admin-image-preview-broken-label { display: flex; }
 
 /* ----------------------------------------------------------
-   Math editor — "Word-style" toolbar + textarea + live MathJax
-   preview, used by fields of type 'mathtext' (voyage question /
-   essay reference answer). The toolbar, textarea and preview are
-   stacked into one visually continuous control: toolbar and
-   preview share a muted background, the textarea in between is
-   where typing happens, rounded corners only on the outer edges
-   so it reads as a single component rather than three stacked
-   boxes.
+   WYSIWYG math/code editor ("wce-*"), used by fields of type
+   'mathtext' (voyage question / essay reference answer / the
+   member-facing essay answer in voyages.html). See
+   js/wysiwyg-editor.js for the behavior this styles: a single
+   contenteditable surface IS the rendered output — no separate
+   textarea-with-dimmed-syntax, no separate preview pane. Formulas
+   and code render in place as atomic chips; clicking one reopens
+   it as a small boxed raw-text field.
    ---------------------------------------------------------- */
-.math-editor {
+.wce-editor {
   border: 1px solid var(--glass-border);
   border-radius: 0.75rem;
   overflow: hidden;
   background: var(--glass-input-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.wce-editor:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 .math-editor-toolbar {
   display: flex; flex-wrap: wrap; gap: 0.3rem;
@@ -590,54 +598,163 @@
   border-color: rgba(var(--accent-rgb), 0.3);
   color: rgb(var(--accent-light-rgb));
 }
-/* The textarea and its highlight backdrop are stacked so they occupy
-   exactly the same box: the wrap is a plain positioning context, the
-   textarea stays in normal flow (so resizing it via the native drag
-   handle grows the wrap, which the absolutely-positioned backdrop
-   then fills to match), and the backdrop sits behind it rendering
-   the same text with syntax tokens dimmed. The textarea's own glyphs
-   are made transparent — only its caret and native text-selection
-   paint — so what's actually *visible* as text is the backdrop
-   underneath, in perfect alignment because both share the exact same
-   font, padding and line-wrapping rules. */
-.math-editor-textarea-wrap { position: relative; }
-.math-editor-highlight {
-  position: absolute; inset: 0;
+.math-toolbar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.math-toolbar-btn:disabled:hover { background: transparent; border-color: transparent; color: var(--muted-400); }
+.math-toolbar-btn-wide { min-width: 2.4rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* The hidden canonical <textarea> — still the real source of truth
+   every save/read call site reads .value from, just never shown. */
+.wce-source { display: none; }
+
+/* The visible, editable surface. Deliberately plain (not .glass-input)
+   since .wce-editor already supplies the frosted background/border
+   for the whole control; the surface just needs to sit flush inside
+   it below the toolbar. */
+.wce-surface {
+  min-height: 4.5rem;
   padding: 0.65rem 0.75rem;
+  font-size: 0.875rem; line-height: 1.6; color: var(--text-color);
   white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
-  overflow: hidden; pointer-events: none;
-  color: var(--text-color); line-height: 1.5;
+  outline: none; cursor: text;
 }
-.mte-dim { color: var(--muted-500); }
-.math-editor-textarea.glass-input {
-  border: none; border-radius: 0; background: transparent;
-  resize: vertical; padding: 0.65rem 0.75rem; display: block; width: 100%;
-  position: relative; line-height: 1.5;
-  color: transparent; caret-color: var(--text-color);
-  /* .glass-input normally sets backdrop-filter:blur(8px) for the frosted-
-     glass look, but that blurs whatever's visually BEHIND the element —
-     which is now the highlight div carrying the actual visible text, so
-     it must be turned off here or the text is unreadable. */
-  backdrop-filter: none; -webkit-backdrop-filter: none;
+.wce-surface:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted-500);
+  font-style: italic;
+  pointer-events: none;
 }
-.math-editor-textarea.glass-input::selection { background: rgba(var(--accent-rgb), 0.35); }
-.math-editor-textarea.glass-input:focus { box-shadow: none; outline: none; }
-.math-editor-preview-bar {
-  display: flex; align-items: center; gap: 0.35rem;
-  padding: 0.5rem 0.75rem 0.3rem;
-  border-top: 1px solid var(--glass-border);
-  color: var(--muted-600); font-size: 0.68rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.04em;
-  background: rgba(128,128,128,0.05);
+.wce-surface.wce-disabled {
+  cursor: default;
+  color: var(--muted-500);
+  background: rgba(128,128,128,0.04);
 }
-.math-editor-preview {
-  padding: 0.4rem 0.75rem 0.85rem;
-  background: rgba(128,128,128,0.05);
-  font-size: 0.85rem; color: var(--text-color); line-height: 1.6;
-  min-height: 1.6rem;
-  word-break: break-word;
+.wce-surface.wce-disabled .wce-chip { cursor: default; }
+
+/* Chips — atomic formula/code units. contenteditable="false" so the
+   browser already treats each as one unit for Backspace/Delete;
+   these styles just make that boundary visually obvious too. */
+.wce-chip {
+  cursor: pointer;
+  border-radius: 0.35rem;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
-.math-editor-preview-empty { color: var(--muted-600); font-style: italic; }
+.wce-chip:focus { outline: none; box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.45); }
+
+.wce-math {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0.05rem 0.3rem;
+  margin: 0 0.05rem;
+  border: 1px solid transparent;
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.wce-math:hover { background: rgba(var(--accent-rgb), 0.16); border-color: rgba(var(--accent-rgb), 0.3); }
+.wce-math-render { display: inline-block; }
+
+.wce-code-inline {
+  display: inline;
+  padding: 0.1rem 0.35rem;
+  margin: 0 0.05rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.3rem;
+  background: rgba(128,128,128,0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82em;
+}
+.wce-code-inline:hover { background: rgba(128,128,128,0.16); }
+
+.wce-code-block {
+  display: block;
+  margin: 0.4rem 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.5rem;
+  background: rgba(0,0,0,0.22);
+  overflow: hidden;
+}
+.wce-code-block:hover { border-color: rgba(var(--accent-rgb), 0.35); }
+.wce-code-block pre {
+  margin: 0; padding: 0.6rem 0.75rem;
+  white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem; line-height: 1.5; color: var(--text-color);
+}
+.wce-code-lang-badge {
+  padding: 0.2rem 0.7rem;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--muted-500);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(128,128,128,0.08);
+}
+
+/* Editing state — a chip mid-edit swaps its rendered view for real
+   input fields, still visually boxed/atomic so it never reads as
+   loose text merging into the sentence around it. */
+.wce-chip.wce-editing {
+  cursor: default;
+  background: rgba(128,128,128,0.1);
+  border: 1px dashed rgba(var(--accent-rgb), 0.4);
+  padding: 0.15rem 0.4rem;
+}
+.wce-code-block.wce-editing { padding: 0.5rem 0.6rem; border-style: dashed; }
+
+/* The live MathLive editing field — see kirRichEnterMathEdit in
+   wysiwyg-editor.js. It replaces the chip's rendered view while
+   editing, so it just needs to blend into the .wce-chip.wce-editing
+   box above rather than looking like its own separate control. */
+.wce-math-field {
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 1.05em;
+  --primary: rgb(var(--accent-light-rgb));
+  --caret-color: rgb(var(--accent-light-rgb));
+  --selection-color: var(--text-color);
+  --selection-background-color: rgba(var(--accent-rgb), 0.35);
+  --contains-highlight-background-color: rgba(var(--accent-rgb), 0.12);
+  --placeholder-color: var(--muted-500);
+  --placeholder-opacity: 0.55;
+}
+/* No on-screen keyboard / "..." menu popup — we already have our own
+   toolbar above the surface; this is meant to stay a single boxed
+   formula field, not a full standalone calculator UI. */
+.wce-math-field::part(virtual-keyboard-toggle),
+.wce-math-field::part(menu-toggle) {
+  display: none;
+}
+
+.wce-slot-static {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em; color: var(--muted-500);
+}
+.wce-slot-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em; color: var(--text-color);
+  background: transparent; border: none; border-bottom: 1.5px solid rgba(var(--accent-rgb), 0.5);
+  padding: 0 0.15rem; margin: 0 0.05rem; min-width: 0.75rem;
+}
+.wce-slot-input:focus { outline: none; border-bottom-color: rgb(var(--accent-light-rgb)); }
+.wce-slot-input-raw { min-width: 6rem; border-bottom-color: rgba(var(--accent-rgb), 0.5); }
+
+.wce-code-lang-input {
+  display: block; width: 100%; box-sizing: border-box;
+  padding: 0.3rem 0.7rem;
+  border: none; border-bottom: 1px solid var(--glass-border);
+  background: rgba(128,128,128,0.08);
+  color: var(--text-color); font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.wce-code-lang-input:focus { outline: none; background: rgba(128,128,128,0.14); }
+.wce-code-block-raw {
+  display: block; width: 100%; box-sizing: border-box;
+  resize: vertical; padding: 0.6rem 0.75rem;
+  border: none; background: transparent;
+  color: var(--text-color); font-size: 0.82rem; line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.wce-code-block-raw:focus { outline: none; }
 
 /* ----------------------------------------------------------
    Rating/difficulty slider legend tooltip (ported from
