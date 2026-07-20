@@ -350,22 +350,35 @@
       // The pending (invisible) state was applied inside swapBody, above,
       // so it's already what got shown the instant the swap landed —
       // the planet/ring/orbit guide are already visible and mid-morph,
-      // everything else is at opacity: 0.
+      // everything else (nodes included) is at opacity: 0.
       //
-      // Firing the fade-in on the very next couple of frames (the old
-      // behavior) meant the rest of the scene reappeared essentially the
-      // instant the planet finished landing, which read as an abrupt
-      // "everything just snapped back" rather than a deliberate reveal.
-      // Desired feel: the planet arrives, THEN — after a beat — the rest
-      // of the page breathes back in. So hold the pending state for a
-      // fixed pause before even starting the fade.
-      const REVEAL_HOLD_MS = 1400; // the cinematic beat, tune to taste (1000–2000ms)
-      // CSS opacity transition is 1.1s, and the last (5th) ring node adds a
-      // further 0.6s transition-delay on top of that (see the staggered
-      // .obt-nodes .obt-node rules in index.html) — so the slowest-finishing
-      // element lands at 1.1s + 0.6s = 1.7s after the fade starts. Give this
-      // a bit of margin so the cleanup below never fires mid-fade.
-      const FADE_MS = 1800;
+      // Three beats, strictly in sequence (each of these numbers has a
+      // matching CSS value in index.html — keep them in sync if either
+      // side changes):
+      //   1. Hold everything at opacity 0 until the planet/ring morph
+      //      has actually landed (that morph itself is 0.7s — see the
+      //      ::view-transition-group(kir-planet) rule — so this leaves
+      //      it a bit of margin) — REVEAL_HOLD_MS.
+      //   2. THEN the ring's five nav nodes fade in one at a time, in
+      //      ring order — kir-nodes-in, staggered per-node via the
+      //      transition-delay rules on .obt-nodes .obt-node. NODE_FADE_MS
+      //      / NODE_STAGGER_MS / NODE_COUNT mirror that CSS exactly, so
+      //      nodesTotalMs below is really "how long until the LAST node
+      //      has finished appearing", not just started.
+      //   3. THEN, only once every node is fully in, wait once more
+      //      (SCENE_WAIT_MS) and let the rest of the scene (stars,
+      //      header, moons, dust, card, hint, progress, footer) breathe
+      //      in together as one slow fade — kir-scene-in.
+      // Each stage only starts once the previous one has genuinely
+      // finished, so the reveal reads as three distinct, deliberate
+      // beats rather than everything crossfading over itself.
+      const REVEAL_HOLD_MS = 1000;   // beat 1: wait for the morph to land
+      const NODE_FADE_MS = 500;      // beat 2: each node's own fade-in duration
+      const NODE_STAGGER_MS = 150;   // beat 2: gap between each node starting
+      const NODE_COUNT = 5;
+      const nodesTotalMs = NODE_FADE_MS + (NODE_COUNT - 1) * NODE_STAGGER_MS;
+      const SCENE_WAIT_MS = 1000;    // beat 3: pause after the last node lands
+      const SCENE_FADE_MS = 1100;    // beat 3: the slow collective breathe-in
 
       setTimeout(() => {
         // Still wrapped in two rAFs here, same reasoning as before: makes
@@ -375,14 +388,25 @@
         // than risking a coalesced jump straight to "1".
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            document.body.classList.remove('kir-reveal-pending');
-            document.body.classList.add('kir-reveal-in');
+            document.body.classList.add('kir-nodes-in');
           });
         });
-        // Marker classes are only meaningful mid-transition; drop them
-        // once the fade is done so they can't affect some later,
-        // unrelated navigation that happens to reuse the same elements.
-        setTimeout(() => document.body.classList.remove('kir-reveal-in'), FADE_MS);
+
+        setTimeout(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              document.body.classList.remove('kir-reveal-pending');
+              document.body.classList.add('kir-scene-in');
+            });
+          });
+          // Marker classes are only meaningful mid-transition; drop them
+          // once the fade is done so they can't affect some later,
+          // unrelated navigation that happens to reuse the same elements.
+          setTimeout(() => {
+            document.body.classList.remove('kir-nodes-in');
+            document.body.classList.remove('kir-scene-in');
+          }, SCENE_FADE_MS + 100);
+        }, nodesTotalMs + SCENE_WAIT_MS);
       }, REVEAL_HOLD_MS);
     }
 
