@@ -9,6 +9,7 @@
 <script src="js/auth.js"></script>
 <script>kirRequireAuth();</script>
 <script src="js/admin-shared.js"></script>
+<script src="js/wysiwyg-editor.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +30,11 @@
   };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- MathLive: powers the live, caret-inside-the-formula editing view
+     in wysiwyg-editor.js's math chips (MathJax above is only used for
+     the *static*, non-editing chip render and the read-only voyage
+     display elsewhere on the site — it has no live editing surface). -->
+<script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
 <!-- marked (Markdown) + DOMPurify (sanitizes the HTML marked produces before
      it's dropped in via innerHTML, since some voyage text comes from JSON
      import rather than being hand-typed by an admin in the form) -->
@@ -137,15 +143,16 @@
     </div>
 
     <!-- Fixed stacked actions, bottom-right, bottom to top: Ekspedisi
-         (everyone) -> Tambah voyage (admin) -> Impor JSON (admin).
-         The admin two are rendered/shown by JS further down. -->
+         (everyone) -> Tambah voyage (admin) -> Impor JSON (admin) ->
+         Tinjau integritas (admin). The admin three are rendered/shown
+         by JS further down. -->
     <button type="button" id="voyage-expedition-fab" onclick="openExpeditionFocusMode()" class="admin-fab bg-accent-gradient shadow-glow" title="Ekspedisi" aria-label="Ekspedisi">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
     </button>
     <button type="button" id="voyage-import-json-btn" onclick="openVoyageJsonImportModal()" class="hidden admin-fab-tertiary glass" title="Impor voyage dari file JSON" aria-label="Impor voyage dari file JSON">
       <svg class="text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" /></svg>
     </button>
-    <button type="button" id="voyage-integrity-btn" onclick="openIntegrityModal()" class="hidden admin-fab-tertiary glass" style="position:relative" title="Tinjau integritas voyage" aria-label="Tinjau integritas voyage">
+    <button type="button" id="voyage-integrity-btn" onclick="openIntegrityModal()" class="hidden admin-fab-quaternary glass" title="Tinjau integritas voyage" aria-label="Tinjau integritas voyage">
       <svg class="text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
       <span id="voyage-integrity-badge" class="hidden" style="position:absolute; top:-0.35rem; right:-0.35rem; background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; line-height:1; padding:0.25rem 0.4rem; border-radius:999px; min-width:1.1rem; text-align:center;">0</span>
     </button>
@@ -401,15 +408,16 @@
   }
 
   /* ----------------------------------------------------------
-     Same "Word-style" math editor the admin voyage form uses for
-     "Teks Soal" / "Jawaban Referensi" (see kirAdminFieldHtml's
-     'mathtext' case in admin-shared.js), reused here for the
-     student-facing essay answer so members can insert LaTeX with the
-     same toolbar instead of memorizing TeX, and get the exact same
-     live preview (kirRenderMarkdownWithMath + MathJax) before they
-     submit. Rendered once into the empty #vm-essay-wrap container
-     since this markup is static HTML in this file, not a JS template
-     evaluated where KIR_MATH_SNIPPETS lives.
+     Same Word-style WYSIWYG math editor the admin voyage form uses
+     for "Teks Soal" / "Jawaban Referensi" (see kirAdminFieldHtml's
+     'mathtext' case in admin-shared.js and kirRichEditorInit in
+     js/wysiwyg-editor.js), reused here for the student-facing essay
+     answer so members insert LaTeX/code as real chips instead of
+     ever seeing raw $...$ or `...` syntax — there is no separate
+     preview pane, the contenteditable surface itself IS the
+     rendered output. Rendered once into the empty #vm-essay-wrap
+     container since this markup is static HTML in this file, not a
+     JS template evaluated where KIR_MATH_SNIPPETS lives.
      ---------------------------------------------------------- */
   function kirRenderEssayMathEditor() {
     const wrap = document.getElementById('vm-essay-wrap');
@@ -418,31 +426,26 @@
     const lang = localStorage.getItem('kir_lang') || 'id';
     wrap.innerHTML = `
       <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">${kirEscapeHtml(I18N[lang].voyages_your_answer)}</label>
-      <div class="math-editor">
-        <div class="math-editor-toolbar" role="toolbar" aria-label="Sisipkan notasi matematika">
-          ${KIR_MATH_SNIPPETS.map((s, i) => `<button type="button" class="math-toolbar-btn" title="${kirEscapeHtml(s.title)}" onclick="kirMathInsert('vm-essay-textarea', ${i})">${s.label}</button>`).join('')}
-        </div>
-        <div class="math-editor-textarea-wrap">
-          <div id="vm-essay-textarea-highlight" class="math-editor-highlight text-sm" aria-hidden="true"></div>
-          <textarea id="vm-essay-textarea" rows="5" class="glass-input w-full text-sm math-editor-textarea" spellcheck="false" data-i18n-placeholder="voyages_essay_placeholder" placeholder="${kirEscapeHtml(I18N[lang].voyages_essay_placeholder)}"></textarea>
-        </div>
-        <div class="math-editor-preview-bar">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-          <span data-i18n="voyages_preview_label">${kirEscapeHtml(I18N[lang].voyages_preview_label)}</span>
-        </div>
-        <div id="vm-essay-textarea-preview" class="math-editor-preview"><span class="math-editor-preview-empty">${kirEscapeHtml(I18N[lang].voyages_preview_empty)}</span></div>
+      <div class="wce-editor">
+        ${kirWceToolbarHtml('vm-essay-textarea')}
+        <textarea id="vm-essay-textarea" rows="5" class="wce-source" data-i18n-placeholder="voyages_essay_placeholder" placeholder="${kirEscapeHtml(I18N[lang].voyages_essay_placeholder)}"></textarea>
       </div>`;
-    kirMathEditorBind('vm-essay-textarea');
+    kirRichEditorInit('vm-essay-textarea', { placeholder: I18N[lang].voyages_essay_placeholder });
 
     // Same paste/untrusted-input telemetry the plain textarea used to
     // carry (see the copy/contextmenu deterrents further down), just
-    // attached here now that the element is created lazily instead of
-    // existing in the static markup from page load.
-    const ta = document.getElementById('vm-essay-textarea');
-    ta.addEventListener('paste', () => {
+    // attached to the visible contenteditable surface now instead of
+    // the hidden canonical textarea: real typing/pasting happens on
+    // the surface, and the surface's trusted DOM events are what we
+    // want here — the hidden textarea's 'input' event is re-fired
+    // programmatically by kirRichSync() on every keystroke (so it can
+    // stay in sync), which would make e.isTrusted false for entirely
+    // legitimate typing if we listened on the textarea instead.
+    const surface = document.getElementById('vm-essay-textarea-surface');
+    surface.addEventListener('paste', () => {
       if (currentVoyageId) telemetryData.paste_count++;
     });
-    ta.addEventListener('input', (e) => {
+    surface.addEventListener('input', (e) => {
       if (currentVoyageId && !e.isTrusted) telemetryData.untrusted_input_count++;
     });
   }
@@ -661,9 +664,19 @@
   let voyageSearchQuery = '';
   let currentVoyageSort = 'random';
 
+  // Debounced: renderVoyageList() does a full innerHTML rebuild of every
+  // matching card (markdown render, badge HTML, i18n pass, MathJax
+  // typeset) — with 200+ voyages that's expensive enough that firing it
+  // on every single keystroke makes the search box visibly stutter.
+  // The <input> itself isn't controlled/re-rendered, so it stays
+  // instantly responsive; only the (costly) list rebuild is delayed
+  // until typing pauses.
+  let voyageSearchDebounceTimer = null;
+
   function handleVoyageSearchChange() {
     voyageSearchQuery = document.getElementById('voyage-search').value.trim().toLowerCase();
-    renderVoyageList();
+    clearTimeout(voyageSearchDebounceTimer);
+    voyageSearchDebounceTimer = setTimeout(renderVoyageList, 150);
   }
 
   function handleVoyageSortChange() {
@@ -1107,20 +1120,18 @@
         order.map(origIdx => `<option value="${origIdx}">${v.options[origIdx]}</option>`).join('');
       kirRefreshCustomSelect('vm-dropdown-select');
     }
-    const essayTextarea = document.getElementById('vm-essay-textarea');
     const done = kirVoyageCompletion(v.id);
-    
+
     if (v.type === 'essay') {
-      essayTextarea.value = kirMathtextEscapeBreaksForEditor((done && done.essayAnswer) ? done.essayAnswer : '');
+      // kirRichEditorSetValue re-parses the raw stored value straight
+      // into rendered chips on the surface, so nothing further needs
+      // to be manually refreshed after this the way the old
+      // highlight/preview backdrop did.
+      kirRichEditorSetValue('vm-essay-textarea', (done && done.essayAnswer) ? done.essayAnswer : '');
       // Lock the answer in only once a submission has actually scored a
       // perfect 100. Otherwise leave it editable so the score can still
       // be improved with another attempt.
-      essayTextarea.disabled = !!(done && done.essayScore === 100);
-      // Setting .value directly (vs. typing) doesn't fire 'input', so
-      // the highlight backdrop and live preview need a manual refresh,
-      // otherwise a reopened essay shows the old preview/highlight state.
-      kirMathHighlightSync('vm-essay-textarea');
-      kirMathPreviewUpdate('vm-essay-textarea');
+      kirRichEditorSetDisabled('vm-essay-textarea', !!(done && done.essayScore === 100));
     }
 
     if (v.type === 'programming') {
@@ -1219,13 +1230,21 @@
         }
       } else if (v.type === 'essay') {
         // Smart Grading was off when this was submitted, so this is the
-        // manual-review path.
+        // manual-review path — already sent, nothing to resubmit until
+        // an officer reviews it. Lock the button like the other
+        // "already done" states below, instead of leaving it clickable.
         feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
         feedback.textContent = I18N[lang].voyages_essay_sent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = I18N[lang].voyages_completed;
+        submitBtn.removeAttribute('data-i18n');
       } else {
         // Already solved before. Show the state, still let them review, but no re-earning.
         feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
         feedback.textContent = I18N[lang].voyages_already_done;
+        submitBtn.disabled = true;
+        submitBtn.textContent = I18N[lang].voyages_completed;
+        submitBtn.removeAttribute('data-i18n');
       }
     }
 
@@ -1631,7 +1650,7 @@
         // the answer and the submit button. Any other score, passing or
         // not, stays open for another attempt.
         const isPerfect = data.score === 100;
-        document.getElementById('vm-essay-textarea').disabled = isPerfect;
+        kirRichEditorSetDisabled('vm-essay-textarea', isPerfect);
         submitBtn.disabled = isPerfect;
         submitBtn.textContent = isPerfect ? I18N[lang].voyages_grading_locked : I18N[lang].voyages_grading_retry;
         submitBtn.removeAttribute('data-i18n');
@@ -1812,22 +1831,77 @@
      back JSON that imports cleanly on the first try. Kept in sync
      manually with voyageJsonTransform, so update this too whenever
      that function's rules change.
+
+     Also pulls one real, random example voyage per difficulty
+     rating 1-10 straight from the DB (see
+     get_voyage_difficulty_samples() /
+     migration_voyage_difficulty_samples.sql) and folds them into
+     the prompt as a calibration block. The 1-3/4-6/7-8/9-10 legend
+     below is a coarse description; showing the model actual
+     existing questions at each rating gives it a real baseline for
+     "so THIS is how hard a 3 is supposed to be here" instead of it
+     guessing from the label alone. Async because of that DB
+     round-trip — kirJsonImportCopyAiContext already awaits
+     whatever aiContext() returns, sync or async.
      ---------------------------------------------------------- */
-  function voyageJsonAiContext() {
+  async function voyageJsonAiContext() {
     const legendLines = VOYAGE_DIFF_LEGEND.map(b => `  - ${b.label}: ${b.desc}`).join('\n');
-    return `Kamu akan membuat soal untuk tabel "voyages" (Supabase/Postgres) di aplikasi belajar Orbit. Outputkan HANYA JSON valid, tanpa teks lain dan tanpa markdown code fence.
+
+    let calibrationBlock = '';
+    try {
+      const { data, error } = await window.supabaseClient.rpc('get_voyage_difficulty_samples');
+      if (!error && data && data.length) {
+        const lines = data
+          .sort((a, b) => Number(a.difficulty) - Number(b.difficulty))
+          .map(ex => {
+            // Postgres numeric comes back through supabase-js as a
+            // string to avoid float precision loss — keep it exact
+            // (e.g. "7.5", "3", "9.25") rather than rounding to a
+            // whole rating, so the model sees the real difficulty
+            // scale actually in use, decimals included. Only trim
+            // trailing zeros when there's an actual decimal point
+            // (so "10" stays "10", not "1").
+            let diffLabel = String(ex.difficulty);
+            if (diffLabel.includes('.')) diffLabel = diffLabel.replace(/0+$/, '').replace(/\.$/, '');
+            const q = (ex.question || '').replace(/\s+/g, ' ').trim();
+            const qShort = q.length > 300 ? q.slice(0, 300) + '…' : q;
+            const optsLine = ex.options && ex.options.length
+              ? `\n    Opsi: ${JSON.stringify(ex.options)}`
+              : '';
+            return `  Difficulty ${diffLabel} (${ex.subject}/${ex.type}) — "${ex.title}"\n    Soal: ${qShort}${optsLine}`;
+          })
+          .join('\n\n');
+        calibrationBlock = `\n\nCONTOH SOAL YANG SUDAH ADA DI DATABASE (kalibrasi tingkat kesulitan — nilai "Difficulty" di bawah adalah nilai desimal asli tiap soal, bukan dibulatkan, pakai ini sebagai patokan nyata seberapa sulit tiap tingkat seharusnya, di luar deskripsi umum di atas):\n${lines}\n`;
+      }
+    } catch (e) {
+      // No connection, not admin, or DB has no voyages at some/all
+      // ratings yet — fall back to the legend-only prompt below
+      // rather than blocking the whole "Salin Context" action on it.
+      console.error('voyageJsonAiContext: gagal mengambil contoh kalibrasi', e);
+    }
+
+    return `Kamu akan membuat soal untuk tabel "voyages" (Supabase/Postgres) di aplikasi belajar Orbit.
+
+OUTPUT WAJIB:
+- Balas HANYA dengan SATU blok markdown \`\`\`json.
+- Jangan menulis penjelasan, pembuka, penutup, catatan, atau teks apa pun di luar code block tersebut.
+- Isi code block harus berupa JSON valid yang bisa langsung diparse dengan JSON.parse().
+- Gunakan indentasi yang rapi (2 spasi per level).
+- Jangan pernah menghasilkan JSON yang tidak valid.
 
 Kamu bisa membuat lebih dari satu soal sekaligus. Untuk satu soal, kembalikan satu objek JSON. Untuk beberapa soal sekaligus, bungkus semua objek itu dalam satu array JSON, misalnya jika diminta "buat 5 soal", hasilnya array berisi 5 objek soal.
 
 FORMAT setiap objek soal:
 {
   "title": string,               // wajib. Judul singkat soal.
-  "subject": string,              // wajib. Salah satu: ${VOYAGE_JSON_SUBJECTS.join(', ')}
-  "type": string,                 // wajib. Salah satu: ${VOYAGE_JSON_TYPES.join(', ')}
-                                   //   "programming" hanya boleh dipakai jika subject bernilai "informatika"
-  "difficulty": number,           // wajib. Bilangan bulat 1 sampai 10, skala di bawah.
-  "question": string,             // wajib. Teks soal. Mendukung Markdown (**tebal**, *miring*, list, heading, dan lain-lain) dan notasi matematika LaTeX di antara tanda $...$ (contoh: "Berapa $\\int x^2 dx$?"), keduanya dirender otomatis.
-  "image_url": string | null,     // opsional. URL gambar pendukung soal.
+  "subject": string,             // wajib. Salah satu: ${VOYAGE_JSON_SUBJECTS.join(', ')}
+  "type": string,                // wajib. Salah satu: ${VOYAGE_JSON_TYPES.join(', ')}
+                                 //   "programming" hanya boleh dipakai jika subject bernilai "informatika"
+  "difficulty": number,          // wajib. Angka DESIMAL (floating point) antara 1.0 sampai 10.0.
+                                 // Gunakan presisi sesuai kebutuhan, misalnya 2.4, 5.75, 7.1, 8.95.
+                                 // Jangan membulatkan ke bilangan bulat kecuali memang benar-benar tepat.
+  "question": string,            // wajib. Teks soal. Mendukung Markdown (**tebal**, *miring*, list, heading, dan lain-lain) dan notasi matematika LaTeX di antara tanda $...$ (contoh: "Berapa $\\int x^2 dx$?"), keduanya dirender otomatis.
+  "image_url": string | null,    // opsional. URL gambar pendukung soal.
 
   // Hanya untuk type "mc" atau "dropdown":
   "options": string[],            // wajib untuk mc/dropdown. Minimal 2 opsi, semua non-kosong. Boleh pakai Markdown dan $...$ juga.
@@ -1853,19 +1927,44 @@ FORMAT setiap objek soal:
 
 SKALA "difficulty" (Rating 1 sampai 10), pakai panduan yang sama dengan form pembuatan voyage di admin:
 ${legendLines}
+${calibrationBlock}
+
+Gunakan contoh-contoh kalibrasi di atas sebagai referensi utama untuk menentukan difficulty.
+Jika sebuah soal berada di antara dua contoh, gunakan angka desimal yang paling mencerminkan tingkat kesulitannya.
+Jangan sekadar memilih angka bulat.
 
 ATURAN PENTING:
-- Field yang tidak relevan dengan "type" boleh dihilangkan, jangan dipaksakan bernilai null jika memang tidak perlu, tapi field yang wajib untuk type tersebut harus tetap ada.
-- "correct_index" harus berupa index yang valid ke dalam array "options" (dihitung mulai dari 0).
-- Jangan tambahkan field lain di luar yang disebutkan di atas.
-- Bahasa soal memakai Bahasa Indonesia, kecuali diminta memakai bahasa lain.
+
+- Ikuti seluruh instruksi pengguna dengan cermat.
+- Jika pengguna memberikan materi, ringkasan, modul, buku, PDF, daftar kompetensi, atau contoh soal, gunakan materi tersebut sebagai sumber utama pembuatan soal.
+- Jangan membuat soal dari topik yang tidak terdapat pada materi kecuali memang diminta secara eksplisit.
+- Pastikan soal benar-benar menguji materi yang diberikan, bukan hanya bertema serupa.
+
+- Difficulty harus ditentukan berdasarkan kompleksitas soal sebenarnya.
+- Gunakan angka desimal (floating point), bukan bilangan bulat pada umumnya.
+- Gunakan seluruh rentang 1.0 sampai 10.0 bila diperlukan.
+- Gunakan contoh-contoh kalibrasi di atas sebagai acuan utama.
+- Jangan memilih difficulty secara acak atau hanya berdasarkan label mudah/sedang/sulit.
+
+- Field yang tidak relevan dengan "type" boleh dihilangkan.
+- Jangan mengisi field yang tidak digunakan dengan null kecuali memang didokumentasikan.
+- Semua field yang wajib untuk type tersebut harus selalu ada.
+
+- "correct_index" harus merupakan index yang valid pada array "options" (dimulai dari 0).
+- Untuk soal Programming, seluruh test case harus benar-benar sesuai dengan deskripsi soal.
+- Sertakan minimal satu test case publik (is_hidden = false) agar siswa dapat melakukan debugging.
+- Gunakan hidden test case untuk menguji edge case bila diperlukan.
+
+- Jangan menambahkan field selain yang didefinisikan.
+- Bahasa soal menggunakan Bahasa Indonesia kecuali pengguna secara eksplisit meminta bahasa lain.
+- Pastikan seluruh JSON valid.
 
 CONTOH satu soal Pilihan Ganda:
 {
   "title": "Contoh Soal Turunan",
   "subject": "math",
   "type": "mc",
-  "difficulty": 5,
+  "difficulty": 5.4,
   "question": "Berapakah turunan dari $f(x) = x^2$?",
   "options": ["2x", "x", "x^2", "2"],
   "correct_index": 0
@@ -1874,24 +1973,40 @@ CONTOH satu soal Pilihan Ganda:
 CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
 [
   {
-    "title": "Contoh Soal Turunan",
-    "subject": "math",
+    "title": "<judul>",
+    "subject": "<subject>",
     "type": "mc",
-    "difficulty": 5,
-    "question": "Berapakah turunan dari $f(x) = x^2$?",
-    "options": ["2x", "x", "x^2", "2"],
+    "difficulty": 4.85,
+    "question": "<teks soal>",
+    "options": [
+      "<opsi 1>",
+      "<opsi 2>",
+      "<opsi 3>",
+      "<opsi 4>"
+    ],
     "correct_index": 0
   },
   {
-    "title": "Jumlah Dua Bilangan",
+    "title": "<judul>",
     "subject": "informatika",
     "type": "programming",
-    "difficulty": 3,
-    "question": "Baca dua bilangan bulat A dan B, lalu cetak A + B.",
-    "coding_config": { "allowed_languages": ["all"], "time_limit_ms": 2000 },
+    "difficulty": 6.35,
+    "question": "<teks soal>",
+    "coding_config": {
+      "allowed_languages": ["all"],
+      "time_limit_ms": 2000
+    },
     "test_cases": [
-      { "input": "2 3", "expected_output": "5", "is_hidden": false },
-      { "input": "10 -4", "expected_output": "6", "is_hidden": true }
+      {
+        "input": "<stdin>",
+        "expected_output": "<stdout>",
+        "is_hidden": false
+      },
+      {
+        "input": "<stdin>",
+        "expected_output": "<stdout>",
+        "is_hidden": true
+      }
     ]
   }
 ]`;

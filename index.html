@@ -16,7 +16,7 @@
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
 
-<style>
+<style id="kir-page-style">
   /* ==========================================================
      ORBIT LANDING: Jupiter *is* the website.
      The page never scrolls. Wheel / touch / keys rotate the
@@ -366,9 +366,10 @@
   .obt-nodes { position: absolute; inset: 0; z-index: 25; }
   .obt-node {
     position: absolute; left: 50%; top: 50%;
-    display: flex; align-items: center; justify-content: center; gap: 0.45rem;
-    padding: 0.6rem 1.05rem;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0.65rem;
     min-height: 44px;
+    min-width: 44px;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 600;
@@ -387,10 +388,10 @@
   .obt-node.obt-node-active { background: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%); color: #fff; border: none !important; box-shadow: 0 0 30px -4px rgba(var(--accent-rgb), 0.8); }
   .obt-node.obt-node-active svg { color: #fff; }
 
-  @media (max-width: 520px) {
-    .obt-node-label { display: none; }
-    .obt-node { padding: 0.65rem; min-width: 44px; }
-  }
+  /* Labels are dropped everywhere now, not just on narrow viewports —
+     nodes are icon-only circles at every breakpoint (this used to live
+     inside a max-width:520px media query). */
+  .obt-node-label { display: none; }
 
   /* ---------------- Floating orbiting content card ---------------- */
   .obt-card {
@@ -575,7 +576,23 @@
   .obt-ring-group { view-transition-name: kir-ring; }
 
   @media (prefers-reduced-motion: no-preference) {
-    ::view-transition-group(root) { animation-duration: 0.55s; }
+    // ------------------------------------------------------------
+    // ::view-transition-group(root) was 0.55s with the browser's
+    // default easing, while ::view-transition-old/new(root) below
+    // are 0.5s with a custom cubic-bezier. The GROUP is what actually
+    // interpolates the snapshot's size/position (relevant whenever
+    // the two pages differ in height/scrollbar presence); the OLD/NEW
+    // pseudo-elements are what carry the opacity+translateX slide.
+    // With two different durations+easings racing each other, the
+    // slide finished and froze (both-fill) ~50ms before the container
+    // was done adjusting size/position — so for that last beat the
+    // page kept moving after its own translateX had already stopped,
+    // which reads as a jerk/stutter right at the tail of the
+    // navigation. Matching duration AND easing here means the
+    // container and the slide finish in the same frame, so the
+    // motion resolves as one continuous move instead of two
+    // slightly-offset ones.
+    ::view-transition-group(root) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
     ::view-transition-old(root) {
       animation: kir-vt-out 0.5s cubic-bezier(.2,.8,.2,1) both;
     }
@@ -608,6 +625,48 @@
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
       animation: none !important;
     }
+  }
+
+  /* ============================================================
+     "Surroundings" fade-in, specifically when arriving here FROM
+     auth.html (see revealPending in router.js — every other way of
+     landing on this page, direct load included, never adds either
+     class below, so nothing here ever applies then).
+
+     .obt-sphere / .obt-ring-group / .obt-guide-1 / .obt-guide-2 are
+     deliberately NOT in this list: those three already morph
+     continuously in from auth.html via their shared
+     view-transition-name (and the guides/moons phase-sync above),
+     so hiding and re-fading them here would undo that continuity
+     and make them blink instead of glide. Everything else in the
+     scene (plus the header/footer/starfield around it) pops in
+     fresh either way, so it gets the fade instead of just
+     appearing abruptly.
+     ============================================================ */
+  body.kir-reveal-pending #obt-stars,
+  body.kir-reveal-pending .obt-vignette,
+  body.kir-reveal-pending .obt-header,
+  body.kir-reveal-pending .obt-moon-orbit,
+  body.kir-reveal-pending .obt-dust,
+  body.kir-reveal-pending .obt-nodes,
+  body.kir-reveal-pending #obt-card,
+  body.kir-reveal-pending #obt-hint,
+  body.kir-reveal-pending .obt-progress,
+  body.kir-reveal-pending .obt-footer-mini {
+    opacity: 0;
+  }
+  body.kir-reveal-in #obt-stars,
+  body.kir-reveal-in .obt-vignette,
+  body.kir-reveal-in .obt-header,
+  body.kir-reveal-in .obt-moon-orbit,
+  body.kir-reveal-in .obt-dust,
+  body.kir-reveal-in .obt-nodes,
+  body.kir-reveal-in #obt-card,
+  body.kir-reveal-in #obt-hint,
+  body.kir-reveal-in .obt-progress,
+  body.kir-reveal-in .obt-footer-mini {
+    opacity: 1;
+    transition: opacity 0.6s ease;
   }
 </style>
 </head>
@@ -1040,7 +1099,7 @@
       rafId = requestAnimationFrame(frame);
     }
 
-    document.addEventListener('visibilitychange', () => {
+    function onVisibilityChange() {
       if (document.hidden) {
         clearTimeout(timerId);
         cancelAnimationFrame(rafId);
@@ -1052,7 +1111,20 @@
       } else {
         scheduleNext();
       }
-    });
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // This whole inline <script> re-runs via eval() every time the router
+    // brings you back to this page (see router.js), which would otherwise
+    // register a second (third, fourth, ...) copy of this listener and
+    // leave the previous copy's timer/rAF loop running forever in the
+    // background. Undo exactly what this instance registered, once, the
+    // moment the router is about to swap this page away.
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearTimeout(timerId);
+      cancelAnimationFrame(rafId);
+    }, { once: true });
 
     scheduleNext();
   })();
@@ -1116,6 +1188,21 @@
       el.addEventListener('blur', () => { driftPaused = false; });
     });
 
+    // Everything below registers on `window`/`document` directly (rAF
+    // loop, keydown, resize) rather than on `cosmos`/`stage` themselves,
+    // so none of it stops on its own when the router swaps this page's
+    // body away — it would otherwise keep running, invisibly, for as
+    // long as the tab stays open, and every repeat visit to this page
+    // adds yet another copy on top. `teardown` is populated below with
+    // exactly what this instance needs undone, and runs once, right
+    // before the router replaces this page's body.
+    let teardown = () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('keydown', onKeydown);
+      if (lockTimer) window.clearTimeout(lockTimer);
+    };
+    window.addEventListener('kir:teardown', () => teardown(), { once: true });
+
     let rx = 0, ry = 0;
     function sizeStage() {
       // .obt-stage-outer used to size itself off raw 90vmin, which
@@ -1138,7 +1225,8 @@
     }
     sizeStage();
     measure();
-    window.addEventListener('resize', () => { sizeStage(); measure(); });
+    function onResize() { sizeStage(); measure(); }
+    window.addEventListener('resize', onResize);
 
     let step = 0;
     let sceneIndex = 0;
@@ -1276,12 +1364,13 @@
       if (dy > 0) next(); else prev();
     });
 
-    window.addEventListener('keydown', (e) => {
+    function onKeydown(e) {
       const tag = document.activeElement && document.activeElement.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); hideHint(); next(); }
       else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); hideHint(); prev(); }
-    });
+    }
+    window.addEventListener('keydown', onKeydown);
 
     updateActiveStates();
 
@@ -1290,15 +1379,23 @@
       place(currentAngle);
     } else {
       let lastT = performance.now();
+      let loopRafId = null;
       function loop(t) {
         const dt = Math.min(t - lastT, 48);
         lastT = t;
         if (!driftPaused) idleAngle += dt * 0.0022;
         currentAngle += (targetAngle - currentAngle) * 0.055;
         place(currentAngle + idleAngle);
-        requestAnimationFrame(loop);
+        loopRafId = requestAnimationFrame(loop);
       }
-      requestAnimationFrame(loop);
+      loopRafId = requestAnimationFrame(loop);
+
+      teardown = () => {
+        cancelAnimationFrame(loopRafId);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('keydown', onKeydown);
+        if (lockTimer) window.clearTimeout(lockTimer);
+      }; // supersedes the reduced-motion default above with the same cleanup plus the rAF loop
 
       cosmos.addEventListener('mousemove', (e) => {
         const rect = cosmos.getBoundingClientRect();

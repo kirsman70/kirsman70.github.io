@@ -16,7 +16,7 @@
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
 
-<style>
+<style id="kir-page-style">
   /* ============================================================
      Auth page: a "payment-card" style carousel for the 3-step
      register flow (center card active, siblings peeking left/
@@ -308,8 +308,16 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
   }
-  .obt-guide-1 { width: 108%; height: 108%; animation: obt-spin 160s linear infinite; }
-  .obt-guide-2 { width: 128%; height: 128%; border-color: rgba(var(--accent-rgb), 0.07); animation: obt-spin 240s linear infinite reverse; }
+  /* Scaled up from index.html's 108%/128% to match this page's larger
+     sphere (74% of stage here vs 62% there), same way .obt-ring-group
+     below is scaled to 122%. Kept proportional to the sphere rather
+     than copied verbatim so the ring sits inside the guide by the same
+     visual margin on both pages — before, the guide stayed at index's
+     fixed 108%/128% while only the ring grew with the bigger sphere,
+     so the ring crowded right up against (and nearly outgrew) the
+     guide here instead of nesting inside it like it does on index. */
+  .obt-guide-1 { width: 129%; height: 129%; animation: obt-spin 160s linear infinite; }
+  .obt-guide-2 { width: 153%; height: 153%; border-color: rgba(var(--accent-rgb), 0.07); animation: obt-spin 240s linear infinite reverse; }
   @keyframes obt-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
   /* Same ring as index.html, scaled up to match this page's larger
@@ -416,7 +424,14 @@
       navigation: auto;
     }
 
-    ::view-transition-group(root) { animation-duration: 0.55s; }
+    // ------------------------------------------------------------
+    // See index.html for the full explanation: this used to be 0.55s
+    // with default easing while ::view-transition-old/new(root) below
+    // run 0.5s with a custom cubic-bezier. That mismatch let the
+    // container (size/position) keep moving for ~50ms after the
+    // visible slide had already frozen, reading as a stutter right at
+    // the end of the navigation. Matching both here fixes it.
+    ::view-transition-group(root) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
     ::view-transition-old(root) {
       animation: kir-vt-out 0.5s cubic-bezier(.2,.8,.2,1) both;
     }
@@ -792,9 +807,23 @@
      Firefox) and Safari's older gesturestart/gesturechange pinch events.
      touch-action: pan-y on <body> handles the touch-pinch case, and still
      lets the vertical scroll in .auth-form-pane-scroll work normally. */
-  window.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
-  window.addEventListener('gesturestart', (e) => e.preventDefault());
-  window.addEventListener('gesturechange', (e) => e.preventDefault());
+  function kirBlockPinchZoom(e) { if (e.ctrlKey) e.preventDefault(); }
+  function kirBlockGesture(e) { e.preventDefault(); }
+  window.addEventListener('wheel', kirBlockPinchZoom, { passive: false });
+  window.addEventListener('gesturestart', kirBlockGesture);
+  window.addEventListener('gesturechange', kirBlockGesture);
+
+  // This whole inline <script> re-runs via eval() every time the router
+  // brings you back to this page (see router.js's header comment), which
+  // would otherwise stack another copy of each window/document listener
+  // below on top of every previous visit's copy. Remove exactly what this
+  // instance registered, once, right before the router swaps this page away.
+  window.addEventListener('kir:teardown', () => {
+    window.removeEventListener('wheel', kirBlockPinchZoom, { passive: false });
+    window.removeEventListener('gesturestart', kirBlockGesture);
+    window.removeEventListener('gesturechange', kirBlockGesture);
+    document.removeEventListener('keydown', onRegisterCarouselKeydown);
+  }, { once: true });
 
   /* ----------------------------------------------------------
      State
@@ -1049,13 +1078,14 @@
 
   /* Left/right arrow keys move between register steps whenever
      focus isn't sitting in a field that needs those keys itself. */
-  document.addEventListener('keydown', (e) => {
+  function onRegisterCarouselKeydown(e) {
     if (activePanel !== 'register') return;
     const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
     if (['input', 'textarea', 'select'].includes(tag)) return;
     if (e.key === 'ArrowRight' && regStep < 3) goToRegStep(regStep + 1);
     if (e.key === 'ArrowLeft' && regStep > 1) goToRegStep(regStep - 1);
-  });
+  }
+  document.addEventListener('keydown', onRegisterCarouselKeydown);
 
   /* ----------------------------------------------------------
      Pending-approval screen

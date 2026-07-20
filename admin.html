@@ -16,6 +16,7 @@
   })();
 </script>
 <script src="js/admin-shared.js"></script>
+<script src="js/wysiwyg-editor.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +26,26 @@
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/admin-shared.css">
+
+<!-- MathJax for rendering LaTeX (same config as voyages.html — the
+     WYSIWYG math chips built by wysiwyg-editor.js rely on this being
+     present, or kirRichTypesetAll() silently no-ops and formulas are
+     left showing as raw \(...\) text instead of rendered output) -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<!-- MathLive: powers the live, caret-inside-the-formula editing view
+     in wysiwyg-editor.js's math chips (MathJax above is only used for
+     the *static*, non-editing chip render and the read-only voyage
+     display elsewhere on the site — it has no live editing surface). -->
+<script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
 
 <style>
   /* Applications-panel-only styling. Everything else reuses the
