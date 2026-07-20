@@ -258,9 +258,21 @@
     padding: 0 1.25rem;
   }
   @media (max-width: 900px) {
-    /* Single-card view on mobile sits comfortably within the 1rem on
-       .auth-form-pane already, so drop the extra desktop-only buffer. */
-    .auth-form-pane-scroll { padding: 0; }
+    /* Horizontal padding is still dropped here — .auth-form-pane's own
+       1rem left/right buffer on mobile already covers that, same as
+       before. But VERTICAL padding can't be dropped the same way: when
+       the register flow is tall enough to actually engage overflow-y's
+       scroll (e.g. this 3-step card row on a phone-height screen), the
+       active card's box-shadow gets clipped flush against this
+       element's own top/bottom edge with zero room to fade out — the
+       outer .auth-form-pane padding doesn't help, since that's outside
+       this element and doesn't affect ITS clip boundary. That hard-cut
+       shadow is what read as a solid dark bar sitting across the
+       bottom of the card. Reserving a small vertical buffer here, the
+       same way the desktop rule already does horizontally, gives the
+       glow room to fade out before it hits the clip line instead of
+       being cut off partway through. */
+    .auth-form-pane-scroll { padding: 0.85rem 0; }
   }
 
   /* ---------------- Decorative planet (ported from index.html) ----------------
@@ -441,11 +453,18 @@
     @keyframes kir-vt-out { to { opacity: 0; transform: translateX(-4%); } }
     @keyframes kir-vt-in { from { opacity: 0; transform: translateX(4%); } }
 
+    /* 4th control point capped at 1 (was 1.05) — see index.html for the
+       full explanation: a y-value past 1 makes the curve overshoot its
+       target size before settling back, which is what made the planet
+       grow larger than its landing size and shrink down again, and — since
+       the planet dominates the stage — made the static glow behind it
+       look like it stuttered along with it. Kept in sync with index.html
+       so the morph looks identical arriving as it does leaving. */
     ::view-transition-group(kir-planet) { animation-duration: 0.7s; }
     ::view-transition-old(kir-planet),
     ::view-transition-new(kir-planet) {
       animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1.05);
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
     }
 
     /* Same duration/easing as the planet, so the ring reads as moving
@@ -455,7 +474,7 @@
     ::view-transition-old(kir-ring),
     ::view-transition-new(kir-ring) {
       animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1.05);
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
     }
   }
   @media (prefers-reduced-motion: reduce) {
