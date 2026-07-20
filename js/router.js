@@ -360,7 +360,12 @@
       // of the page breathes back in. So hold the pending state for a
       // fixed pause before even starting the fade.
       const REVEAL_HOLD_MS = 1400; // the cinematic beat, tune to taste (1000–2000ms)
-      const FADE_MS = 900; // matches/covers the 0.6s opacity transition in CSS + margin
+      // CSS opacity transition is 1.1s, and the last (5th) ring node adds a
+      // further 0.6s transition-delay on top of that (see the staggered
+      // .obt-nodes .obt-node rules in index.html) — so the slowest-finishing
+      // element lands at 1.1s + 0.6s = 1.7s after the fade starts. Give this
+      // a bit of margin so the cleanup below never fires mid-fade.
+      const FADE_MS = 1800;
 
       setTimeout(() => {
         // Still wrapped in two rAFs here, same reasoning as before: makes
