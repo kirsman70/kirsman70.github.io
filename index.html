@@ -610,9 +610,21 @@
        stage, that lurch also made the static background glow behind it
        look like it stuttered along for the ride. Capping the curve at
        1 keeps the same fast-start/gentle-finish shape without ever
-       overshooting the target. */
+       overshooting the target.
+
+       The GROUP rule (below) drives the actual box resize/reposition —
+       i.e. the planet's real on-screen size as it morphs — while
+       OLD/NEW just crossfade the two snapshots inside that box. These
+       two used to only share a duration, not an easing: the group ran
+       on the browser's default curve while old/new ran on this one, so
+       the box's resize and the crossfade settled at different rates
+       and the tail end of the move still read as an uneven, slightly
+       swelling wobble even after the 1.05->1 fix above. Explicitly
+       matching the group's timing-function to old/new's — same fix
+       already applied to `root` up above — closes that gap. */
     ::view-transition-group(kir-planet) {
       animation-duration: 0.7s;
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
     }
     ::view-transition-old(kir-planet),
     ::view-transition-new(kir-planet) {
@@ -622,6 +634,7 @@
 
     ::view-transition-group(kir-ring) {
       animation-duration: 0.7s;
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
     }
     ::view-transition-old(kir-ring),
     ::view-transition-new(kir-ring) {
@@ -639,8 +652,8 @@
   /* ============================================================
      "Surroundings" fade-in, specifically when arriving here FROM
      auth.html (see revealPending in router.js — every other way of
-     landing on this page, direct load included, never adds either
-     class below, so nothing here ever applies then).
+     landing on this page, direct load included, never adds any of
+     the classes below, so nothing here ever applies then).
 
      .obt-sphere / .obt-ring-group / .obt-guide-1 / .obt-guide-2 are
      deliberately NOT in this list: those three already morph
@@ -651,6 +664,19 @@
      scene (plus the header/footer/starfield around it) pops in
      fresh either way, so it gets the fade instead of just
      appearing abruptly.
+
+     This is now a strict two-phase sequence, not one big group:
+       1. kir-nodes-in — the ring's nav nodes appear first, one at a
+          time in ring order (rest of the scene stays hidden, still
+          governed by kir-reveal-pending below).
+       2. kir-scene-in — only added once every node has finished
+          appearing, plus a further pause (see the timing in
+          router.js) — the rest of the scene then breathes in
+          together, slowly.
+     Both "in" rules are declared after kir-reveal-pending so they
+     win the (tied) specificity fight against it wherever they apply,
+     letting reveal-pending keep hiding whichever group hasn't had
+     its own "in" class added yet.
      ============================================================ */
   body.kir-reveal-pending #obt-stars,
   body.kir-reveal-pending .obt-vignette,
@@ -660,45 +686,41 @@
   body.kir-reveal-pending #obt-card,
   body.kir-reveal-pending #obt-hint,
   body.kir-reveal-pending .obt-progress,
-  body.kir-reveal-pending .obt-footer-mini {
-    opacity: 0;
-  }
-  body.kir-reveal-in #obt-stars,
-  body.kir-reveal-in .obt-vignette,
-  body.kir-reveal-in .obt-header,
-  body.kir-reveal-in .obt-moon-orbit,
-  body.kir-reveal-in .obt-dust,
-  body.kir-reveal-in #obt-card,
-  body.kir-reveal-in #obt-hint,
-  body.kir-reveal-in .obt-progress,
-  body.kir-reveal-in .obt-footer-mini {
-    opacity: 1;
-    /* Slowed from 0.6s -> 1.1s per request: a more gradual breathe-in
-       rather than a quick fade. */
-    transition: opacity 1.1s ease;
-  }
-
-  /* .obt-nodes (the ring nav buttons) used to be lumped into the group
-     above and fade in all five at once, at the same instant as
-     everything else. Instead: the FIRST node fades in together with
-     the rest of the scene (no extra delay), then each subsequent node
-     fades in slightly after the one before it, so they visibly appear
-     one at a time in ring order rather than popping in as a block. The
-     container itself (.obt-nodes) is just a positioning wrapper and
-     stays fully opaque — only the individual .obt-node buttons animate. */
+  body.kir-reveal-pending .obt-footer-mini,
   body.kir-reveal-pending .obt-nodes .obt-node {
     opacity: 0;
   }
-  body.kir-reveal-in .obt-nodes .obt-node {
+
+  /* Phase 1: nodes only. The container itself (.obt-nodes) is just a
+     positioning wrapper and stays fully opaque — only the individual
+     .obt-node buttons animate, each a beat after the previous one. */
+  body.kir-nodes-in .obt-nodes .obt-node {
+    opacity: 1;
+    transition: opacity 0.5s ease;
+  }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(1) { transition-delay: 0s; }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(2) { transition-delay: 0.15s; }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(3) { transition-delay: 0.3s; }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(4) { transition-delay: 0.45s; }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(5) { transition-delay: 0.6s; }
+
+  /* Phase 2: everything else, once the nodes are done — a slower,
+     gentler breathe-in since there's no stagger left to read here,
+     just one collective fade. */
+  body.kir-scene-in #obt-stars,
+  body.kir-scene-in .obt-vignette,
+  body.kir-scene-in .obt-header,
+  body.kir-scene-in .obt-moon-orbit,
+  body.kir-scene-in .obt-dust,
+  body.kir-scene-in #obt-card,
+  body.kir-scene-in #obt-hint,
+  body.kir-scene-in .obt-progress,
+  body.kir-scene-in .obt-footer-mini {
     opacity: 1;
     transition: opacity 1.1s ease;
   }
-  body.kir-reveal-in .obt-nodes .obt-node:nth-of-type(1) { transition-delay: 0s; }
-  body.kir-reveal-in .obt-nodes .obt-node:nth-of-type(2) { transition-delay: 0.15s; }
-  body.kir-reveal-in .obt-nodes .obt-node:nth-of-type(3) { transition-delay: 0.3s; }
-  body.kir-reveal-in .obt-nodes .obt-node:nth-of-type(4) { transition-delay: 0.45s; }
-  body.kir-reveal-in .obt-nodes .obt-node:nth-of-type(5) { transition-delay: 0.6s; }
 </style>
+
 </head>
 
 <body class="obt-body antialiased relative">

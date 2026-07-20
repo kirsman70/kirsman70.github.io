@@ -275,6 +275,25 @@
     .auth-form-pane-scroll { padding: 0.85rem 0; }
   }
 
+  /* Bottom-edge scroll fade: this element clips its own content (see
+     comment above), so on short screens the last visible row gets
+     sliced clean off instead of trailing away. This softens that into
+     a fade toward the pane's own dark background. It's only ever
+     applied via the .has-bottom-fade class, which JS toggles on
+     purely when there's more content hidden below to hint at — never
+     on a panel that already fits, and never once you've scrolled all
+     the way down (so the real last element stays fully crisp). */
+  .auth-form-pane-scroll.has-bottom-fade {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%);
+  }
+  @media (max-width: 900px) {
+    .auth-form-pane-scroll.has-bottom-fade {
+      mask-image: linear-gradient(to bottom, #000 calc(100% - 1.25rem), transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.25rem), transparent 100%);
+    }
+  }
+
   /* ---------------- Decorative planet (ported from index.html) ----------------
      Same structure/classes as the landing page's Jupiter so the
      cross-document view transition below can morph one into the
@@ -459,8 +478,17 @@
        grow larger than its landing size and shrink down again, and — since
        the planet dominates the stage — made the static glow behind it
        look like it stuttered along with it. Kept in sync with index.html
-       so the morph looks identical arriving as it does leaving. */
-    ::view-transition-group(kir-planet) { animation-duration: 0.7s; }
+       so the morph looks identical arriving as it does leaving.
+
+       Also matching the GROUP's own timing-function to old/new's here
+       (not just duration) — again see index.html — since the group is
+       what actually resizes/repositions the box and a mismatched easing
+       there is what caused the remaining "grows too big, settles back
+       down" wobble even after the 1.05->1 fix. */
+    ::view-transition-group(kir-planet) {
+      animation-duration: 0.7s;
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
+    }
     ::view-transition-old(kir-planet),
     ::view-transition-new(kir-planet) {
       animation-duration: 0.7s;
@@ -470,7 +498,10 @@
     /* Same duration/easing as the planet, so the ring reads as moving
        together with it (both pages have a ring now, so this is a real
        position/size morph, not a fade). */
-    ::view-transition-group(kir-ring) { animation-duration: 0.7s; }
+    ::view-transition-group(kir-ring) {
+      animation-duration: 0.7s;
+      animation-timing-function: cubic-bezier(.22,.85,.3,1);
+    }
     ::view-transition-old(kir-ring),
     ::view-transition-new(kir-ring) {
       animation-duration: 0.7s;
@@ -832,6 +863,37 @@
   window.addEventListener('gesturestart', kirBlockGesture);
   window.addEventListener('gesturechange', kirBlockGesture);
 
+  /* Bottom-edge scroll fade (see the .has-bottom-fade CSS rule above
+     .auth-form-pane-scroll): only turn the fade on when this pane is
+     actually taller than its box AND there's still more below the
+     current scroll position — so a panel that already fits gets no
+     fade, and scrolling all the way down drops it again instead of
+     permanently dimming the real last button row. Re-checked on
+     scroll, on any content-height change (step/tab switches, the
+     carousel's own resize animations), and on window resize. */
+  const kirAuthScrollEl = document.querySelector('.auth-form-pane-scroll');
+  const kirAuthShellEl = document.getElementById('auth-shell');
+
+  function kirUpdateAuthScrollFade() {
+    if (!kirAuthScrollEl) return;
+    const overflow = kirAuthScrollEl.scrollHeight - kirAuthScrollEl.clientHeight;
+    const moreBelow = overflow > 1 && (overflow - kirAuthScrollEl.scrollTop) > 1;
+    kirAuthScrollEl.classList.toggle('has-bottom-fade', moreBelow);
+  }
+
+  let kirAuthFadeRO = null;
+  if (kirAuthScrollEl) {
+    kirAuthScrollEl.addEventListener('scroll', kirUpdateAuthScrollFade, { passive: true });
+    if (window.ResizeObserver) {
+      kirAuthFadeRO = new ResizeObserver(kirUpdateAuthScrollFade);
+      kirAuthFadeRO.observe(kirAuthScrollEl);
+      if (kirAuthShellEl) kirAuthFadeRO.observe(kirAuthShellEl);
+    } else {
+      window.addEventListener('resize', kirUpdateAuthScrollFade);
+    }
+    kirUpdateAuthScrollFade();
+  }
+
   // This whole inline <script> re-runs via eval() every time the router
   // brings you back to this page (see router.js's header comment), which
   // would otherwise stack another copy of each window/document listener
@@ -842,6 +904,9 @@
     window.removeEventListener('gesturestart', kirBlockGesture);
     window.removeEventListener('gesturechange', kirBlockGesture);
     document.removeEventListener('keydown', onRegisterCarouselKeydown);
+    if (kirAuthScrollEl) kirAuthScrollEl.removeEventListener('scroll', kirUpdateAuthScrollFade);
+    if (kirAuthFadeRO) kirAuthFadeRO.disconnect();
+    window.removeEventListener('resize', kirUpdateAuthScrollFade);
   }, { once: true });
 
   /* ----------------------------------------------------------
