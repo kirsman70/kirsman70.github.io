@@ -20,6 +20,7 @@
 <script src="js/tailwind-config.js"></script>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/admin-shared.css">
+<link rel="stylesheet" href="css/schedule-snake.css">
 </head>
 
 <body class="min-h-screen antialiased relative overflow-x-hidden">
@@ -54,8 +55,47 @@
       <p class="text-zinc-500 text-sm mt-1" data-i18n="schedule_desc">Acara ekstrakurikuler mendatang, secara berurutan.</p>
     </div>
 
-    <div id="schedule-timeline" class="relative pl-8"><!-- filled by script below --></div>
+    <div class="glass rounded-2xl p-4 sm:p-6 mb-6 animate-stagger-in">
+      <div class="kir-month-cal-header">
+        <h2 id="schedule-cal-title" class="kir-month-cal-title"></h2>
+        <div class="kir-month-cal-nav">
+          <button id="schedule-cal-prev-btn" onclick="scheduleCalShiftMonth(-1)" aria-label="Bulan sebelumnya" class="kir-month-cal-nav-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+          </button>
+          <button id="schedule-cal-today-btn" onclick="scheduleCalGoToday()" class="kir-month-cal-today-btn" data-i18n="schedule_today_btn">Hari Ini</button>
+          <button id="schedule-cal-next-btn" onclick="scheduleCalShiftMonth(1)" aria-label="Bulan berikutnya" class="kir-month-cal-nav-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          </button>
+        </div>
+      </div>
+      <div id="schedule-cal-weekdays" class="kir-month-cal-grid mb-1.5"><!-- filled by script below --></div>
+      <div id="schedule-cal-grid" class="kir-month-cal-grid"><!-- filled by script below --></div>
+
+      <div id="schedule-empty-note" class="hidden text-center py-8 mt-2">
+        <svg class="w-10 h-10 text-zinc-600 mb-3 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+        <p class="text-zinc-300 font-medium mb-1" data-i18n="empty_schedule_title">Belum ada jadwal acara!</p>
+        <p class="text-zinc-500 text-sm" data-i18n="empty_schedule_desc">Kalender ekstrakurikuler masih kosong. Pengurus akan segera memperbaruinya.</p>
+      </div>
+    </div>
   </main>
+</div>
+
+<!-- Day detail popover — anchored next to whichever date was clicked,
+     positioned by JS via getBoundingClientRect() of that cell. Selection
+     is sticky against passive dismissal only: dismissing the popover via
+     click-elsewhere, Esc, or scroll leaves the date highlighted and
+     selected. Explicit deselection — clicking the X, or clicking the
+     already-selected date again — clears the highlight via
+     scheduleDeselectDay(). Picking a different date moves the selection
+     as usual. -->
+<div id="schedule-day-popover" class="kir-day-popover hidden">
+  <div class="flex items-start justify-between gap-3 mb-3">
+    <h3 id="schedule-day-popover-title" class="kir-day-panel-date"></h3>
+    <button onclick="scheduleDeselectDay()" aria-label="Tutup" class="text-zinc-500 hover:text-zinc-300 p-1 -mt-1 -mr-1 shrink-0">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+    </button>
+  </div>
+  <div id="schedule-day-popover-body"></div>
 </div>
 
 <!-- Event detail modal -->
@@ -82,8 +122,95 @@
   </div>
 </div>
 
+
 <script>
   let EVENTS = [];
+  let EVENTS_BY_DATE = {};       // 'YYYY-MM-DD' -> events on that date, time-sorted
+  // Indonesian national holidays & collective leave days ("tanggal merah" /
+  // "cuti bersama"), pulled from a free public calendar API and merged in
+  // alongside the club's own events (see scheduleFetchHolidays below) — a
+  // separate map since these aren't club-managed rows in the database and
+  // shouldn't show up as editable/deletable events.
+  let HOLIDAYS_BY_DATE = {};     // 'YYYY-MM-DD' -> { name, type: 'holiday' | 'leave' }
+  let scheduleHolidayYearsLoaded = new Set(); // years already fetched (or in flight), so navigating months doesn't re-fetch the same year over and over
+  // Hardcoded fun/special days — unlike HOLIDAYS_BY_DATE these aren't fetched
+  // from anywhere, they're just baked in. Keyed by 'MM-DD' (no year) so the
+  // same entry recurs every year the calendar is viewed. Rendered with a
+  // green day-number tint (see .kir-cal-special in css/style.css) and a
+  // green badge in the day popover, same pattern as holidays but distinct
+  // from them since these aren't real public holidays.
+  const SCHEDULE_SPECIAL_DAYS = {
+    '07-16': { i18nKey: 'schedule_world_snake_day' },
+  };
+  function scheduleGetSpecialDay(key) {
+    return SCHEDULE_SPECIAL_DAYS[key.slice(5)] || null; // key.slice(5) turns 'YYYY-MM-DD' into 'MM-DD'
+  }
+  // Same two sources router.js checks (site-level Settings toggle +
+  // OS-level media query) — the snake game is nothing but motion, so
+  // either one being on should keep it from ever starting. Not reading
+  // router.js's own isReducedMotion() here since that one's private to
+  // its IIFE; this is just the same two-line check duplicated locally.
+  function scheduleIsReducedMotion() {
+    return document.documentElement.getAttribute('data-reduce-motion') === 'true'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  // Snake-icon button next to the World Snake Day badge in the day popover.
+  // Kicks off the whole World Snake Day easter egg — see js/schedule-snake.js.
+  function scheduleSnakeDayAction() {
+    if (window.kirSnake) window.kirSnake.start();
+  }
+  let scheduleCalMonth = null;   // Date, always day=1: the month currently on screen
+  let scheduleSelectedKey = null; // 'YYYY-MM-DD' currently highlighted — sticky until another date is picked
+  // Which key the GRID currently renders with the persistent selected ring.
+  // Normally mirrors scheduleSelectedKey, but while the traveling-highlight
+  // animation is mid-flight it's deliberately left null/stale so the new
+  // cell doesn't light up until the highlight actually arrives there.
+  let scheduleVisualSelectedKey = null;
+  // One-shot: whichever key just gained/lost selection, so the very next
+  // renderScheduleCalendar() call can play a fade-in/fade-out animation on
+  // that specific cell only. Consumed (reset to null) as soon as read.
+  let scheduleAnimateSelectKey = null;
+  let scheduleAnimateDeselectKey = null;
+  // Pending setTimeout ids for an in-flight travel animation, so a rapid
+  // second click cancels the previous walk instead of letting it collide.
+  let scheduleTravelTimers = [];
+  // Keyboard movement runs its own animation as a queue rather than a
+  // one-shot walk: each arrow/WASD press appends its path segment onto
+  // the end of whatever's already queued (instead of cancelling it), so
+  // holding down a direction produces one continuous chase instead of the
+  // snake restarting on every keystroke. scheduleChainTimer drives the
+  // queue forward one step at a time; scheduleChainQueue holds the keys
+  // still waiting to be visited. The path itself is computed on a
+  // month-independent grid (see scheduleComputeChainPath), so a queue can
+  // freely span several months. The visible month always jumps straight to
+  // wherever the selection currently is (no page-flip animation) — the
+  // queue just keeps quietly ticking through its steps underneath at the
+  // normal pace, most of them invisible off-screen, and only actually
+  // pulses/lands on a cell when a step happens to fall within whatever
+  // month is on screen at that moment (see scheduleStepChain).
+  let scheduleChainQueue = [];
+  let scheduleChainTimer = null;
+  // Where the traveling glow head physically is right now, updated on
+  // every single step it takes (not just on arrival) — as opposed to
+  // scheduleVisualSelectedKey, which only updates once the chase actually
+  // lands. This is what a redirect recalculates from, so changing
+  // direction mid-chase re-plots the shortest route from wherever the
+  // snake really is instead of from whatever the previous keypress was
+  // aiming for.
+  let scheduleChainHeadKey = null;
+
+  function scheduleLang() {
+    return localStorage.getItem('kir_lang') || 'id';
+  }
+  function scheduleLocale() {
+    return scheduleLang() === 'id' ? 'id-ID' : 'en-US';
+  }
+
+  // Local-calendar-day key (NOT toISOString, which shifts by timezone offset
+  // and can silently roll a date over to the previous/next day).
+  function ymd(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
 
   async function fetchScheduleFromDatabase() {
     const { data, error } = await supabaseClient
@@ -97,63 +224,764 @@
     }
     
     EVENTS = data || [];
-    renderTimeline();
+    scheduleBuildIndex();
+    scheduleInitMonth();
+    scheduleVisualSelectedKey = scheduleSelectedKey;
+    renderScheduleCalendar();
+    document.getElementById('schedule-empty-note').classList.toggle('hidden', EVENTS.length > 0);
+
+    // If the day popover is currently open, refresh its contents too — an
+    // add/edit/delete elsewhere shouldn't leave it showing stale data.
+    const popover = document.getElementById('schedule-day-popover');
+    if (scheduleSelectedKey && popover && !popover.classList.contains('hidden')) {
+      renderScheduleDayPopoverContent();
+    }
+  }
+
+  function scheduleBuildIndex() {
+    EVENTS_BY_DATE = {};
+    EVENTS.forEach(ev => {
+      const key = ymd(new Date(ev.event_date));
+      (EVENTS_BY_DATE[key] = EVENTS_BY_DATE[key] || []).push(ev);
+    });
+    Object.values(EVENTS_BY_DATE).forEach(list => list.sort((a, b) => new Date(a.event_date) - new Date(b.event_date)));
+  }
+
+  // Fetches a year of Indonesian public holidays + collective leave days
+  // from a free public API and merges them into HOLIDAYS_BY_DATE. Cached
+  // per-year via scheduleHolidayYearsLoaded so flipping back and forth
+  // across months doesn't keep re-requesting the same year. Failures are
+  // silent (just logged) — if the API's ever unreachable, the calendar
+  // still works exactly as it did before, just without the holiday tint.
+  async function scheduleFetchHolidays(year) {
+    if (scheduleHolidayYearsLoaded.has(year)) return;
+    scheduleHolidayYearsLoaded.add(year);
+    try {
+      const res = await fetch(`https://tanggalmerah.upset.dev/api/holidays?year=${year}`);
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.data)) return;
+      json.data.forEach(h => {
+        HOLIDAYS_BY_DATE[h.date] = { name: h.name, type: h.type };
+      });
+      renderScheduleCalendar();
+      if (scheduleSelectedKey) renderScheduleDayPopoverContent();
+    } catch (err) {
+      scheduleHolidayYearsLoaded.delete(year); // let a later render retry instead of giving up on this year forever
+      console.error('Could not load Indonesian holiday calendar:', err);
+    }
+  }
+
+  // The visible 6-week grid can dip into the tail end of the previous year
+  // or the start of the next one at its edges, so make sure holiday data is
+  // loaded for every year the grid actually touches, not just
+  // scheduleCalMonth's own year.
+  function scheduleEnsureHolidaysForVisibleGrid() {
+    const firstOfMonth = new Date(scheduleCalMonth.getFullYear(), scheduleCalMonth.getMonth(), 1);
+    const mondayOffset = (firstOfMonth.getDay() + 6) % 7;
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(firstOfMonth.getDate() - mondayOffset);
+    const gridEnd = new Date(gridStart);
+    gridEnd.setDate(gridStart.getDate() + 41);
+    for (let y = gridStart.getFullYear(); y <= gridEnd.getFullYear(); y++) {
+      scheduleFetchHolidays(y);
+    }
+  }
+
+  // Picks a starting month once, on first load, biased toward whichever
+  // month has the next upcoming event — but never selects a day. The
+  // calendar always opens with nothing selected.
+  function scheduleInitMonth() {
+    if (scheduleCalMonth) return;
+    const next = EVENTS.find(e => e.is_next);
+    const base = next ? new Date(next.event_date) : new Date();
+    scheduleCalMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+  }
+
+  function scheduleCalShiftMonth(delta) {
+    if (window.kirSnakeModeActive) return; // chevrons are locked while World Snake Day mode is running
+    scheduleClearTravelTimers();
+    scheduleCalMonth = new Date(scheduleCalMonth.getFullYear(), scheduleCalMonth.getMonth() + delta, 1);
+    scheduleVisualSelectedKey = scheduleSelectedKey;
+    scheduleHideDayPopover();
+    renderScheduleCalendar();
+  }
+
+  // Just navigates the visible month back to today — it doesn't select or
+  // pop anything open, same as any other month move.
+  function scheduleCalGoToday() {
+    if (window.kirSnakeModeActive) return; // locked while World Snake Day mode is running
+    scheduleClearTravelTimers();
+    const today = new Date();
+    scheduleCalMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    scheduleVisualSelectedKey = scheduleSelectedKey;
+    scheduleHideDayPopover();
+    renderScheduleCalendar();
   }
 
   /* ----------------------------------------------------------
-     Timeline rail: the dot and line both anchor off the SAME point
-     (left + translateX(-50%)) instead of two independently
-     hand-tuned offsets, so they're always pixel-centered on
-     each other regardless of dot border/size. The outer wrapper
-     here only ever handles horizontal centering; the pop/draw
-     keyframe animations live on the INNER element so their own
-     transforms (scale/scaleY) never clobber the translateX.
-     ---------------------------------------------------------- */
-  function renderTimeline() {
-    const wrap = document.getElementById('schedule-timeline');
+     Selection is sticky: picking a date highlights it and keeps
+     it highlighted — dismissing the popover (X, clicking outside,
+     Esc, scrolling) never clears it. Only picking a different
+     date moves the selection. Clicking the already-selected date
+     again just toggles its popover shut without touching the
+     selection, mirroring a normal popover.
 
-    if (EVENTS.length === 0) {
-      wrap.innerHTML = `
-        <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in ml-[-2rem]">
-          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-          <p class="text-zinc-300 font-medium mb-1" data-i18n="empty_schedule_title">Belum ada jadwal acara!</p>
-          <p class="text-zinc-500 text-sm" data-i18n="empty_schedule_desc">Kalender ekstrakurikuler masih kosong. Pengurus akan segera memperbaruinya.</p>
+     The cell's rect is captured up front, before re-rendering the
+     grid destroys/replaces that DOM node — re-querying afterwards
+     would hit a detached element.
+     ---------------------------------------------------------- */
+  function scheduleCalSelectDay(key, cellEl) {
+    if (window.kirSnakeModeActive) return; // days can't be picked while World Snake Day mode is running
+    const rect = cellEl.getBoundingClientRect();
+    // Clicking the already-selected date again always deselects it — even
+    // if its popover was passively dismissed in the meantime (click
+    // elsewhere, Esc, scroll) and is no longer open. Selection staying
+    // highlighted after a passive dismissal is only meant to survive
+    // things that AREN'T "clicking that same date" again.
+    const reclickingSelectedDay = scheduleSelectedKey === key;
+
+    if (reclickingSelectedDay) {
+      scheduleDeselectDay();
+      return;
+    }
+
+    scheduleClearTravelTimers();
+    const prevKey = scheduleSelectedKey;
+    scheduleSelectedKey = key; // logical selection updates immediately (popover content, etc.)
+
+    // Reduced motion: skip the walk entirely and fall straight into the
+    // "no sensible path" branch below, which already just fades the new
+    // cell straight in (and that fade itself is zeroed out by the
+    // site-wide transition-duration override in style.css, so it lands
+    // instantly with no travel effect at all).
+    const path = scheduleIsReducedMotion() ? null : scheduleComputeTravelPath(prevKey, key);
+
+    if (path) {
+      // Ring snaps onto the new cell instantly (bound to scheduleSelectedKey,
+      // set above, so it's already active on this very render). The fill
+      // deliberately stays behind — it only arrives once the traveling
+      // pulse below reaches the destination, chasing after the ring.
+      scheduleVisualSelectedKey = null;
+      scheduleAnimateDeselectKey = prevKey;
+      scheduleAnimateSelectKey = null;
+      renderScheduleCalendar();
+      scheduleRunTravelAnimation(path, key);
+    } else {
+      // No sensible path (first-ever selection, or the old cell has
+      // scrolled out of the currently displayed month) — just fade the
+      // new cell straight in.
+      scheduleVisualSelectedKey = key;
+      scheduleAnimateDeselectKey = prevKey;
+      scheduleAnimateSelectKey = key;
+      renderScheduleCalendar();
+    }
+
+    renderScheduleDayPopoverContent();
+    scheduleShowDayPopoverAt(rect);
+  }
+
+  // Fully clears the selection (unlike scheduleHideDayPopover, which just
+  // closes the popover while leaving the date highlighted) — used when the
+  // person explicitly deselects via the X button or by re-clicking the
+  // already-selected date.
+  function scheduleDeselectDay() {
+    scheduleClearTravelTimers();
+    scheduleAnimateDeselectKey = scheduleSelectedKey;
+    scheduleAnimateSelectKey = null;
+    scheduleVisualSelectedKey = null;
+    scheduleSelectedKey = null;
+    scheduleHideDayPopover();
+    renderScheduleCalendar();
+  }
+
+  function scheduleClearTravelTimers() {
+    scheduleTravelTimers.forEach(id => clearTimeout(id));
+    scheduleTravelTimers = [];
+    if (scheduleChainTimer) { clearTimeout(scheduleChainTimer); scheduleChainTimer = null; }
+    scheduleChainQueue = [];
+    scheduleChainHeadKey = null;
+  }
+
+  // Returns an ordered list of intermediate 'YYYY-MM-DD' keys (excluding the
+  // start, ending with the destination) tracing a shortest, non-diagonal,
+  // grid-cell-by-grid-cell path from prevKey to newKey within the currently
+  // displayed 7-wide month grid — or null if there's nothing sensible to
+  // walk (no previous selection, or either date has scrolled out of the
+  // grid currently on screen). The order of row-steps vs. column-steps is
+  // shuffled, so which of the several equally-short paths gets walked is
+  // random each time.
+  function scheduleComputeTravelPath(prevKey, newKey) {
+    if (!prevKey || prevKey === newKey) return null;
+
+    const firstOfMonth = new Date(scheduleCalMonth.getFullYear(), scheduleCalMonth.getMonth(), 1);
+    const mondayOffset = (firstOfMonth.getDay() + 6) % 7;
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(firstOfMonth.getDate() - mondayOffset);
+
+    function keyToIndex(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      const diffDays = Math.round((new Date(y, m - 1, d) - gridStart) / 86400000);
+      return (diffDays >= 0 && diffDays <= 41) ? diffDays : null;
+    }
+    function indexToKey(idx) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + idx);
+      return ymd(d);
+    }
+
+    const prevIdx = keyToIndex(prevKey);
+    const newIdx = keyToIndex(newKey);
+    if (prevIdx === null || newIdx === null) return null;
+
+    const prevRow = Math.floor(prevIdx / 7), prevCol = prevIdx % 7;
+    const newRow = Math.floor(newIdx / 7), newCol = newIdx % 7;
+    const rowDelta = newRow - prevRow, colDelta = newCol - prevCol;
+    const rowStep = rowDelta === 0 ? 0 : Math.sign(rowDelta);
+    const colStep = colDelta === 0 ? 0 : Math.sign(colDelta);
+
+    const moves = [
+      ...Array(Math.abs(rowDelta)).fill('row'),
+      ...Array(Math.abs(colDelta)).fill('col'),
+    ];
+    for (let i = moves.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [moves[i], moves[j]] = [moves[j], moves[i]];
+    }
+
+    let row = prevRow, col = prevCol;
+    return moves.map(move => {
+      if (move === 'row') row += rowStep; else col += colStep;
+      return indexToKey(row * 7 + col);
+    });
+  }
+
+  // Same shortest, non-diagonal, shuffled-order walk as scheduleComputeTravelPath
+  // above, but on an absolute, month-independent grid: columns are weekdays
+  // (Monday=0..Sunday=6) and rows are week-offsets from a fixed reference
+  // Monday, rather than being anchored to whichever month happens to be on
+  // screen right now. That's what lets a keyboard chain remember and queue
+  // up a path spanning several months — the walk itself doesn't need a
+  // grid to exist on screen, it just ticks through dates. Most of it ends
+  // up invisible, off in months you've already scrolled past (the visible
+  // month always jumps straight to the newest selection — see
+  // scheduleMoveSelectionByDays); scheduleStepChain only actually draws a
+  // step when it happens to land within whatever month is on screen at
+  // that moment. Only used for keyboard chasing; mouse clicks still use the
+  // page-bound version above, since a click can only ever target a cell
+  // already on screen.
+  function scheduleComputeChainPath(prevKey, newKey) {
+    if (!prevKey || prevKey === newKey) return null;
+
+    const EPOCH_MONDAY = new Date(2000, 0, 3); // an arbitrary fixed Monday
+
+    function keyToRowCol(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      const diffDays = Math.round((new Date(y, m - 1, d) - EPOCH_MONDAY) / 86400000);
+      return [Math.floor(diffDays / 7), ((diffDays % 7) + 7) % 7];
+    }
+    function rowColToKey(row, col) {
+      const d = new Date(EPOCH_MONDAY);
+      d.setDate(EPOCH_MONDAY.getDate() + row * 7 + col);
+      return ymd(d);
+    }
+
+    const [prevRow, prevCol] = keyToRowCol(prevKey);
+    const [newRow, newCol] = keyToRowCol(newKey);
+    const rowDelta = newRow - prevRow, colDelta = newCol - prevCol;
+    const rowStep = rowDelta === 0 ? 0 : Math.sign(rowDelta);
+    const colStep = colDelta === 0 ? 0 : Math.sign(colDelta);
+
+    const moves = [
+      ...Array(Math.abs(rowDelta)).fill('row'),
+      ...Array(Math.abs(colDelta)).fill('col'),
+    ];
+    for (let i = moves.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [moves[i], moves[j]] = [moves[j], moves[i]];
+    }
+
+    let row = prevRow, col = prevCol;
+    return moves.map(move => {
+      if (move === 'row') row += rowStep; else col += colStep;
+      return rowColToKey(row, col);
+    });
+  }
+
+  // Walks a brief decorative pulse cell-by-cell along the intermediate
+  // stops in `path`, then lands on the final cell and brings the fill/glow
+  // in — chasing after the ring, which already snapped onto the target
+  // instantly on click (see scheduleCalSelectDay). All via direct
+  // classList changes on the existing DOM nodes (found by data-key)
+  // rather than a full re-render, so nothing interrupts the sequence
+  // mid-flight.
+  function scheduleRunTravelAnimation(path, targetKey) {
+    const stepDelay = 80;
+    path.forEach((key, i) => {
+      const isLast = i === path.length - 1;
+      const id = setTimeout(() => {
+        const cell = document.querySelector(`.kir-month-cal-day[data-key="${key}"]`);
+        if (!cell) return;
+        if (isLast) {
+          scheduleVisualSelectedKey = targetKey;
+          cell.classList.add('kir-cal-selected', 'kir-cal-select-anim');
+        } else {
+          cell.classList.add('kir-cal-travel-pulse');
+          const clearId = setTimeout(() => cell.classList.remove('kir-cal-travel-pulse'), 200);
+          scheduleTravelTimers.push(clearId);
+        }
+      }, stepDelay * i);
+      scheduleTravelTimers.push(id);
+    });
+  }
+
+  function scheduleShowDayPopoverAt(rect) {
+    const popover = document.getElementById('schedule-day-popover');
+    popover.classList.remove('hidden');
+    void popover.offsetWidth; // force reflow so size/position below can be measured, and so removing 'hidden' + adding the open class don't get coalesced into one paint
+    schedulePositionDayPopover(rect, popover);
+    popover.classList.add('kir-popover-open');
+  }
+
+  function scheduleHideDayPopover() {
+    const popover = document.getElementById('schedule-day-popover');
+    popover.classList.remove('kir-popover-open');
+    popover.classList.add('hidden');
+  }
+
+  // Centers the popover under (or, if it wouldn't fit, above) the clicked
+  // cell, clamped so it never runs off either edge of the viewport.
+  function schedulePositionDayPopover(rect, popoverEl) {
+    const margin = 10;
+    const width = popoverEl.offsetWidth;
+    const height = popoverEl.offsetHeight;
+
+    let left = rect.left + rect.width / 2 - width / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+
+    let top = rect.bottom + 8;
+    if (top + height > window.innerHeight - margin) {
+      top = rect.top - height - 8;
+    }
+    top = Math.max(margin, top);
+
+    popoverEl.style.left = `${left}px`;
+    popoverEl.style.top = `${top}px`;
+  }
+
+  // Closing on scroll/resize (rather than trying to re-track position) and
+  // on Escape/outside-click mirrors how the site's other floating panels
+  // (e.g. the custom select dropdown) behave.
+  //
+  // Guarded against running twice: this whole block is page-level state
+  // (window/document listeners), not tied to any DOM node that gets thrown
+  // away on a normal re-render, so if this <script> block is ever
+  // re-executed for the same page (client-side router re-injecting the
+  // page, back/forward cache weirdness, etc.) without a real full reload,
+  // we'd otherwise stack up a second copy of every one of these listeners.
+  // Duplicate handlers here don't just double-fire cosmetically — for the
+  // keydown listener below it means every WASD/arrow press gets processed
+  // twice (double movement, double preventDefault/stopPropagation calls
+  // racing each other), which is exactly the kind of "key gets eaten"
+  // flakiness that's otherwise hard to pin down.
+  if (!window.kirScheduleListenersBound) {
+    window.kirScheduleListenersBound = true;
+
+    window.addEventListener('scroll', () => scheduleHideDayPopover(), true);
+    window.addEventListener('resize', () => scheduleHideDayPopover());
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') scheduleHideDayPopover(); });
+
+    // The grid's weekday headers and month title come from
+    // Intl.DateTimeFormat(locale, ...), not [data-i18n] text-swapping, so
+    // the global translation pass (kirApplyTranslations in auth.js) can't
+    // update them on its own — it dispatches this event instead so we can
+    // re-render ourselves. Same pattern scheduleFetchHolidays already uses
+    // for refreshing an open popover after a re-render.
+    window.addEventListener('kir:lang-changed', () => {
+      renderScheduleCalendar();
+      if (scheduleSelectedKey) renderScheduleDayPopoverContent();
+    });
+    document.addEventListener('click', (e) => {
+      const popover = document.getElementById('schedule-day-popover');
+      if (!popover || popover.classList.contains('hidden')) return;
+      if (popover.contains(e.target)) return;
+      if (e.target.closest && e.target.closest('.kir-month-cal-day')) return; // day cells manage the popover themselves
+      scheduleHideDayPopover();
+    });
+
+  // Keyboard day navigation: WASD or the arrow keys walk the selection one
+  // day at a time (up/w and down/s by a week, left/a and right/d by a day).
+  // The ring snaps over instantly on every press; the glow chase behind it
+  // is queued rather than restarted, so holding/repeating a direction
+  // keeps one continuous snake instead of it resetting on each keystroke
+  // (see scheduleMoveSelectionByDays). Up/down are also blocked from their
+  // default behavior everywhere on this page, since otherwise they'd just
+  // scroll the page instead of moving the selection.
+  const SCHEDULE_MOVE_KEYS = {
+    arrowup: -7, w: -7,
+    arrowdown: 7, s: 7,
+    arrowleft: -1, a: -1,
+    arrowright: 1, d: 1,
+  };
+  document.addEventListener('keydown', (e) => {
+    // Don't hijack typing in text fields, textareas, selects, or the admin
+    // modal's editable areas.
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+
+    const key = e.key.toLowerCase();
+    if (key === 'arrowup' || key === 'arrowdown') e.preventDefault(); // never let this page scroll on up/down
+
+    // While World Snake Day mode is running, WASD/arrows belong entirely to
+    // it (either steering the actual snake, or doing nothing during its
+    // intro/countdown/death beats) — the normal calendar-navigation meaning
+    // of these keys is suspended for the duration of the mode.
+    //
+    // This listener is registered on the CAPTURE phase (see the `true`
+    // passed to addEventListener below), specifically so this branch runs
+    // before the event ever reaches whichever day cell happens to be
+    // focused. If a cell is focused (e.g. you tabbed around before
+    // launching the game, or focus landed on 16 July when you clicked the
+    // snake button) and this ran on the bubble phase instead, the cell's
+    // own inline onkeydown would fire first — it only recognizes
+    // Enter/Space so it wouldn't move the snake, but it also wouldn't
+    // preventDefault for WASD/arrows, leaving the door open for whatever
+    // native behavior the browser attaches to a focused, role="button"
+    // element. stopPropagation on top of preventDefault means the cell's
+    // handler doesn't even run for these keys, so there's nothing left for
+    // "the day box" to consume. Blurring any focused cell for the same
+    // reason: no cell holds focus, nothing native to trip over, for the
+    // rest of the run.
+    if (window.kirSnakeModeActive) {
+      if (Object.prototype.hasOwnProperty.call(SCHEDULE_MOVE_KEYS, key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const focused = document.activeElement;
+        if (focused && focused.closest && focused.closest('.kir-month-cal-day') && focused.blur) {
+          focused.blur();
+        }
+        if (window.kirSnake) window.kirSnake.handleKey(key);
+      }
+      return;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(SCHEDULE_MOVE_KEYS, key)) {
+      e.preventDefault();
+      scheduleMoveSelectionByDays(SCHEDULE_MOVE_KEYS[key]);
+      return;
+    }
+
+    // Space/Enter toggle the popover for whichever day is currently
+    // selected. This only needs to run here when the keypress ISN'T
+    // targeting an actual calendar cell — a focused cell already handles
+    // Enter/Space itself via its own onkeydown (see renderScheduleCalendar),
+    // and that handler already calls preventDefault. Keyboard selection via
+    // WASD/arrows above doesn't move DOM focus onto a cell though, so once
+    // a day is selected that way, Space would otherwise fall through to the
+    // browser's default "scroll the page" behavior with nothing to catch
+    // it. Guarding on scheduleSelectedKey (rather than always intercepting
+    // Space) means the page still scrolls normally whenever no day is
+    // selected.
+    if (!window.kirSnakeModeActive && (key === ' ' || key === 'enter') && scheduleSelectedKey && !(e.target.closest && e.target.closest('.kir-month-cal-day'))) {
+      e.preventDefault();
+      scheduleToggleSelectedDayPopover();
+    }
+  }, true); // capture — see comment above on why this can't be a bubble-phase listener
+  } // end kirScheduleListenersBound guard
+
+  // Shows the popover for the currently-selected day if it's hidden, or
+  // hides it if it's already open — mirroring what clicking the selected
+  // cell again would do, minus the deselect-on-reclick behavior (Space
+  // here only ever opens/closes, it never clears the selection).
+  function scheduleToggleSelectedDayPopover() {
+    const popover = document.getElementById('schedule-day-popover');
+    if (!popover.classList.contains('hidden')) {
+      scheduleHideDayPopover();
+      return;
+    }
+    const cell = document.querySelector(`.kir-month-cal-day[data-key="${scheduleSelectedKey}"]`);
+    if (!cell) return; // selected day's cell isn't on screen in the currently displayed month
+    renderScheduleDayPopoverContent();
+    scheduleShowDayPopoverAt(cell.getBoundingClientRect());
+  }
+
+  // Moves the selected day by `deltaDays` (real calendar days, so week/day
+  // steps work correctly across month boundaries). The visible month always
+  // jumps straight to wherever the selection now is — same as clicking into
+  // a different month, no page-flipping animation. The ring follows it
+  // immediately every time, either via a direct classList toggle (if the
+  // month didn't change) or as part of that jump's re-render (if it did).
+  // The glow chase is a separate thing: rather than appending this move's
+  // path onto whatever's already queued, the whole route is recalculated
+  // from scheduleChainHeadKey — wherever the snake is actually, physically
+  // sitting right now — straight to the new target, and replaces the queue
+  // outright (see scheduleEnqueueChainSteps). That's what keeps it from
+  // wandering back and forth retracing old, now-pointless detours when you
+  // change direction mid-chase: every keystroke re-plots the shortest route
+  // from the real current position, not from wherever the previous
+  // keystroke happened to be heading. If nothing is selected yet, starts
+  // from today.
+  function scheduleMoveSelectionByDays(deltaDays) {
+    const baseKey = scheduleSelectedKey || ymd(new Date());
+    const [by, bm, bd] = baseKey.split('-').map(Number);
+    const baseDate = new Date(by, bm - 1, bd);
+    baseDate.setDate(baseDate.getDate() + deltaDays);
+    const newKey = ymd(baseDate);
+    if (newKey === scheduleSelectedKey) return;
+
+    const prevKey = scheduleSelectedKey;
+    scheduleSelectedKey = newKey;
+    scheduleHideDayPopover();
+
+    const head = scheduleChainHeadKey || scheduleVisualSelectedKey;
+
+    const newMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    if (newMonth.getTime() !== scheduleCalMonth.getTime()) {
+      scheduleCalMonth = newMonth;
+      renderScheduleCalendar();
+    } else {
+      if (prevKey) {
+        const prevCell = document.querySelector(`.kir-month-cal-day[data-key="${prevKey}"]`);
+        if (prevCell) prevCell.classList.remove('kir-cal-ring-active');
+      }
+      const newCell = document.querySelector(`.kir-month-cal-day[data-key="${newKey}"]`);
+      if (newCell) newCell.classList.add('kir-cal-ring-active');
+    }
+
+    if (!head) {
+      // Nothing to chase from yet (first-ever selection) — light up now.
+      scheduleVisualSelectedKey = newKey;
+      scheduleChainHeadKey = newKey;
+      const newCell = document.querySelector(`.kir-month-cal-day[data-key="${newKey}"]`);
+      if (newCell) newCell.classList.add('kir-cal-selected');
+      return;
+    }
+
+    // Reduced motion: land on the target immediately instead of walking
+    // there cell-by-cell like scheduleStepChain normally does — same
+    // "just appears" treatment scheduleCalSelectDay gives mouse clicks,
+    // just reached from the keyboard-chase code path here.
+    if (scheduleIsReducedMotion()) {
+      if (scheduleChainTimer) { clearTimeout(scheduleChainTimer); scheduleChainTimer = null; }
+      scheduleChainQueue = [];
+      if (head !== newKey) {
+        const prevHeadCell = document.querySelector(`.kir-month-cal-day[data-key="${head}"]`);
+        if (prevHeadCell) prevHeadCell.classList.remove('kir-cal-selected');
+      }
+      scheduleVisualSelectedKey = newKey;
+      scheduleChainHeadKey = newKey;
+      const newCell = document.querySelector(`.kir-month-cal-day[data-key="${newKey}"]`);
+      if (newCell) newCell.classList.add('kir-cal-selected');
+      return;
+    }
+
+    const path = scheduleComputeChainPath(head, newKey);
+    if (path && path.length) scheduleEnqueueChainSteps(path);
+  }
+
+  function scheduleEnqueueChainSteps(path) {
+    // Replace, not append — the path was just recalculated fresh from the
+    // snake's real current position to the new target, so anything still
+    // sitting in the old queue is a stale, no-longer-optimal route and gets
+    // dropped in favor of this one.
+    scheduleChainQueue = path;
+    if (!scheduleChainTimer) scheduleStepChain();
+  }
+
+  // Advances the chain queue by exactly one cell per call, at a steady
+  // pace, regardless of whether that cell is actually on screen right now.
+  // Whether a step is the final "arrival" (glow lands, previous glow cell
+  // fades) or just a passing pulse is decided the moment it's dequeued — if
+  // a new segment got appended in the meantime, the queue won't be empty
+  // yet and this step is treated as a pass-through instead, letting the
+  // chase flow straight on to whatever was just added.
+  //
+  // If the step's date belongs to a month you've already jumped past (see
+  // scheduleMoveSelectionByDays — the visible month always jumps straight
+  // to the newest selection), there's simply no cell to find, so this step
+  // does nothing visible and the queue just quietly moves on to the next
+  // one. The state (scheduleVisualSelectedKey) still updates on arrival
+  // either way, so the glow is exactly where it should be and picks up
+  // visually the moment its cell is back on screen.
+  function scheduleStepChain() {
+    const key = scheduleChainQueue.shift();
+    if (key === undefined) { scheduleChainTimer = null; return; }
+
+    scheduleChainHeadKey = key; // the snake's real position, updated on every step so a redirect can recalculate from here
+
+    const cell = document.querySelector(`.kir-month-cal-day[data-key="${key}"]`);
+    const isArrival = scheduleChainQueue.length === 0;
+    if (isArrival) {
+      if (scheduleVisualSelectedKey && scheduleVisualSelectedKey !== key) {
+        const prevGlowCell = document.querySelector(`.kir-month-cal-day[data-key="${scheduleVisualSelectedKey}"]`);
+        if (prevGlowCell) prevGlowCell.classList.remove('kir-cal-selected');
+      }
+      scheduleVisualSelectedKey = key;
+      if (cell) cell.classList.add('kir-cal-selected');
+    } else if (cell) {
+      cell.classList.add('kir-cal-travel-pulse');
+      setTimeout(() => cell.classList.remove('kir-cal-travel-pulse'), 200);
+    }
+    scheduleChainTimer = setTimeout(scheduleStepChain, 80);
+  }
+
+  /* ----------------------------------------------------------
+     Single month, always 6 full weeks (42 cells) starting on the
+     Monday on/before the 1st, so the grid height never jumps
+     between months — only the in-month vs. out-of-month styling
+     (kir-cal-outside) changes.
+     ---------------------------------------------------------- */
+  function renderScheduleCalendar() {
+    const lang = scheduleLang();
+    const locale = scheduleLocale();
+    const titleEl = document.getElementById('schedule-cal-title');
+    titleEl.textContent = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(scheduleCalMonth);
+
+    // Weekday header, Monday-first, localized via a known Monday reference date.
+    const weekdaysWrap = document.getElementById('schedule-cal-weekdays');
+    const refMonday = new Date(2023, 0, 2); // 2 Jan 2023 was a Monday
+    weekdaysWrap.innerHTML = Array.from({ length: 7 }, (_, i) => {
+      const label = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2023, 0, 2 + i));
+      return `<div class="kir-month-cal-weekday">${label}</div>`;
+    }).join('');
+
+    const firstOfMonth = new Date(scheduleCalMonth.getFullYear(), scheduleCalMonth.getMonth(), 1);
+    const mondayOffset = (firstOfMonth.getDay() + 6) % 7; // days since the preceding Monday
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(firstOfMonth.getDate() - mondayOffset);
+
+    scheduleEnsureHolidaysForVisibleGrid(); // no-ops once a year's data is already cached; re-renders itself when new data lands
+
+    const today = new Date();
+    const todayKey = ymd(today);
+
+    // One-shot: read then immediately clear, so the pop/fade animation only
+    // ever plays once, on the render triggered by the select/deselect itself.
+    const animSelectKey = scheduleAnimateSelectKey;
+    const animDeselectKey = scheduleAnimateDeselectKey;
+    scheduleAnimateSelectKey = null;
+    scheduleAnimateDeselectKey = null;
+
+    let cellsHtml = '';
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const key = ymd(d);
+      const dayEvents = EVENTS_BY_DATE[key] || [];
+      const holiday = HOLIDAYS_BY_DATE[key];
+      const special = scheduleGetSpecialDay(key);
+      const isOutside = d.getMonth() !== scheduleCalMonth.getMonth();
+      const isToday = key === todayKey;
+      const isSelected = key === scheduleVisualSelectedKey;
+      const isRingActive = key === scheduleSelectedKey;
+      const hasNext = dayEvents.some(e => e.is_next);
+      const justSelected = key === animSelectKey;
+      const justDeselected = key === animDeselectKey && key !== animSelectKey;
+
+      let dotsHtml = '';
+      if (dayEvents.length > 0) {
+        const shown = dayEvents.slice(0, 3);
+        dotsHtml = `<div class="kir-month-cal-dots">${shown.map(e => `<span class="kir-month-cal-dot ${e.is_next ? 'kir-cal-dot-next' : ''}"></span>`).join('')}</div>`;
+        if (dayEvents.length > 3) {
+          dotsHtml += `<span class="kir-month-cal-day-count">+${dayEvents.length - 3}</span>`;
+        }
+      }
+
+      const holidayClass = holiday ? (holiday.type === 'leave' ? 'kir-cal-holiday-leave' : 'kir-cal-holiday') : '';
+      const ariaHolidaySuffix = holiday ? `, ${holiday.name}` : '';
+      const specialName = special ? I18N[lang][special.i18nKey] : '';
+      const ariaSpecialSuffix = special ? `, ${specialName}` : '';
+      // Holiday title wins if a day somehow has both (shouldn't normally
+      // happen); otherwise fall back to the special day's name.
+      const titleAttr = holiday ? holiday.name : (special ? specialName : '');
+
+      cellsHtml += `
+        <div
+          class="kir-month-cal-day ${isOutside ? 'kir-cal-outside' : ''} ${isToday ? 'kir-cal-today' : ''} ${isSelected ? 'kir-cal-selected' : ''} ${isRingActive ? 'kir-cal-ring-active' : ''} ${dayEvents.length ? 'kir-cal-has-events' : ''} ${hasNext ? 'kir-cal-has-next' : ''} ${justSelected ? 'kir-cal-select-anim' : ''} ${justDeselected ? 'kir-cal-deselect-anim' : ''} ${holidayClass} ${special ? 'kir-cal-special' : ''}"
+          data-key="${key}"
+          onclick="scheduleCalSelectDay('${key}', this)"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(!window.kirSnakeModeActive){scheduleCalSelectDay('${key}', this);}}"
+          tabindex="0" role="button"
+          ${titleAttr ? `title="${titleAttr.replace(/"/g, '&quot;')}"` : ''}
+          aria-label="${d.getDate()} ${new Intl.DateTimeFormat(locale, { month: 'long' }).format(d)}${ariaHolidaySuffix}${ariaSpecialSuffix}">
+          <span class="kir-month-cal-day-num">${d.getDate()}</span>
+          ${dotsHtml}
+        </div>`;
+    }
+
+    document.getElementById('schedule-cal-grid').innerHTML = cellsHtml;
+  }
+
+  function renderScheduleDayPopoverContent() {
+    if (!scheduleSelectedKey) return;
+
+    const lang = scheduleLang();
+    const locale = scheduleLocale();
+    const [y, m, day] = scheduleSelectedKey.split('-').map(Number);
+    const selectedDate = new Date(y, m - 1, day);
+    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate);
+    document.getElementById('schedule-day-popover-title').textContent = dateLabel;
+
+    const body = document.getElementById('schedule-day-popover-body');
+    const dayEvents = EVENTS_BY_DATE[scheduleSelectedKey] || [];
+    const holiday = HOLIDAYS_BY_DATE[scheduleSelectedKey];
+    const holidayBadge = holiday ? I18N[lang][holiday.type === 'leave' ? 'schedule_leave_badge' : 'schedule_holiday_badge'] : '';
+    const holidayHtml = holiday ? `
+      <div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
+        <span class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30">${holidayBadge}</span>
+        <span class="truncate">${holiday.name}</span>
+      </div>` : '';
+
+    // Hardcoded fun days (World Snake Day, etc.) — same badge styling as the
+    // holiday one above, just green, and independent of it so both can show
+    // if a date ever happens to carry both. The label itself is trimmed a
+    // bit (flex-1 instead of full-width) to leave room for the snake-icon
+    // button beside it — that button doesn't do anything yet, it's just a
+    // placeholder hook for a future World Snake Day feature.
+    const special = scheduleGetSpecialDay(scheduleSelectedKey);
+    // Reduced motion: skip the button markup entirely rather than hiding it
+    // with CSS, so there's no dead-but-present click target sitting in the
+    // DOM. (scheduleSnakeDayAction/start() still guard on the same check
+    // too — see schedule-snake.js — this is just about what actually renders.)
+    const snakeButtonHtml = scheduleIsReducedMotion() ? '' : `
+        <button onclick="scheduleSnakeDayAction()" aria-label="${I18N[lang].schedule_world_snake_day}" class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/25 text-green-400 hover:bg-green-500/15 transition text-base leading-none">
+          🐍
+        </button>`;
+    const specialHtml = special ? `
+      <div class="flex items-center gap-2 mb-3">
+        <div class="flex-1 min-w-0 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/25 text-green-400 text-sm">
+          <span class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/30">${I18N[lang].schedule_special_badge}</span>
+          <span class="truncate">${I18N[lang][special.i18nKey]}</span>
+        </div>
+        ${snakeButtonHtml}
+      </div>` : '';
+
+    if (dayEvents.length === 0) {
+      body.innerHTML = `
+        ${holidayHtml}
+        ${specialHtml}
+        <div class="flex flex-col items-center text-center py-4">
+          <p class="text-zinc-500 text-sm mb-4" data-i18n="schedule_no_events_day">${I18N[lang].schedule_no_events_day}</p>
+          ${kirIsAdmin() ? `<button onclick="openScheduleAdminModal(null, '${scheduleSelectedKey}')" class="kir-month-cal-today-btn" data-i18n="schedule_add_event_day">${I18N[lang].schedule_add_event_day}</button>` : ''}
         </div>`;
       kirApplyTranslations();
       return;
     }
 
-    wrap.innerHTML = `
-      <div class="absolute top-2 bottom-2" style="left:12px; transform: translateX(-50%);">
-        <div class="w-0.5 h-full timeline-line animate-line-draw" style="animation-delay: 1000ms"></div>
-      </div>
-      ${EVENTS.map((ev, i) => {
-        const d = new Date(ev.event_date);
-        const dateLabel = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
-        const timeStr = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(d);
-
-        const cardHtml = `
-          <div onclick="openScheduleModal('${ev.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openScheduleModal('${ev.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-xl p-5 relative overflow-hidden w-full text-left hover:bg-white/5 transition group cursor-pointer ${ev.is_next ? 'border border-accent-40 shadow-glow-sm' : ''}">
-            ${ev.image_url ? `<div class="item-thumb-slot item-thumb-slot-wide"><img src="${ev.image_url}" alt="" /></div>` : ''}
-            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div class="min-w-0">
-                <p class="${ev.is_next ? 'text-accent-300' : 'text-zinc-500'} text-xs font-medium tracking-wide uppercase mb-1">${dateLabel} &middot; ${timeStr}</p>
-                <p class="font-display font-semibold text-lg ${ev.is_next ? '' : 'text-zinc-200'}">${ev.title}</p>
-                <p class="text-zinc-500 text-sm mt-1">${ev.location}</p>
-              </div>
-              ${ev.is_next ? `<span class="self-start text-xs font-medium px-3 py-1 rounded-full bg-accent-15 text-accent-300 border border-accent-30" data-i18n="badge_next">Berikutnya</span>` : ''}
+    body.innerHTML = holidayHtml + specialHtml + dayEvents.map(ev => {
+      const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(ev.event_date));
+      const rowHtml = `
+        <div onclick="openScheduleModal('${ev.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openScheduleModal('${ev.id}');}" tabindex="0" role="button" class="kir-day-event-row ${ev.is_next ? 'kir-cal-is-next' : ''}">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="kir-day-event-dot"></span>
+            <div class="min-w-0">
+              <p class="font-medium text-sm truncate">${ev.title}</p>
+              <p class="text-zinc-500 text-xs mt-0.5 truncate">${timeStr} &middot; ${ev.location}</p>
             </div>
-          </div>`;
-
-        return `
-        <div class="relative ${i === EVENTS.length - 1 ? '' : 'mb-8'}">
-          <div class="absolute top-1.5" style="left:-20px; transform: translateX(-50%);">
-            <span class="block w-3 h-3 rounded-full animate-dot-pop ${ev.is_next ? 'bg-accent pulse' : 'bg-zinc-600 border-2 border-zinc-950'}" style="animation-delay: ${600 + i * 100}ms"></span>
           </div>
-          ${kirAdminWrapQuickActions(cardHtml, { onEdit: `openScheduleAdminModal('${ev.id}')`, onDelete: `confirmDeleteSchedule('${ev.id}')` })}
+          ${ev.is_next ? `<span class="shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-accent-15 text-accent-300 border border-accent-30" data-i18n="badge_next">Berikutnya</span>` : ''}
         </div>`;
-      }).join('')}
-    `;
+      return kirAdminWrapQuickActions(rowHtml, { onEdit: `openScheduleAdminModal('${ev.id}')`, onDelete: `confirmDeleteSchedule('${ev.id}')` });
+    }).join('');
     kirApplyTranslations();
   }
 
@@ -162,8 +990,9 @@
     if (!ev) return;
     
     const d = new Date(ev.event_date);
-    const dateLabel = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
-    const timeStr = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(d);
+    const locale = scheduleLocale();
+    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+    const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(d);
 
     document.getElementById('schedule-modal-admin-actions').innerHTML = kirAdminActionsHtml({
       onEdit: `openScheduleAdminModal('${ev.id}')`,
@@ -195,13 +1024,17 @@
     ];
   }
 
-  function openScheduleAdminModal(id) {
+  function openScheduleAdminModal(id, prefillDateKey) {
     const ev = id ? EVENTS.find(e => e.id === id) : null;
     let values = null;
     if (ev) {
       const d = new Date(ev.event_date);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       values = { ...ev, event_date: d.toISOString().slice(0,16) };
+    } else if (prefillDateKey) {
+      // Default to a reasonable time-of-day on the picked date rather than
+      // midnight, so the datetime field doesn't need to be touched twice.
+      values = { event_date: `${prefillDateKey}T09:00` };
     }
 
     kirOpenAdminModal({
@@ -237,11 +1070,12 @@
     });
   }
 
-  kirRenderAdminFab({ onClick: () => openScheduleAdminModal(null) });
+  kirRenderAdminFab({ onClick: () => openScheduleAdminModal(null, ymd(new Date())) });
 
   kirInjectSidebar('schedule');
   fetchScheduleFromDatabase();
 </script>
+<script src="js/schedule-snake.js"></script>
 <script src="js/router.js"></script>
 </body>
 </html>

@@ -528,6 +528,44 @@
     display: flex; align-items: center; justify-content: center;
   }
 
+  /* ---------------- FAQ accordion ----------------
+     Plain <details>/<summary> so click-to-expand works with zero JS
+     and stays keyboard/screen-reader accessible for free. Default
+     marker triangle is stripped and replaced with a chevron that
+     rotates on [open]; only the clicked question's answer shows,
+     the rest stay collapsed, since that's what <details> does natively. */
+  .obt-faq-item {
+    border-radius: 0.85rem;
+    margin-bottom: 0.6rem;
+    overflow: hidden;
+  }
+  .obt-faq-item:last-of-type { margin-bottom: 0; }
+  .obt-faq-q {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.86rem; font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text-100, #f4f4f5);
+  }
+  .obt-faq-q::-webkit-details-marker { display: none; }
+  .obt-faq-q::marker { content: ''; }
+  .obt-faq-chevron {
+    flex-shrink: 0; width: 1rem; height: 1rem;
+    color: var(--muted-500);
+    transition: transform 0.25s ease;
+  }
+  .obt-faq-item[open] .obt-faq-chevron { transform: rotate(180deg); color: rgb(var(--accent-light-rgb)); }
+  .obt-faq-a {
+    padding: 0 1rem 1rem;
+    font-size: 0.82rem;
+    color: var(--muted-500);
+    line-height: 1.55;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .obt-faq-chevron { transition: none; }
+  }
+
   /* ---------------- Progress rail + arrows ---------------- */
   .obt-progress {
     position: absolute; left: 50%; bottom: clamp(0.75rem, 3vh, 1.75rem); transform: translateX(-50%);
@@ -771,6 +809,7 @@
   body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(3) { transition-delay: 0.3s; }
   body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(4) { transition-delay: 0.45s; }
   body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(5) { transition-delay: 0.6s; }
+  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(6) { transition-delay: 0.75s; }
 
   /* Phase 2: everything else, once the nodes are done — a slower,
      gentler breathe-in since there's no stagger left to read here,
@@ -866,19 +905,23 @@
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
           <span class="obt-node-label" data-i18n="nav_beranda">Beranda</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="72" data-scene="fitur">
+        <button type="button" class="obt-node glass" data-angle="60" data-scene="fitur">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           <span class="obt-node-label" data-i18n="nav_fitur">Fitur</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="144" data-scene="cabang">
+        <button type="button" class="obt-node glass" data-angle="120" data-scene="cabang">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
           <span class="obt-node-label" data-i18n="nav_cabang">Cabang</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="216" data-scene="proker">
+        <button type="button" class="obt-node glass" data-angle="180" data-scene="faq">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_faq">FAQ</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="240" data-scene="proker">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           <span class="obt-node-label" data-i18n="nav_proker">Proker</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="288" data-scene="galeri">
+        <button type="button" class="obt-node glass" data-angle="300" data-scene="galeri">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15.5l-5-5L5 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="obt-node-label" data-i18n="nav_galeri">Galeri</span>
         </button>
@@ -898,7 +941,7 @@
     <div id="obt-panels">
 
       <div class="obt-panel is-active" data-scene="beranda">
-        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 05</span></p>
+        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 06</span></p>
         <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient obt-typehead" data-i18n="idx_hero_title">
           “In Harmonia Innovatio”
         </h1>
@@ -912,7 +955,7 @@
       </div>
 
       <div class="obt-panel" data-scene="fitur">
-        <p class="obt-eyebrow">FITUR <span class="obt-eyebrow-count">02 / 05</span></p>
+        <p class="obt-eyebrow">FITUR <span class="obt-eyebrow-count">02 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
         <div>
           <div class="obt-feat-row">
@@ -940,7 +983,7 @@
       </div>
 
       <div class="obt-panel" data-scene="cabang">
-        <p class="obt-eyebrow">CABANG <span class="obt-eyebrow-count">03 / 05</span></p>
+        <p class="obt-eyebrow">CABANG <span class="obt-eyebrow-count">03 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
           <div class="glass rounded-xl p-4">
@@ -955,8 +998,52 @@
         <p class="text-zinc-600 text-xs" data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</p>
       </div>
 
+      <div class="obt-panel" data-scene="faq">
+        <p class="obt-eyebrow">FAQ <span class="obt-eyebrow-count">04 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
+        <p class="text-zinc-500 text-sm mb-5" data-i18n="idx_faq_sub">Klik pertanyaan untuk melihat jawabannya.</p>
+        <div>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q1">Apa itu Orbit?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a1">Orbit adalah dasbor terpusat untuk KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang, Robotik dan Sains, dalam satu ruang kerja.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q2">Apa itu KIR?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a2">KIR (Karya Ilmiah Remaja) adalah ekstrakurikuler sekolah dengan dua cabang, Robotik dan Sains, tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q3">Bagaimana cara bergabung?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a3">Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q4">Apa saja kegiatan KIR?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a4">Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q5">Apakah KIR punya Tutoring?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a5">Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.</p>
+          </details>
+        </div>
+      </div>
+
+
       <div class="obt-panel" data-scene="proker">
-        <p class="obt-eyebrow">PROGRAM KERJA <span class="obt-eyebrow-count">04 / 05</span></p>
+        <p class="obt-eyebrow">PROGRAM KERJA <span class="obt-eyebrow-count">05 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
         <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
@@ -966,7 +1053,7 @@
       </div>
 
       <div class="obt-panel" data-scene="galeri">
-        <p class="obt-eyebrow">GALERI <span class="obt-eyebrow-count">05 / 05</span></p>
+        <p class="obt-eyebrow">GALERI <span class="obt-eyebrow-count">06 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
         <div class="flex flex-wrap items-center gap-3">
@@ -998,6 +1085,7 @@
       <span class="obt-dot" data-index="2"></span>
       <span class="obt-dot" data-index="3"></span>
       <span class="obt-dot" data-index="4"></span>
+      <span class="obt-dot" data-index="5"></span>
     </div>
     <button type="button" class="obt-arrow-btn glass" id="obt-next" aria-label="Berikutnya">
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -1069,8 +1157,8 @@
      sweeping around the planet as you move through it.
      ---------------------------------------------------------- */
   (function () {
-    const scenes = ['beranda', 'fitur', 'cabang', 'proker', 'galeri'];
-    const docks = ['obt-dock-tr', 'obt-dock-br', 'obt-dock-bl', 'obt-dock-tl', 'obt-dock-tr'];
+    const scenes = ['beranda', 'fitur', 'cabang', 'faq', 'proker', 'galeri'];
+    const docks = ['obt-dock-tr', 'obt-dock-br', 'obt-dock-bl', 'obt-dock-tl', 'obt-dock-tr', 'obt-dock-br'];
     const stepAngle = 360 / scenes.length;
 
     const cosmos = document.getElementById('obt-cosmos');
