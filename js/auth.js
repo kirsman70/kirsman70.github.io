@@ -184,6 +184,7 @@ const I18N = {
     reduce_motion: 'Kurangi Gerakan', reduce_motion_desc: 'Nonaktifkan semua animasi dan transisi untuk meningkatkan kinerja.',
     disable_branch_color: 'Nonaktifkan Warna Cabang', disable_branch_color_desc: 'Tampilkan aksen netral (putih/hitam) alih-alih warna cabang kamu.',
     taskbar_position: 'Posisi Taskbar', taskbar_position_desc: 'Pilih sisi layar tempat menu navigasi ditampilkan.',
+    taskbar_position_locked_desc: 'Posisi taskbar hanya bisa diatur di layar desktop.',
     pos_left: 'Kiri', pos_right: 'Kanan', pos_top: 'Atas', pos_bottom: 'Bawah',
     danger_zone_title: 'Zona Berbahaya', danger_zone_desc: 'Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan.',
     reset_voyages_title: 'Reset Voyages', reset_voyages_desc: 'Menghapus semua voyage yang sudah kamu selesaikan dan mengatur ulang deltas kamu ke 0.', reset_voyages_btn: 'Reset',
@@ -383,6 +384,7 @@ const I18N = {
     reduce_motion: 'Reduce Motion', reduce_motion_desc: 'Disable all animations and transitions to improve performance.',
     disable_branch_color: 'Disable Branch Colouring', disable_branch_color_desc: "Show a neutral accent (white/black) instead of your branch's colour.",
     taskbar_position: 'Taskbar Position', taskbar_position_desc: 'Choose which side of the screen the nav menu sits on.',
+    taskbar_position_locked_desc: 'Taskbar position can only be changed on desktop screens.',
     pos_left: 'Left', pos_right: 'Right', pos_top: 'Top', pos_bottom: 'Bottom',
     danger_zone_title: 'Danger Zone', danger_zone_desc: 'Actions below are permanent and cannot be undone.',
     reset_voyages_title: 'Reset Voyages', reset_voyages_desc: "Deletes every voyage you've completed and resets your deltas back to 0.", reset_voyages_btn: 'Reset',
@@ -827,6 +829,11 @@ function handleDisableBranchColorToggle() {
 }
 
 function handleSidebarPositionChange(position) {
+  // Taskbar position only ever renders at the lg breakpoint (see
+  // css/style.css) — below that, the mobile top bar + drawer takes
+  // over regardless of this setting. Locked on mobile so there's no
+  // dead control that looks like it should do something but can't.
+  if (!window.matchMedia('(min-width: 1024px)').matches) return;
   if (position === kirCurrentSidebarPosition()) return;
   kirSetSidebarPosition(position);
 }
@@ -915,6 +922,10 @@ function kirToggleMobileSidebar() {
 if (typeof window !== 'undefined' && window.matchMedia) {
   window.matchMedia('(min-width: 1024px)').addEventListener('change', (e) => {
     if (e.matches) kirCloseMobileSidebar();
+    // Keep the Settings modal's taskbar-position picker in sync if it's
+    // open (or opened later) across the same crossing — e.g. rotating a
+    // tablet, or resizing a desktop window down past 1024px.
+    if (typeof kirUpdateSidebarPositionModalUI === 'function') kirUpdateSidebarPositionModalUI();
   });
 }
 
@@ -1135,8 +1146,12 @@ function kirRenderSidebarNow(activeTab) {
         </div>
         <div class="pt-4 border-t border-white/10">
           <p class="text-sm font-medium mb-1" data-i18n="taskbar_position">Posisi Taskbar</p>
-          <p class="text-zinc-500 text-xs mb-3" data-i18n="taskbar_position_desc">Pilih sisi layar tempat menu navigasi ditampilkan.</p>
-          <div class="grid grid-cols-4 gap-2">
+          <p id="taskbar-position-desc" class="text-zinc-500 text-xs mb-3" data-i18n="taskbar_position_desc">Pilih sisi layar tempat menu navigasi ditampilkan.</p>
+          <p id="taskbar-position-locked-note" class="hidden text-zinc-500 text-xs mb-3 items-center gap-1.5" data-i18n="taskbar_position_locked_desc">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            Posisi taskbar hanya bisa diatur di layar desktop.
+          </p>
+          <div id="taskbar-position-grid" class="grid grid-cols-4 gap-2">
             <button type="button" class="pos-option" data-pos="left" onclick="handleSidebarPositionChange('left')">
               <span class="pos-option-preview pos-preview-left"><span class="pos-bar"></span><span class="pos-page"></span></span>
               <span class="pos-option-label" data-i18n="pos_left">Kiri</span>
@@ -2099,9 +2114,25 @@ function kirSetSidebarPosition(position) {
 
 function kirUpdateSidebarPositionModalUI() {
   const current = kirCurrentSidebarPosition();
+  const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+
   document.querySelectorAll('.pos-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.pos === current);
+    btn.classList.toggle('pos-option-locked', !isDesktop);
+    btn.disabled = !isDesktop;
+    btn.setAttribute('aria-disabled', String(!isDesktop));
   });
+
+  const grid = document.getElementById('taskbar-position-grid');
+  if (grid) grid.classList.toggle('pos-grid-locked', !isDesktop);
+
+  const desc = document.getElementById('taskbar-position-desc');
+  const lockedNote = document.getElementById('taskbar-position-locked-note');
+  if (desc) desc.classList.toggle('hidden', !isDesktop);
+  if (lockedNote) {
+    lockedNote.classList.toggle('hidden', isDesktop);
+    lockedNote.classList.toggle('flex', !isDesktop);
+  }
 }
 
 /* ----------------------------------------------------------
