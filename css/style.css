@@ -1062,6 +1062,197 @@ body {
 }
 
 /* ==========================================================
+   Schedule page — full month calendar (schedule.html)
+   --------------------------------------------------------
+   Only ever one month visible at a time: a header with
+   prev/next/"today" controls, a 7-col weekday grid, then a
+   day panel below listing whatever's on the selected date.
+   Kept as its own "kir-month-cal-*" namespace (rather than
+   reusing .kir-cal-* from the small inline date-picker in
+   admin-shared.css) since this is a much bigger, page-level
+   surface with its own hover/selection/today/has-events states
+   that would otherwise collide with the picker's compact ones.
+   ========================================================== */
+.kir-month-cal-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+.kir-month-cal-title-group { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; }
+.kir-month-cal-title {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.15rem;
+  text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kir-month-cal-nav { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+.kir-month-cal-nav-btn {
+  width: 2.1rem; height: 2.1rem; border-radius: 0.6rem; display: flex; align-items: center;
+  justify-content: center; color: var(--muted-500); cursor: pointer;
+  background: var(--glass-input-bg); border: 1px solid var(--glass-border);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.kir-month-cal-nav-btn:hover { color: var(--text-color); border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-month-cal-nav-btn svg { width: 1.05rem; height: 1.05rem; }
+.kir-month-cal-today-btn {
+  font-size: 0.78rem; font-weight: 600; padding: 0.45rem 0.85rem; border-radius: 0.6rem;
+  color: rgb(var(--accent-light-rgb)); background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.3); cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.kir-month-cal-today-btn:hover { background: rgba(var(--accent-rgb), 0.2); }
+
+.kir-month-cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.kir-month-cal-weekday {
+  text-align: center; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em;
+  text-transform: uppercase; color: var(--muted-500); padding-bottom: 0.5rem;
+}
+.kir-month-cal-day {
+  position: relative; aspect-ratio: 1; min-height: 3rem;
+  border-radius: 0.7rem; border: 1px solid transparent;
+  background: rgba(128,128,128,0.05);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 0.4rem 0.25rem 0.5rem; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.kir-month-cal-day:hover { background: rgba(128,128,128,0.12); }
+.kir-month-cal-day.kir-cal-outside { opacity: 0.35; }
+.kir-month-cal-day.kir-cal-empty { visibility: hidden; cursor: default; }
+.kir-month-cal-day-num {
+  font-size: 0.82rem; font-weight: 500; line-height: 1;
+  width: 1.6rem; height: 1.6rem; display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; transition: background 0.15s ease, color 0.15s ease;
+}
+.kir-month-cal-day.kir-cal-today .kir-month-cal-day-num {
+  border: 1px solid rgba(var(--accent-rgb), 0.6); font-weight: 700;
+}
+.kir-month-cal-day.kir-cal-selected { background: rgba(var(--accent-rgb), 0.14); }
+.kir-month-cal-day.kir-cal-selected .kir-month-cal-day-num { background: rgb(var(--accent-rgb)); color: #fff; }
+/* The ring (border only) is intentionally separate from .kir-cal-selected's
+   fill: it snaps on/off instantly with the click (bound directly to
+   scheduleSelectedKey, not the lagged visual/fill state below), while the
+   fill is what the traveling pulse "chases" toward, arriving after. */
+.kir-month-cal-day.kir-cal-ring-active { border-color: rgba(var(--accent-rgb), 0.45); }
+.kir-month-cal-day.kir-cal-has-events:not(.kir-cal-selected) {
+  background: rgba(var(--accent-rgb), 0.08); border-color: rgba(var(--accent-rgb), 0.22);
+}
+.kir-month-cal-day.kir-cal-has-next { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5) inset; }
+
+/* Indonesian public holidays ("tanggal merah") and collective leave days
+   ("cuti bersama"), pulled in from a public calendar API (see
+   scheduleFetchHolidays in schedule.html) and merged in alongside the
+   club's own events. Only the day number gets tinted red, not the whole
+   cell background, so it composes cleanly with the selection/ring/pulse
+   states instead of fighting them for the background layer. National
+   holidays get a solid tint; collective leave days (softer, bridge-day
+   time off) get the same color at reduced opacity so the two read as
+   related but distinct at a glance. The selected/today states win when
+   they overlap a holiday, so the number stays legible against their fill. */
+.kir-month-cal-day.kir-cal-holiday .kir-month-cal-day-num { color: rgb(248 113 113); }
+.kir-month-cal-day.kir-cal-holiday-leave .kir-month-cal-day-num { color: rgb(248 113 113); opacity: 0.7; }
+.kir-month-cal-day.kir-cal-holiday.kir-cal-selected .kir-month-cal-day-num,
+.kir-month-cal-day.kir-cal-holiday-leave.kir-cal-selected .kir-month-cal-day-num { color: #fff; opacity: 1; }
+
+/* Hardcoded fun/special days (e.g. World Snake Day, July 16) — same tint
+   pattern as the holiday styling above, just green instead of red, and
+   matched by month+day only so it recurs every year regardless of the
+   grid's actual year. See SCHEDULE_SPECIAL_DAYS in schedule.html. */
+.kir-month-cal-day.kir-cal-special .kir-month-cal-day-num { color: rgb(74 222 128); }
+.kir-month-cal-day.kir-cal-special.kir-cal-selected .kir-month-cal-day-num { color: #fff; }
+
+/* Select/deselect animations — plain `transition` doesn't work here because
+   the calendar grid is fully rebuilt via innerHTML on every click, so each
+   cell is a brand-new element with no "before" state to transition from.
+   @keyframes animations play on newly-inserted elements regardless, so they
+   animate correctly even across a full re-render. These classes are added
+   for exactly one render (see scheduleAnimateSelectKey/DeselectKey in
+   schedule.html) and never removed afterward, but since the animation only
+   plays once, that's harmless. Plain color fades only — no scale/motion. */
+@keyframes kir-cal-select-fade {
+  0% { background: rgba(128,128,128,0.05); }
+  100% { background: rgba(var(--accent-rgb), 0.14); }
+}
+@keyframes kir-cal-select-num-fade {
+  0% { background: rgba(128,128,128,0); color: inherit; }
+  100% { background: rgb(var(--accent-rgb)); color: #fff; }
+}
+.kir-month-cal-day.kir-cal-select-anim { animation: kir-cal-select-fade 0.3s ease; }
+.kir-month-cal-day.kir-cal-select-anim .kir-month-cal-day-num { animation: kir-cal-select-num-fade 0.3s ease; }
+
+@keyframes kir-cal-deselect-fade {
+  0% { background: rgba(var(--accent-rgb), 0.14); }
+  100% { background: rgba(128,128,128,0.05); }
+}
+@keyframes kir-cal-deselect-num-fade {
+  0% { background: rgb(var(--accent-rgb)); color: #fff; }
+  100% { background: rgba(128,128,128,0); color: inherit; }
+}
+.kir-month-cal-day.kir-cal-deselect-anim { animation: kir-cal-deselect-fade 0.3s ease; }
+.kir-month-cal-day.kir-cal-deselect-anim .kir-month-cal-day-num { animation: kir-cal-deselect-num-fade 0.3s ease; }
+
+/* Traveling highlight — a brief pulse stepped through intermediate cells
+   between the old and new selection (see scheduleRunTravelAnimation in
+   schedule.html). This class is toggled on/off on the same persistent DOM
+   node via classList (not a fresh render), so the existing plain
+   `transition` on .kir-month-cal-day handles the fade in and back out. */
+.kir-month-cal-day.kir-cal-travel-pulse { background: rgba(var(--accent-rgb), 0.2); border-color: transparent; }
+
+.kir-month-cal-dots { display: flex; align-items: center; gap: 3px; margin-top: 0.3rem; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+.kir-month-cal-dot { width: 5px; height: 5px; border-radius: 999px; background: rgb(var(--accent-rgb)); flex-shrink: 0; }
+.kir-month-cal-dot.kir-cal-dot-next { background: rgb(var(--accent-light-rgb)); box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.7); }
+.kir-month-cal-day-count {
+  font-size: 0.62rem; font-weight: 600; color: rgb(var(--accent-light-rgb)); margin-top: 0.15rem;
+}
+
+@media (max-width: 640px) {
+  .kir-month-cal-day { min-height: 2.5rem; padding: 0.3rem 0.15rem 0.35rem; border-radius: 0.55rem; }
+  .kir-month-cal-day-num { width: 1.4rem; height: 1.4rem; font-size: 0.75rem; }
+  .kir-month-cal-title { font-size: 1rem; }
+}
+
+/* Day panel — list of the selected date's events, under the grid */
+/* Day detail popover on the schedule calendar — a floating panel
+   positioned via JS (schedulePositionDayPopover in schedule.html),
+   so it needs position:fixed the same way .kir-select-panel does.
+   z-index matches .kir-select-panel so it still renders above a
+   modal if one happens to be open behind it. */
+.kir-day-popover {
+  position: fixed; z-index: 100;
+  width: 20rem; max-width: calc(100vw - 2rem);
+  max-height: min(24rem, calc(100vh - 2rem));
+  overflow-y: auto;
+  /* Glassmorphism, matching the .glass utility used elsewhere on the
+     site (translucent glass-bg + blur), rather than a flat, opaque
+     var(--bg-color) panel — the popover floats over the calendar grid,
+     so it should read as glass sitting on top of it, not a solid slab
+     that happens to match the page background. */
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 0.85rem; padding: 1rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  opacity: 0;
+  transform: scale(0.97) translateY(6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.kir-day-popover.kir-popover-open { opacity: 1; transform: scale(1) translateY(0); }
+
+.kir-day-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+.kir-day-panel-date { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.95rem; text-transform: capitalize; }
+.kir-day-event-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.85rem 0.95rem; border-radius: 0.75rem;
+  background: rgba(128,128,128,0.05); border: 1px solid var(--glass-border);
+  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.kir-day-event-row:hover { background: rgba(128,128,128,0.1); }
+.kir-day-event-row + .kir-day-event-row { margin-top: 0.55rem; }
+.kir-day-event-row.kir-cal-is-next { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-day-event-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted-600); flex-shrink: 0; }
+.kir-day-event-row.kir-cal-is-next .kir-day-event-dot { background: rgb(var(--accent-rgb)); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6); }
+
+/* ==========================================================
    Difficulty range slider — gradient fill + smooth drag motion
    ========================================================== */
 .diff-track-fill {
