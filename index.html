@@ -131,7 +131,16 @@
     margin-top: -3vh;
   }
   @media (max-width: 900px) {
-    .obt-stage-outer { width: clamp(280px, 108vmin, 480px); margin-top: -4vh; }
+    /* Below 900px, .obt-card (the bottom sheet, e.g. "Dokumentasi")
+       switches to `position: fixed; bottom: 0; height: 44vh`,
+       pulling it out of layout flow entirely (see .obt-card's own
+       max-width:900px block). .obt-cosmos has no idea that sheet
+       exists, so it keeps centering the planet against the FULL
+       viewport height — the sheet then just gets laid on top,
+       covering close to half the sphere and reading as "too low".
+       Shift up by roughly half the sheet's height so the planet
+       optically centers in the space actually left above it. */
+    .obt-stage-outer { width: clamp(280px, 108vmin, 480px); margin-top: -31vh; }
   }
   .obt-stage {
     position: absolute; inset: 0;
@@ -465,8 +474,8 @@
       left: 0; right: 0; bottom: 0; top: auto !important;
       width: 100%; max-width: none;
       transform: none !important;
-      border-radius: 1.5rem 1.5rem 0 0;
-      max-height: 44vh;
+      border-radius: 0;
+      height: 44vh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 1.5rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
@@ -489,6 +498,22 @@
     margin-bottom: 0.85rem;
   }
   .obt-eyebrow-count { color: var(--muted-500); font-weight: 500; letter-spacing: 0.05em; }
+
+  /* ---------------- Typewriter effect on each panel's heading ----------------
+     .obt-typing is toggled by JS for exactly as long as a heading is
+     mid-type or mid-erase; the blinking caret is pure CSS so it can't
+     drift out of sync with the JS-driven character timing. */
+  .obt-typehead.obt-typing::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 0.85em;
+    margin-left: 2px;
+    background: currentColor;
+    vertical-align: text-bottom;
+    animation: obt-caret-blink 0.85s step-end infinite;
+  }
+  @keyframes obt-caret-blink { 50% { opacity: 0; } }
 
   .obt-feat-row { display: flex; gap: 0.85rem; align-items: flex-start; padding: 0.6rem 0; border-top: 1px solid var(--glass-border); }
   .obt-feat-row:first-of-type { border-top: none; }
@@ -522,7 +547,34 @@
   .obt-dot.is-active { width: 22px; height: 8px; border-radius: 999px; background: rgb(var(--accent-light-rgb)); opacity: 1; }
 
   @media (max-width: 900px) {
-    .obt-progress { bottom: auto; top: 0.6rem; left: 50%; }
+    .obt-progress { display: none; }
+  }
+
+  /* ---------------- In-card nav (mobile only) ----------------
+     On mobile the standalone arrows+dots rail above the planet is
+     hidden entirely (see .obt-progress above) to give the planet
+     more headroom. These duplicate prev/next buttons live inside
+     the bottom-sheet card instead, driven by the exact same
+     prev()/next() handlers as #obt-prev/#obt-next.
+
+     `position: absolute` (not sticky/fixed) anchored to #obt-card
+     itself — every .obt-panel starts flush at the top of #obt-panels,
+     so this overlays the same spot regardless of which panel is
+     active: right in line with that panel's eyebrow ("FITUR 02 / 05"
+     etc). Being absolute rather than sticky, it's just more content
+     inside the card's own scroll area, so it scrolls out of view
+     with everything else once the panel's text is taller than the
+     card — it does NOT stay pinned while scrolling. */
+  .obt-card-nav { display: none; }
+  @media (max-width: 900px) {
+    .obt-card-nav {
+      display: flex; align-items: center; gap: 0.4rem;
+      position: absolute; top: 1.15rem; right: 1.25rem; z-index: 6;
+    }
+    .obt-card-arrow {
+      width: 1.65rem; height: 1.65rem;
+      background: rgba(128,128,128,0.14);
+    }
   }
 
   /* ---------------- Scroll hint ---------------- */
@@ -551,6 +603,7 @@
       animation: none !important;
     }
     .obt-stage, .obt-node, .obt-panel, .obt-card, .obt-stars { transition: none !important; }
+    .obt-typehead.obt-typing::after { animation: none !important; }
   }
 
   /* ============================================================
@@ -736,8 +789,10 @@
 <body class="obt-body antialiased relative">
 
 <div class="obt-stars" id="obt-stars"></div>
-<div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="position:fixed; top:-16rem; left:-11rem;"></div>
-<div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="position:fixed; bottom:-13rem; right:-9rem;"></div>
+<div class="glow-layer">
+  <div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="top:-16rem; left:-11rem;"></div>
+  <div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="bottom:-13rem; right:-9rem;"></div>
+</div>
 <div class="obt-vignette"></div>
 
 <header class="obt-header max-w-7xl mx-auto w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-4">
@@ -827,11 +882,19 @@
   </div>
 
   <div class="obt-card glass obt-dock-tr" id="obt-card">
+    <div class="obt-card-nav" id="obt-card-nav">
+      <button type="button" class="obt-arrow-btn obt-card-arrow glass" id="obt-card-prev" aria-label="Sebelumnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+      </button>
+      <button type="button" class="obt-arrow-btn obt-card-arrow glass" id="obt-card-next" aria-label="Berikutnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </button>
+    </div>
     <div id="obt-panels">
 
       <div class="obt-panel is-active" data-scene="beranda">
         <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 05</span></p>
-        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient" data-i18n="idx_hero_title">
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient obt-typehead" data-i18n="idx_hero_title">
           “In Harmonia Innovatio”
         </h1>
         <p class="text-zinc-400 text-sm mb-7" data-i18n="idx_hero_subtitle">
@@ -845,7 +908,7 @@
 
       <div class="obt-panel" data-scene="fitur">
         <p class="obt-eyebrow">FITUR <span class="obt-eyebrow-count">02 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
         <div>
           <div class="obt-feat-row">
             <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
@@ -873,7 +936,7 @@
 
       <div class="obt-panel" data-scene="cabang">
         <p class="obt-eyebrow">CABANG <span class="obt-eyebrow-count">03 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
           <div class="glass rounded-xl p-4">
             <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik" data-i18n="robotik">Robotik</span>
@@ -889,7 +952,7 @@
 
       <div class="obt-panel" data-scene="proker">
         <p class="obt-eyebrow">PROGRAM KERJA <span class="obt-eyebrow-count">04 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
         <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
           <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
@@ -899,7 +962,7 @@
 
       <div class="obt-panel" data-scene="galeri">
         <p class="obt-eyebrow">GALERI <span class="obt-eyebrow-count">05 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
         <div class="flex flex-wrap items-center gap-3">
           <a href="gallery.html" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition">
@@ -1017,6 +1080,8 @@
     const hintEl = document.getElementById('obt-hint');
     const prevBtn = document.getElementById('obt-prev');
     const nextBtn = document.getElementById('obt-next');
+    const cardPrevBtn = document.getElementById('obt-card-prev');
+    const cardNextBtn = document.getElementById('obt-card-next');
     const starsEl = document.getElementById('obt-stars');
 
     if (!cosmos || !stage) return;
@@ -1035,6 +1100,97 @@
     }));
     const panels = Array.from(panelsWrap.querySelectorAll('.obt-panel'));
     const dots = Array.from(dotsWrap.querySelectorAll('.obt-dot'));
+
+    /* ----------------------------------------------------------
+       Typewriter effect on each panel's heading — typed out on
+       first load, then erased and retyped every time the active
+       scene changes. kirApplyTranslations() has already run by
+       the time this script executes, so each heading's textContent
+       already holds its correct, final (translated) string — that
+       string is captured once, right here, into typeHeadText. Every
+       later type-out replays that captured string character by
+       character instead of re-reading live textContent, so it can
+       never get confused by its own mid-animation partial text.
+       ---------------------------------------------------------- */
+    const typeHeads = Array.from(document.querySelectorAll('.obt-typehead'));
+    const typeHeadText = new Map();
+    typeHeads.forEach(el => typeHeadText.set(el, (el.textContent || '').trim()));
+    let typeGen = 0;      // bumped on every transition to invalidate any in-flight loop
+    let typeTimer = null;
+    let currentTypeHead = null;
+    let visibleText = '';  // whatever's actually rendered right now, kept in sync on every
+                            // single character step so a transition started mid-animation
+                            // always picks up from what the user can actually see, not from
+                            // wherever a stale timer thought it was.
+
+    // Small per-character jitter so the type/erase cadence reads as a
+    // person typing rather than a metronome: a randomized base pace,
+    // longer breaths after spaces/punctuation, and an occasional brief
+    // hesitation — same idea real typists have, just kept subtle.
+    function typeDelay(ch) {
+      const base = 24 + Math.random() * 26; // ~24-50ms baseline jitter
+      if (ch === ' ') return base + 35 + Math.random() * 45;
+      if (/[.,:;!?—-]/.test(ch)) return base + 80 + Math.random() * 110;
+      if (Math.random() < 0.06) return base + 70 + Math.random() * 130; // rare hesitation
+      return base;
+    }
+    function eraseDelay() { return 9 + Math.random() * 10; }
+
+    function typeIntoHead(el, gen, startIndex) {
+      const text = typeHeadText.get(el) || '';
+      if (reduceMotion) { el.textContent = text; visibleText = text; return; }
+      el.classList.add('obt-typing');
+      let i = startIndex || 0;
+      (function step() {
+        if (gen !== typeGen) return; // superseded by a newer scene change mid-type
+        if (i > text.length) { el.classList.remove('obt-typing'); return; }
+        const shown = text.slice(0, i);
+        el.textContent = shown;
+        visibleText = shown;
+        const justTyped = text[i - 1] || '';
+        i++;
+        typeTimer = window.setTimeout(step, typeDelay(justTyped));
+      })();
+    }
+
+    // Seeds `nextEl` with whatever text was actually visible a moment
+    // ago (so switching cards never hard-cuts to blank — the old
+    // heading appears to "follow you" onto the new card), erases it
+    // character by character, then types the new heading's text in.
+    // First run ever (nothing visible yet) just types straight in.
+    // Because every step writes through `visibleText`, flipping cards
+    // rapidly mid-animation always resumes from the real current state
+    // instead of snapping back to a stale full/empty string.
+    function transitionTypeHead(nextEl) {
+      if (nextEl === currentTypeHead) return;
+      const gen = ++typeGen;
+      if (typeTimer) window.clearTimeout(typeTimer);
+      const startText = visibleText;
+      currentTypeHead = nextEl;
+      if (!nextEl) { visibleText = ''; return; }
+
+      const targetText = typeHeadText.get(nextEl) || '';
+      if (reduceMotion) { nextEl.textContent = targetText; visibleText = targetText; return; }
+
+      if (!startText) { nextEl.textContent = ''; visibleText = ''; typeIntoHead(nextEl, gen); return; }
+
+      nextEl.classList.add('obt-typing');
+      nextEl.textContent = startText;
+      visibleText = startText;
+      let text = startText;
+      (function eraseStep() {
+        if (gen !== typeGen) return; // superseded by yet another scene change
+        if (text.length <= 0) {
+          nextEl.classList.remove('obt-typing');
+          typeIntoHead(nextEl, gen);
+          return;
+        }
+        text = text.slice(0, -1);
+        nextEl.textContent = text;
+        visibleText = text;
+        typeTimer = window.setTimeout(eraseStep, eraseDelay());
+      })();
+    }
 
     // The whole ring drifts slowly on its own even when idle, which is
     // nice ambience but makes a node a moving target right as someone
@@ -1061,6 +1217,7 @@
       window.removeEventListener('resize', onResize);
       window.removeEventListener('keydown', onKeydown);
       if (lockTimer) window.clearTimeout(lockTimer);
+      if (typeTimer) window.clearTimeout(typeTimer);
     };
     window.addEventListener('kir:teardown', () => teardown(), { once: true });
 
@@ -1129,6 +1286,10 @@
       dots.forEach((d, i) => d.classList.toggle('is-active', i === sceneIndex));
       docks.forEach(d => card.classList.remove(d));
       card.classList.add(docks[sceneIndex]);
+
+      const activePanel = panels.find(p => p.getAttribute('data-scene') === scenes[sceneIndex]);
+      const activeHead = activePanel ? activePanel.querySelector('.obt-typehead') : null;
+      transitionTypeHead(activeHead);
     }
 
     function hideHint() { hintEl.classList.add('is-hidden'); }
@@ -1184,6 +1345,8 @@
     dots.forEach((d, i) => d.addEventListener('click', () => jumpTo(i)));
     prevBtn.addEventListener('click', () => { hideHint(); prev(); });
     nextBtn.addEventListener('click', () => { hideHint(); next(); });
+    if (cardPrevBtn) cardPrevBtn.addEventListener('click', () => { hideHint(); prev(); });
+    if (cardNextBtn) cardNextBtn.addEventListener('click', () => { hideHint(); next(); });
 
     let wheelCooldown = false;
     cosmos.addEventListener('wheel', (e) => {
