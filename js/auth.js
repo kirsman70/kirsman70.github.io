@@ -51,6 +51,11 @@ const I18N = {
     status_progress: 'Sedang Dikerjakan', status_review: 'Menunggu Peninjauan', status_late: 'Terlambat', status_todo: 'Belum Dimulai', status_done: 'Selesai',
     modal_desc: 'Deskripsi tugas', modal_ans: 'Jawaban kamu', modal_upload: 'Klik untuk unggah file jawaban\u2026', modal_proto: 'Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.',
     schedule_desc: 'Acara ekstrakurikuler mendatang, secara berurutan.', badge_next: 'Berikutnya',
+    schedule_today_btn: 'Hari Ini', schedule_day_events: 'acara',
+    schedule_no_events_day: 'Tidak ada acara pada tanggal ini.', schedule_add_event_day: 'Tambah acara di tanggal ini',
+    schedule_select_day_hint: 'Pilih tanggal untuk melihat acaranya.',
+    schedule_holiday_badge: 'Libur', schedule_leave_badge: 'Cuti Bersama',
+    schedule_special_badge: 'Hari Spesial', schedule_world_snake_day: 'Hari Ular Sedunia',
     members_desc: 'Semua orang yang tergabung di KIR.', role_ketua: 'Ketua Ekstrakurikuler', role_wakil: 'Wakil Ketua', role_bendahara: 'Bendahara', role_anggota: 'Anggota', you: '(kamu)',
     materials_desc: 'Modul pembelajaran dan referensi untuk anggota klub.',
     admin_search_placeholder: 'Cari nama, email, atau kelas…',
@@ -110,6 +115,13 @@ const I18N = {
     idx_branch_rob_sub: 'Fokus pada kegiatan rancang bangun, pemrograman, dan kompetisi robot. Modul ini menyediakan ruang eksplorasi ke berbagai bidang seperti mikrokontroler, pengembangan game, pengembangan web, pemanfaatan AI cerdas, dan logika otomasi.',
     idx_branch_sci_sub: 'Fokus pada praktik riset, eksperimen, dan penulisan karya ilmiah. Anggota mengembangkan hipotesis, menguji metodologi baru, serta mempersiapkan diri untuk OPSI dan kompetisi penelitian lainnya di sini.',
     idx_proker_heading: 'Rencana Kegiatan', idx_proker_sub: 'Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.', idx_proker_cta: 'Lihat Program Kerja',
+    nav_faq: 'FAQ',
+    idx_faq_heading: 'Pertanyaan Umum', idx_faq_sub: 'Klik pertanyaan untuk melihat jawabannya.',
+    idx_faq_q1: 'Apa itu Orbit?', idx_faq_a1: 'Orbit adalah dasbor terpusat untuk KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang, Robotik dan Sains, dalam satu ruang kerja.',
+    idx_faq_q2: 'Apa itu KIR?', idx_faq_a2: 'KIR (Karya Ilmiah Remaja) adalah ekstrakurikuler sekolah dengan dua cabang, Robotik dan Sains, tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.',
+    idx_faq_q3: 'Bagaimana cara bergabung?', idx_faq_a3: 'Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.',
+    idx_faq_q4: 'Apa saja kegiatan KIR?', idx_faq_a4: 'Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.',
+    idx_faq_q5: 'Apakah KIR punya Tutoring?', idx_faq_a5: 'Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.',
     idx_gallery_heading: 'Dokumentasi', idx_gallery_sub: 'Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.', idx_gallery_cta: 'Buka Galeri',
     idx_scroll_hint: 'Gulir untuk melihat',
     idx_footer: 'KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.',
@@ -257,6 +269,11 @@ const I18N = {
     status_progress: 'In Progress', status_review: 'Pending Review', status_late: 'Overdue', status_todo: 'Not Started', status_done: 'Completed',
     modal_desc: 'Task description', modal_ans: 'Your submission', modal_upload: 'Click to upload submission file\u2026', modal_proto: 'Prototype: files are not actually uploaded to a server, only the filename is stored in your browser.',
     schedule_desc: 'Upcoming extracurricular events, in chronological order.', badge_next: 'Next',
+    schedule_today_btn: 'Today', schedule_day_events: 'events',
+    schedule_no_events_day: 'No events on this date.', schedule_add_event_day: 'Add an event on this date',
+    schedule_select_day_hint: 'Pick a date to see its events.',
+    schedule_holiday_badge: 'Holiday', schedule_leave_badge: 'Collective Leave',
+    schedule_special_badge: 'Special Day', schedule_world_snake_day: 'World Snake Day',
     members_desc: 'Everyone currently in KIR.', role_ketua: 'Extracurricular President', role_wakil: 'Vice President', role_bendahara: 'Treasurer', role_anggota: 'Member', you: '(you)',
     materials_desc: 'Learning modules and references for club members.',
     admin_search_placeholder: 'Search by name, email, or class…',
@@ -316,6 +333,13 @@ const I18N = {
     idx_branch_rob_sub: 'Focus on robot engineering, programming, and competitions. This module provides exploration into various fields such as microcontrollers, game development, web development, smart AI usage, and automation logic.',
     idx_branch_sci_sub: 'Focus on research practice, experiments, and scientific papers. Members develop hypotheses, test new methodologies, and prepare for OPSI and other research competitions here.',
     idx_proker_heading: 'Activity Plan', idx_proker_sub: 'List of Robotics and Science activities for this school year. This feature outlines weekly targets and competition preparations.', idx_proker_cta: 'View Work Programs',
+    nav_faq: 'FAQ',
+    idx_faq_heading: 'Frequently Asked Questions', idx_faq_sub: 'Click a question to see the answer.',
+    idx_faq_q1: 'What is Orbit?', idx_faq_a1: 'Orbit is a centralized dashboard for KIR that brings together task tracking, scheduling, and team coordination for both branches, Robotics and Science, in one workspace.',
+    idx_faq_q2: 'What is KIR?', idx_faq_a2: 'KIR (Karya Ilmiah Remaja / Youth Scientific Work) is a school extracurricular with two branches, Robotics and Science, where members build things through engineering projects or scientific research.',
+    idx_faq_q3: 'How do I join?', idx_faq_a3: 'Click the Register button, fill in the registration form, then choose the branch you\u2019re interested in. An organizer will review your registration before your account is activated.',
+    idx_faq_q4: 'What does KIR usually do?', idx_faq_a4: 'Regular sessions run every Thursday for both branches. Robotics usually means messing around with C++ and building various projects, while Science is mostly discussion and experiments.',
+    idx_faq_q5: 'Does KIR have Tutoring?', idx_faq_a5: 'We do! Tutoring is one of our proud programs, where senior students teach STEM subjects to younger members. Orbit will soon be used for this too, complete with courses and classes built in.',
     idx_gallery_heading: 'Documentation', idx_gallery_sub: 'Archive of extracurricular activity photos in directory format. Access visual records from past events and laboratory experiment sessions.', idx_gallery_cta: 'Open Gallery',
     idx_scroll_hint: 'Scroll to view',
     idx_footer: 'KIR sets the gravity. Every extracurricular will orbit this core.',
@@ -1721,16 +1745,26 @@ function resolveBrandAssetName(type = 'icon') {
   const loggedIn = localStorage.getItem(KIR_SESSION_KEY) === 'true';
   const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
-  const disableBranchColor = localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
   const suffix = type === 'glow' ? '_glow' : '';
 
-  if (loggedIn && !disableBranchColor) {
-    if (cabang === 'robotik') return `assets/robotik${suffix}.PNG`;
-    if (cabang === 'sains') return `assets/sains${suffix}.PNG`;
-    if (cabang === 'both') return `assets/hybrid${suffix}.PNG`;
+  // Neutral kir mark: used for logged-out visitors, the "both"/hybrid
+  // cabang (no dedicated asset — it's the same plain mark, tinted purple
+  // via CSS accent vars rather than a separate image), and as the
+  // fallback. Inverted on purpose: light theme's white background needs
+  // the dark-inked logo, and vice versa.
+  const invertedTheme = theme === 'light' ? 'dark' : 'light';
+  const neutralName = `kir_${invertedTheme}${suffix}.PNG`;
+
+  // "Nonaktifkan Warna Cabang" only neutralizes accent colors (see
+  // tailwind-config.js / --accent-rgb overrides) — it has no bearing on
+  // which logo file loads, so it's deliberately not checked here.
+  if (loggedIn && cabang !== 'both') {
+    // Same inversion as the neutral logo above: light theme needs the
+    // dark-inked branded mark, dark theme needs the light-inked one.
+    if (cabang === 'robotik') return `assets/robotik_${invertedTheme}${suffix}.PNG`;
+    if (cabang === 'sains') return `assets/sains_${invertedTheme}${suffix}.PNG`;
   }
-  if (theme === 'light') return `assets/kir_dark${suffix}.PNG`;
-  return `assets/kir_light${suffix}.PNG`;
+  return `assets/${neutralName}`;
 }
 
 function kirApplyBrandAssets() {
@@ -1762,6 +1796,15 @@ function kirApplyTranslations() {
   });
   kirApplyPageTitle(lang);
   kirApplyBrandAssets();
+
+  // Not every piece of translated UI is covered by [data-i18n] — e.g.
+  // schedule.html's calendar grid (weekday headers, month title) is built
+  // by renderScheduleCalendar() using Intl.DateTimeFormat(locale, ...), so
+  // it needs an explicit re-render rather than a text-swap. Dispatch a
+  // page-agnostic event instead of reaching into page-specific globals
+  // here, so any page with its own locale-dependent rendering can listen
+  // and refresh itself.
+  window.dispatchEvent(new CustomEvent('kir:lang-changed', { detail: { lang } }));
 }
 
 /* ----------------------------------------------------------
