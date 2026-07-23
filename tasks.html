@@ -35,14 +35,14 @@
 <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
 <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 
-<div class="relative z-10 min-h-screen lg:flex">
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
 
   <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
     <a href="index.html" class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
       <span class="font-display font-semibold">KIR</span>
     </a>
-    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
@@ -58,14 +58,14 @@
     </div>
 
     <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">Individual</button>
-      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Ekstrakurikuler</button>
-      <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">Kelompok</button>
+      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm" data-i18n="admin_type_individual">Individual</button>
+      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_type_ekskul">Ekstrakurikuler</button>
+      <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_type_kelompok">Kelompok</button>
       
       <div class="w-px h-6 bg-white/10 mx-2"></div>
       
-      <button onclick="setCabangFilter('robotik')" id="filter-cabang-robotik" class="px-3 py-1 rounded-full badge-robotik opacity-50 transition">Robotik</button>
-      <button onclick="setCabangFilter('sains')" id="filter-cabang-sains" class="px-3 py-1 rounded-full badge-sains opacity-50 transition">Sains</button>
+      <button onclick="toggleCabangFilter('robotik')" id="filter-cabang-robotik" class="px-3 py-1 rounded-full badge-robotik transition" data-i18n="robotik">Robotik</button>
+      <button onclick="toggleCabangFilter('sains')" id="filter-cabang-sains" class="px-3 py-1 rounded-full badge-sains transition" data-i18n="sains">Sains</button>
     </div>
 
     <div id="task-list" class="space-y-3"><!-- filled by script below --></div>
@@ -90,12 +90,12 @@
         </div>
       </div>
       <p id="modal-meta" class="text-zinc-500 text-xs mb-4"></p>
-      <div class="mb-4 w-56 relative z-20">
-        <select id="modal-status-select" onchange="handleTaskStatusChange(this.value)" class="glass-input w-full rounded-lg px-3 py-2 text-sm text-zinc-100">
-          <option value="todo">Belum Dimulai</option>
-          <option value="progress">Sedang Dikerjakan</option>
-          <option value="review">Menunggu Peninjauan</option>
-          <option value="done">Selesai</option>
+      <div class="mb-4 relative z-20">
+        <select id="modal-status-select" onchange="handleTaskStatusChange(this.value)" data-trigger-class="kir-select-pill">
+          <option value="todo" data-i18n="status_todo">Belum Dimulai</option>
+          <option value="progress" data-i18n="status_progress">Sedang Dikerjakan</option>
+          <option value="review" data-i18n="status_review">Menunggu Peninjauan</option>
+          <option value="done" data-i18n="status_done">Selesai</option>
         </select>
       </div>
 
@@ -158,7 +158,7 @@
   }
 
   let currentTaskFilter = 'individual';
-  let currentCabangFilter = kirCurrentUserCabang() === 'both' ? 'all' : kirCurrentUserCabang();
+  let activeCabangFilters = kirCurrentUserCabang() === 'both' ? new Set(['robotik', 'sains']) : new Set([kirCurrentUserCabang()]);
 
   function setTaskFilter(filter) {
     currentTaskFilter = filter;
@@ -177,14 +177,21 @@
     renderTaskList();
   }
 
-  function setCabangFilter(cabang) {
-    currentCabangFilter = currentCabangFilter === cabang ? 'all' : cabang;
+  function toggleCabangFilter(cabang) {
+    if (activeCabangFilters.has(cabang)) {
+      activeCabangFilters.delete(cabang);
+    } else {
+      activeCabangFilters.add(cabang);
+    }
+    updateCabangFilterUI();
+    renderTaskList();
+  }
+
+  function updateCabangFilterUI() {
     ['robotik', 'sains'].forEach(c => {
       const btn = document.getElementById('filter-cabang-' + c);
-      if (!btn) return;
-      btn.classList.toggle('opacity-50', currentCabangFilter !== c);
+      if (btn) btn.classList.toggle('opacity-50', !activeCabangFilters.has(c));
     });
-    renderTaskList();
   }
 
   const STATUS_META = {
@@ -206,30 +213,41 @@
   }
 
   function renderTaskList() {
+    const lang = localStorage.getItem('kir_lang') || 'id';
     const list = document.getElementById('task-list');
+    // Status pill panels for cards live at document.body level (see
+    // kirRefreshCustomSelect) so they aren't clipped by a card's
+    // overflow-hidden/animated ancestor. Since the whole list below gets
+    // torn down and rebuilt, clear out those body-level panels too —
+    // otherwise tasks that drop out of the current filter leave orphaned
+    // hidden panels behind indefinitely. The ones for tasks still shown
+    // get recreated fresh a few lines down.
+    document.querySelectorAll('[id^="kir-select-panel-task-status-select-"]').forEach(p => p.remove());
 
     if (TASKS.length === 0) {
       list.innerHTML = `
         <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
           <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-          <p class="text-zinc-300 font-medium mb-1">Belum ada tugas di sini!</p>
-          <p class="text-zinc-500 text-sm">Santai dulu, atau cek materi untuk belajar hal baru sementara pengurus menyiapkan kegiatan selanjutnya.</p>
+          <p class="text-zinc-300 font-medium mb-1" data-i18n="empty_tasks_title">Belum ada tugas di sini!</p>
+          <p class="text-zinc-500 text-sm" data-i18n="empty_tasks_desc_none">Santai dulu, atau cek materi untuk belajar hal baru sementara pengurus menyiapkan kegiatan selanjutnya.</p>
         </div>`;
+      kirApplyTranslations();
       return;
     }
 
     const filtered = TASKS.filter(t =>
       t.type === currentTaskFilter &&
-      (currentCabangFilter === 'all' || t.cabang === currentCabangFilter || t.cabang === 'both')
+      (activeCabangFilters.has(t.cabang) || (t.cabang === 'both' && activeCabangFilters.size > 0))
     );
 
     if (filtered.length === 0) {
       list.innerHTML = `
         <div class="glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
           <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-          <p class="text-zinc-300 font-medium mb-1">Belum ada tugas di sini!</p>
-          <p class="text-zinc-500 text-sm">Coba ubah filter, atau cek lagi nanti.</p>
+          <p class="text-zinc-300 font-medium mb-1" data-i18n="empty_tasks_title">Belum ada tugas di sini!</p>
+          <p class="text-zinc-500 text-sm" data-i18n="empty_tasks_desc_filtered">Coba ubah filter, atau cek lagi nanti.</p>
         </div>`;
+      kirApplyTranslations();
       return;
     }
 
@@ -249,13 +267,12 @@
               <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
             </div>
             <div class="relative z-10 self-start sm:self-center shrink-0" onclick="event.stopPropagation();">
-              <select onchange="handleTaskStatusChange(this.value, '${t.id}')" ${!canSubmit ? 'disabled' : ''} class="text-xs font-medium pl-3 pr-7 py-1 rounded-full ${meta.cls} appearance-none cursor-pointer outline-none focus:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed w-full h-full">
-                <option value="todo" class="bg-zinc-900 text-zinc-300" ${userStatus === 'todo' ? 'selected' : ''}>Belum Dimulai</option>
-                <option value="progress" class="bg-zinc-900 text-zinc-300" ${userStatus === 'progress' ? 'selected' : ''}>Sedang Dikerjakan</option>
-                <option value="review" class="bg-zinc-900 text-zinc-300" ${userStatus === 'review' ? 'selected' : ''}>Menunggu Peninjauan</option>
-                <option value="done" class="bg-zinc-900 text-zinc-300" ${userStatus === 'done' ? 'selected' : ''}>Selesai</option>
+              <select id="task-status-select-${t.id}" onchange="handleTaskStatusChange(this.value, '${t.id}')" ${!canSubmit ? 'disabled' : ''} data-trigger-class="kir-select-pill ${meta.cls}">
+                <option value="todo" ${userStatus === 'todo' ? 'selected' : ''} data-i18n="status_todo">${I18N[lang].status_todo}</option>
+                <option value="progress" ${userStatus === 'progress' ? 'selected' : ''} data-i18n="status_progress">${I18N[lang].status_progress}</option>
+                <option value="review" ${userStatus === 'review' ? 'selected' : ''} data-i18n="status_review">${I18N[lang].status_review}</option>
+                <option value="done" ${userStatus === 'done' ? 'selected' : ''} data-i18n="status_done">${I18N[lang].status_done}</option>
               </select>
-              <svg class="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </div>
           </div>
         </div>`;
@@ -265,7 +282,14 @@
         onDelete: `confirmDeleteTask('${t.id}')`
       });
     }).join('');
-    
+
+    // Each card's status <select> above is just the data source now (kept
+    // hidden) — kirRefreshCustomSelect builds the real themed trigger +
+    // option panel next to it, same component every other dropdown on the
+    // site uses, instead of the browser's own native dropdown.
+    filtered.forEach(t => kirRefreshCustomSelect(`task-status-select-${t.id}`));
+    kirApplyTranslations();
+
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise();
     }
@@ -273,22 +297,39 @@
 
   let currentTaskId = null;
 
+  // Refreshes just one card's status pill in place — swaps the pill's
+  // color/label and re-syncs its custom dropdown, without touching the
+  // rest of the list's markup (so the entrance animation doesn't replay
+  // and the other cards don't flicker).
+  function updateTaskCardStatusPill(taskId) {
+    const selectEl = document.getElementById(`task-status-select-${taskId}`);
+    if (!selectEl) return; // card isn't in the current filter — nothing to update
+    const status = window.USER_STATUSES[taskId] || 'todo';
+    const meta = STATUS_META[status] || STATUS_META['todo'];
+    selectEl.value = status;
+    Array.from(selectEl.options).forEach(o => { o.selected = o.value === status; });
+    selectEl.dataset.triggerClass = `kir-select-pill ${meta.cls}`;
+    kirRefreshCustomSelect(`task-status-select-${taskId}`);
+  }
+
   async function handleTaskStatusChange(newStatus, taskId = currentTaskId) {
     if (!taskId) return;
     const { data: userData } = await supabaseClient.auth.getUser();
     if (!userData?.user) return;
 
     window.USER_STATUSES[taskId] = newStatus;
-    
+
+    updateTaskCardStatusPill(taskId);
+
     if (currentTaskId === taskId) {
       const selectEl = document.getElementById('modal-status-select');
       if (selectEl && selectEl.value !== newStatus) {
         selectEl.value = newStatus;
+        const meta = STATUS_META[newStatus] || STATUS_META['todo'];
+        selectEl.dataset.triggerClass = `kir-select-pill ${meta.cls}`;
         kirRefreshCustomSelect('modal-status-select');
       }
     }
-    
-    renderTaskList();
 
     const { error } = await supabaseClient.from('user_task_statuses').upsert({
       task_id: taskId,
@@ -321,15 +362,17 @@
     document.getElementById('modal-file-label-wrap').classList.toggle('hidden', !canSubmit);
     document.getElementById('modal-file-locked-note').classList.toggle('hidden', canSubmit);
     document.getElementById('modal-file-input').disabled = !canSubmit;
-    const meta = STATUS_META[task.status] || STATUS_META['todo'];
+    const userStatus = window.USER_STATUSES[task.id] || 'todo';
+    const meta = STATUS_META[userStatus] || STATUS_META['todo'];
     const formattedDue = task.due_date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(task.due_date)) : 'Tanpa Tenggat';
 
     document.getElementById('modal-title').textContent = task.title;
     document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">Ditugaskan ke</span> ${task.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}`;
     
     const selectEl = document.getElementById('modal-status-select');
-    selectEl.value = window.USER_STATUSES[task.id] || 'todo';
+    selectEl.value = userStatus;
     selectEl.disabled = !canSubmit;
+    selectEl.dataset.triggerClass = `kir-select-pill ${meta.cls}`;
     kirRefreshCustomSelect('modal-status-select');
     
     const trigger = selectEl.nextElementSibling?.querySelector('.kir-select-trigger');
@@ -366,7 +409,8 @@
     if (data) {
       el.innerHTML = `<span class="text-accent-300">&#10003; Terkirim:</span> <a href="${data.url || '#'}" target="_blank" class="text-zinc-300 hover:underline">${data.fileName}</a> <button onclick="clearSubmission()" class="text-zinc-600 hover:text-zinc-400 text-xs ml-2 underline">hapus</button>`;
     } else {
-      el.innerHTML = `<span class="text-zinc-500">Belum ada jawaban dikirim.</span>`;
+      el.innerHTML = `<span class="text-zinc-500" data-i18n="no_answer_submitted">Belum ada jawaban dikirim.</span>`;
+      kirApplyTranslations();
     }
   }
 
@@ -480,9 +524,7 @@
   kirRenderAdminFab({ onClick: () => openTaskAdminModal(null) });
 
   kirInjectSidebar('tasks');
-  if (currentCabangFilter !== 'all') {
-    document.getElementById('filter-cabang-' + currentCabangFilter)?.classList.remove('opacity-50');
-  }
+  updateCabangFilterUI();
   fetchTasksFromDatabase();
 </script>
 <script src="js/router.js"></script>

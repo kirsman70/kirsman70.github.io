@@ -78,6 +78,15 @@
     header.obt-header { padding-left: 2rem; padding-right: 1.625rem; }
   }
 
+  /* Below ~400px (small phones in portrait) the logo lockup's tagline
+     plus the Masuk/Daftar cluster no longer both fit on one line at a
+     readable size — drop the tagline first since the wordmark alone
+     already identifies the site, freeing width for the nav instead of
+     letting either cluster wrap or crowd the other. */
+  @media (max-width: 400px) {
+    .obt-header-tagline { display: none; }
+  }
+
   /* Center nav ("Beranda / Galeri / Program Kerja"): with the logo
      lockup and the auth/avatar cluster differing in width, distributing
      space with justify-between never actually lands the nav on the
@@ -576,22 +585,23 @@
   .obt-ring-group { view-transition-name: kir-ring; }
 
   @media (prefers-reduced-motion: no-preference) {
-    // ------------------------------------------------------------
-    // ::view-transition-group(root) was 0.55s with the browser's
-    // default easing, while ::view-transition-old/new(root) below
-    // are 0.5s with a custom cubic-bezier. The GROUP is what actually
-    // interpolates the snapshot's size/position (relevant whenever
-    // the two pages differ in height/scrollbar presence); the OLD/NEW
-    // pseudo-elements are what carry the opacity+translateX slide.
-    // With two different durations+easings racing each other, the
-    // slide finished and froze (both-fill) ~50ms before the container
-    // was done adjusting size/position — so for that last beat the
-    // page kept moving after its own translateX had already stopped,
-    // which reads as a jerk/stutter right at the tail of the
-    // navigation. Matching duration AND easing here means the
-    // container and the slide finish in the same frame, so the
-    // motion resolves as one continuous move instead of two
-    // slightly-offset ones.
+    /* ------------------------------------------------------------
+       ::view-transition-group(root) was 0.55s with the browser's
+       default easing, while ::view-transition-old/new(root) below
+       are 0.5s with a custom cubic-bezier. The GROUP is what actually
+       interpolates the snapshot's size/position (relevant whenever
+       the two pages differ in height/scrollbar presence); the OLD/NEW
+       pseudo-elements are what carry the opacity+translateX slide.
+       With two different durations+easings racing each other, the
+       slide finished and froze (both-fill) ~50ms before the container
+       was done adjusting size/position, so for that last beat the
+       page kept moving after its own translateX had already stopped,
+       which reads as a jerk/stutter right at the tail of the
+       navigation. Matching duration AND easing here means the
+       container and the slide finish in the same frame, so the
+       motion resolves as one continuous move instead of two
+       slightly-offset ones.
+       ------------------------------------------------------------ */
     ::view-transition-group(root) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
     ::view-transition-old(root) {
       animation: kir-vt-out 0.5s cubic-bezier(.2,.8,.2,1) both;
@@ -725,15 +735,6 @@
 
 <body class="obt-body antialiased relative">
 
-<svg width="0" height="0" style="position:absolute; overflow:hidden;" aria-hidden="true" focusable="false">
-  <defs>
-    <filter id="obt-corrupt-filter" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-      <feTurbulence id="obt-corrupt-turbulence" type="fractalNoise" baseFrequency="0.004" numOctaves="2" seed="7" result="obt-corrupt-noise-map" />
-      <feDisplacementMap id="obt-corrupt-displacement" in="SourceGraphic" in2="obt-corrupt-noise-map" scale="0" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </defs>
-</svg>
-
 <div class="obt-stars" id="obt-stars"></div>
 <div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="position:fixed; top:-16rem; left:-11rem;"></div>
 <div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="position:fixed; bottom:-13rem; right:-9rem;"></div>
@@ -752,7 +753,7 @@
           <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <span class="text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
+      <span class="obt-header-tagline text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
     </div>
   </a>
   <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
@@ -760,9 +761,9 @@
     <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
     <a href="program-kerja.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
   </nav>
-  <nav class="flex items-center gap-3 shrink-0">
-    <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-4 py-2" data-i18n="idx_login">Masuk</a>
-    <a href="auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+  <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
+    <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
   </nav>
 </header>
 
@@ -795,39 +796,6 @@
             <div class="obt-sphere-shade"></div>
           </div>
           <div class="obt-sphere-vignette"></div>
-
-          <!-- Corruption event layers: pure overlays driven by the
-               --corrupt / --corrupt-wire custom properties, see the
-               script at the end of the page. Hidden/inert until an
-               event fires. The wireframe is a real latitude/longitude
-               sphere so it reads as the planet's internal geometry,
-               not a flat grid pasted on top. -->
-          <div class="obt-corrupt" id="obt-corrupt" aria-hidden="true">
-            <svg class="obt-corrupt-wireframe" viewBox="0 0 100 100" focusable="false">
-              <g class="wire-core">
-                <circle class="wire-line" cx="50" cy="50" r="48" />
-                <circle cx="50" cy="50" r="6" fill="rgb(var(--accent-light-rgb))" />
-              </g>
-              <g class="wire-latitudes">
-                <ellipse class="wire-line" cx="50" cy="50" rx="48" ry="10.6" />
-                <ellipse class="wire-line" cx="50" cy="26" rx="41.6" ry="9.2" />
-                <ellipse class="wire-line" cx="50" cy="74" rx="41.6" ry="9.2" />
-                <ellipse class="wire-line" cx="50" cy="8.4" rx="24" ry="5.3" />
-                <ellipse class="wire-line" cx="50" cy="91.6" rx="24" ry="5.3" />
-              </g>
-              <g class="wire-meridians">
-                <line class="wire-line" x1="50" y1="2" x2="50" y2="98" />
-                <ellipse class="wire-line" cx="50" cy="50" rx="27.5" ry="48" />
-                <ellipse class="wire-line" cx="50" cy="50" rx="43.5" ry="48" />
-              </g>
-            </svg>
-            <div class="obt-corrupt-scan"></div>
-            <div class="obt-corrupt-noise"></div>
-            <div class="obt-corrupt-ghost obt-corrupt-ghost-r"></div>
-            <div class="obt-corrupt-ghost obt-corrupt-ghost-c"></div>
-            <div class="obt-corrupt-slice obt-corrupt-slice-a"></div>
-            <div class="obt-corrupt-slice obt-corrupt-slice-b"></div>
-          </div>
         </div>
       </div>
 
@@ -840,11 +808,11 @@
         </button>
         <button type="button" class="obt-node glass" data-angle="72" data-scene="fitur">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          <span class="obt-node-label">Fitur</span>
+          <span class="obt-node-label" data-i18n="nav_fitur">Fitur</span>
         </button>
         <button type="button" class="obt-node glass" data-angle="144" data-scene="cabang">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
-          <span class="obt-node-label">Cabang</span>
+          <span class="obt-node-label" data-i18n="nav_cabang">Cabang</span>
         </button>
         <button type="button" class="obt-node glass" data-angle="216" data-scene="proker">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -863,12 +831,11 @@
 
       <div class="obt-panel is-active" data-scene="beranda">
         <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 05</span></p>
-        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4">
-          <span class="hero-gradient">Satu orbit,</span>
-          <span class="block">semua program kerja ekskul kamu.</span>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient" data-i18n="idx_hero_title">
+          “In Harmonia Innovatio”
         </h1>
-        <p class="text-zinc-400 text-sm mb-7">
-          Kalender kegiatan, tanggung jawab tiap anggota, dan progres cabang kamu &mdash; semuanya berputar rapi di satu tempat.
+        <p class="text-zinc-400 text-sm mb-7" data-i18n="idx_hero_subtitle">
+          Platform generasi baru KIR. Semua eksplorasi, penemuan, dan kegiatan ekstrakurikuler terjadi di sini.
         </p>
         <div class="flex flex-wrap items-center gap-3">
           <a href="auth.html?tab=register" id="hero-cta-primary" class="rounded-lg px-6 py-3 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="idx_cta_1">Mulai sekarang</a>
@@ -878,27 +845,27 @@
 
       <div class="obt-panel" data-scene="fitur">
         <p class="obt-eyebrow">FITUR <span class="obt-eyebrow-count">02 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5">Semua beres, satu pandangan.</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
         <div>
           <div class="obt-feat-row">
             <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
             <div>
-              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat1_title">Tugas yang jelas</h3>
-              <p class="text-zinc-500 text-sm" data-i18n="idx_feat1_desc">Lihat siapa mengerjakan apa, tenggat waktunya, dan statusnya sekilas.</p>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat1_title">Pelacakan tugas</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat1_desc">Pantau penanggung jawab tugas, tenggat waktu, dan status penyelesaian setiap kegiatan. Sistem ini memastikan seluruh proyek berjalan sesuai rencana.</p>
             </div>
           </div>
           <div class="obt-feat-row">
             <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
             <div>
-              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat2_title">Jadwal acara</h3>
-              <p class="text-zinc-500 text-sm" data-i18n="idx_feat2_desc">Semua acara ekstrakurikuler tersusun rapi dalam satu linimasa yang mudah dibaca.</p>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat2_title">Jadwal ekstrakurikuler</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat2_desc">Susun kalender ekstrakurikuler dalam linimasa sentral. Modul ini mencegah bentrok jadwal latihan, rapat, dan kompetisi.</p>
             </div>
           </div>
           <div class="obt-feat-row">
             <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg></div>
             <div>
-              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat3_title">Tim yang sinkron</h3>
-              <p class="text-zinc-500 text-sm" data-i18n="idx_feat3_desc">Setiap anggota tahu apa yang terjadi tanpa harus bertanya berulang kali.</p>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat3_title">Koordinasi tim</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat3_desc">Fasilitasi anggota memahami alur kerja dan minimalkan miskomunikasi. Ruang kerja terpadu ini menampung laporan progres aktual.</p>
             </div>
           </div>
         </div>
@@ -909,37 +876,37 @@
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
           <div class="glass rounded-xl p-4">
-            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik">Robotik</span>
-            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_rob_sub">Untuk anggota yang fokus di rancang bangun, pemrograman, dan kompetisi robot.</p>
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik" data-i18n="robotik">Robotik</span>
+            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_rob_sub">Fokus pada kegiatan rancang bangun, pemrograman, dan kompetisi robot. Modul ini menyediakan ruang eksplorasi ke berbagai bidang seperti mikrokontroler, pengembangan game, pengembangan web, pemanfaatan AI cerdas, dan logika otomasi.</p>
           </div>
           <div class="glass rounded-xl p-4">
-            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-sains">Sains</span>
-            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_sci_sub">Untuk anggota yang fokus di riset, eksperimen, dan karya tulis ilmiah.</p>
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-sains" data-i18n="sains">Sains</span>
+            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_sci_sub">Fokus pada praktik riset, eksperimen, dan penulisan karya ilmiah. Anggota mengembangkan hipotesis, menguji metodologi baru, serta mempersiapkan diri untuk OPSI dan kompetisi penelitian lainnya di sini.</p>
           </div>
         </div>
-        <p class="text-zinc-600 text-xs" data-i18n="idx_branch_sub">Pilih salah satu atau keduanya saat mendaftar. Dasbor akan secara otomatis menyesuaikan tampilannya dengan warna cabang pilihanmu.</p>
+        <p class="text-zinc-600 text-xs" data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</p>
       </div>
 
       <div class="obt-panel" data-scene="proker">
         <p class="obt-eyebrow">PROGRAM KERJA <span class="obt-eyebrow-count">04 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4">Rencana kerja, tersusun rapi.</h2>
-        <p class="text-zinc-500 text-sm mb-7">Dari latihan rutin mingguan sampai kompetisi tingkat regional &mdash; lihat rencana lengkap kedua cabang untuk tahun ajaran ini.</p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
         <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
-          Lihat Program Kerja
+          <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
         </a>
       </div>
 
       <div class="obt-panel" data-scene="galeri">
         <p class="obt-eyebrow">GALERI <span class="obt-eyebrow-count">05 / 05</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4">Dokumentasi tiap kegiatan.</h2>
-        <p class="text-zinc-500 text-sm mb-7">Foto acara dan kegiatan tiap cabang, tersimpan rapi layaknya folder di komputer kamu.</p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
         <div class="flex flex-wrap items-center gap-3">
           <a href="gallery.html" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition">
-            Buka Galeri
+            <span data-i18n="idx_gallery_cta">Buka Galeri</span>
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </a>
-          <a href="auth.html?tab=register" id="final-cta" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">Daftar Sekarang</a>
+          <a href="auth.html?tab=register" id="final-cta" data-i18n="proker_cta_btn" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">Daftar Sekarang</a>
         </div>
       </div>
 
@@ -950,7 +917,7 @@
     <span class="obt-hint-icon">
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
     </span>
-    <span>Gulir untuk menjelajah orbit</span>
+    <span data-i18n="idx_scroll_hint">Gulir untuk melihat</span>
   </div>
 
   <div class="obt-progress">
@@ -972,7 +939,7 @@
 </main>
 
 <footer class="obt-footer-mini max-w-7xl mx-auto w-full px-4 sm:px-8 py-3 text-[11px] text-zinc-600 text-center sm:text-left" data-i18n="idx_footer">
-  KIR - Karya Ilmiah Remaja, dibuat untuk ekstrakurikuler kampus.
+  KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.
 </footer>
 
 <script>
@@ -993,13 +960,14 @@
     ctaLink.removeAttribute('data-i18n');
     ctaLink.href = 'dashboard.html';
 
-    heroPrimary.textContent = 'Buka Dasbor Kamu';
-    heroPrimary.removeAttribute('data-i18n');
+    heroPrimary.textContent = I18N[lang].idx_open_dashboard_hero;
+    heroPrimary.setAttribute('data-i18n', 'idx_open_dashboard_hero');
     heroPrimary.href = 'dashboard.html';
 
     heroSecondary.remove();
 
     finalCta.textContent = I18N[lang].idx_open_dashboard;
+    finalCta.setAttribute('data-i18n', 'idx_open_dashboard');
     finalCta.href = 'dashboard.html';
 
     kirRenderUserChrome();
@@ -1020,165 +988,6 @@
       html += `<span data-dust-angle="${angle.toFixed(2)}" data-dust-wobble="${wobble}"></span>`;
     }
     wrap.innerHTML = html;
-  })();
-
-  /* ----------------------------------------------------------
-     Corruption event: Jupiter occasionally glitches, and its surface
-     briefly dissolves away to reveal the wireframe sphere underneath,
-     then reconstructs. Everything about an occurrence (timing,
-     duration, intensity, distortion pattern) is randomized so no two
-     events feel identical, and the whole system is a no-op under
-     prefers-reduced-motion or while the tab isn't visible.
-     ---------------------------------------------------------- */
-  (function () {
-    const inner = document.getElementById('obt-sphere-inner');
-    const wireframe = inner && inner.querySelector('.obt-corrupt-wireframe');
-    const turbulence = document.getElementById('obt-corrupt-turbulence');
-    const displacement = document.getElementById('obt-corrupt-displacement');
-    if (!inner || !wireframe || !turbulence || !displacement) return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const rand = (min, max) => min + Math.random() * (max - min);
-    const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    let timerId = null;
-    let rafId = null;
-    let running = false;
-
-    function setVars(corrupt, wire) {
-      inner.style.setProperty('--corrupt', corrupt.toFixed(3));
-      inner.style.setProperty('--corrupt-wire', wire.toFixed(3));
-    }
-
-    function scheduleNext() {
-      clearTimeout(timerId);
-      if (document.hidden) return; // resumes from the visibilitychange handler below
-      // Two blended randoms read a little more organic than a flat
-      // uniform range, so occurrences cluster loosely around the middle
-      // of the window instead of feeling evenly, mechanically spaced.
-      // Frequent enough that most visitors will catch one without a
-      // long wait, while staying unpredictable.
-      const span = rand(5000, 10000) + rand(0, 4000);
-      timerId = setTimeout(runEvent, span);
-    }
-
-    function runEvent() {
-      if (running || document.hidden) { scheduleNext(); return; }
-      running = true;
-      inner.classList.add('is-corrupting');
-
-      // Randomize this occurrence's whole character.
-      const totalMs = rand(2300, 4200);
-      const buildEnd = rand(0.26, 0.4);
-      const holdEnd = buildEnd + rand(0.1, 0.2);
-      const peak = rand(0.45, 0.82);
-      const seed = Math.round(rand(1, 999));
-      const baseFreqPeak = rand(0.01, 0.026);
-      const dispScalePeak = rand(10, 26);
-      const jitterDir = Math.random() < 0.5 ? -1 : 1;
-      const hue = Math.round(rand(-25, 25));
-      const sliceDir = Math.random() < 0.5 ? -1 : 1;
-      // How much the wireframe reveal lags behind the surface dissolve
-      // each frame (lower = slower catch-up = more visible "structure
-      // reconstructing" lag). Randomized so events don't all read the
-      // same way.
-      const wireLerp = rand(0.06, 0.13);
-
-      turbulence.setAttribute('seed', String(seed));
-      inner.style.setProperty('--corrupt-hue', hue + 'deg');
-      inner.style.setProperty('--corrupt-slice-dir', String(sliceDir));
-
-      const start = performance.now();
-      let wireVal = 0;
-
-      function frame(now) {
-        const elapsed = now - start;
-        const t = elapsed / totalMs;
-
-        if (t >= 1 || document.hidden) {
-          setVars(0, 0);
-          turbulence.setAttribute('baseFrequency', '0.004');
-          displacement.setAttribute('scale', '0');
-          inner.style.transform = '';
-          wireframe.style.transform = '';
-          inner.classList.remove('is-corrupting');
-          running = false;
-          scheduleNext();
-          return;
-        }
-
-        let envelope;
-        if (t < buildEnd) {
-          envelope = easeInOutCubic(t / buildEnd);
-        } else if (t < holdEnd) {
-          envelope = 1;
-        } else {
-          envelope = 1 - easeInOutCubic((t - holdEnd) / (1 - holdEnd));
-        }
-
-        // A light, smoothed flicker layered on top of the envelope so
-        // the peak isn't perfectly flat, like a signal that can't
-        // quite hold steady, and so the surface reads as breaking
-        // apart rather than cleanly fading.
-        const flicker = 1 + Math.sin(elapsed * 0.045 + seed) * 0.06 + Math.sin(elapsed * 0.017 + seed * 2) * 0.04;
-        const intensity = Math.max(0, Math.min(1, envelope * flicker)) * peak;
-
-        // The wireframe trails the surface dissolve by a beat (simple
-        // exponential smoothing), so the structure visibly reveals
-        // itself after the surface strips away, and visibly finishes
-        // reconstructing a moment after the surface returns.
-        wireVal += (intensity - wireVal) * wireLerp;
-
-        setVars(intensity, Math.max(0, Math.min(1, wireVal)));
-        turbulence.setAttribute('baseFrequency', (0.003 + baseFreqPeak * intensity).toFixed(4));
-        displacement.setAttribute('scale', (dispScalePeak * intensity).toFixed(2));
-
-        const jx = Math.sin(elapsed * 0.09 + seed) * 2.4 * intensity * jitterDir;
-        const jy = Math.cos(elapsed * 0.07 + seed * 1.3) * 1.5 * intensity;
-        inner.style.transform = `translate(${jx.toFixed(2)}px, ${jy.toFixed(2)}px)`;
-
-        // Subtle geometric skew on the wireframe itself, distinct from
-        // the pixel-level turbulence displacement above, so the
-        // "internal structure" feels like it's under its own strain.
-        const skx = Math.sin(elapsed * 0.06 + seed * 1.7) * 1.4 * wireVal;
-        const sky = Math.cos(elapsed * 0.05 + seed * 0.8) * 1.1 * wireVal;
-        wireframe.style.transform = `skew(${skx.toFixed(2)}deg, ${sky.toFixed(2)}deg)`;
-
-        rafId = requestAnimationFrame(frame);
-      }
-
-      rafId = requestAnimationFrame(frame);
-    }
-
-    function onVisibilityChange() {
-      if (document.hidden) {
-        clearTimeout(timerId);
-        cancelAnimationFrame(rafId);
-        setVars(0, 0);
-        inner.style.transform = '';
-        wireframe.style.transform = '';
-        inner.classList.remove('is-corrupting');
-        running = false;
-      } else {
-        scheduleNext();
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // This whole inline <script> re-runs via eval() every time the router
-    // brings you back to this page (see router.js), which would otherwise
-    // register a second (third, fourth, ...) copy of this listener and
-    // leave the previous copy's timer/rAF loop running forever in the
-    // background. Undo exactly what this instance registered, once, the
-    // moment the router is about to swap this page away.
-    window.addEventListener('kir:teardown', () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      clearTimeout(timerId);
-      cancelAnimationFrame(rafId);
-    }, { once: true });
-
-    scheduleNext();
   })();
 
   /* ----------------------------------------------------------

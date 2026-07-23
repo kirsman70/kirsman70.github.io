@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+  /* Same pan/zoom viewport treatment as members.html — kept as its
+     own copy here (rather than sharing selectors) since Nexus will
+     likely grow its own canvas content that isn't org-chart shaped. */
+  #chart-viewport {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    background-position: 0px 0px;
+  }
+  #chart-viewport.dragging { cursor: grabbing; }
+
+  [data-theme="light"] #chart-viewport {
+    background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+  }
+
+  #chart-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .chart-ctrl-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+  }
+  .chart-ctrl-btn:hover { background: rgba(128,128,128,0.12); }
+  .chart-ctrl-btn:active { transform: scale(0.94); }
+
+  .chart-hint {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Fullscreen mode: viewport fills the screen, corners go square,
+     canvas gets re-centered by chartResetView() on the resulting
+     resize event (see initChartInteractions). */
+  #chart-viewport:fullscreen,
+  #chart-viewport:-webkit-full-screen {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+  }
+  #chart-viewport:fullscreen .chart-hint,
+  #chart-viewport:-webkit-full-screen .chart-hint {
+    bottom: 1rem;
+    left: 1.25rem;
+  }
+
+  /* ---------- Nexus graph: nodes & connectors ---------- */
+  #nexus-workspace {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  #chart-viewport {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #nexus-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .nexus-edge {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  /* Optional side branches (extra practice voyages, etc.) get a
+     dashed, slightly softer line so they read as "not required" next
+     to the solid main-progression curves. */
+  .nexus-edge-branch {
+    stroke-dasharray: 5 5;
+    opacity: 0.8;
+  }
+  .nexus-edge-dot {
+    fill: var(--bg-color, #0a0a0b);
+    stroke-width: 2.5;
+  }
+  /* A connector that just became visible (its node just finished, or
+     the far end just unlocked) draws itself in rather than appearing
+     instantly. pathLength="1" on the <path> normalizes its length to
+     1 unit so "1"/"0" dash values work regardless of the curve's
+     actual pixel length. */
+  .nexus-edge-animate {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: nexusEdgeDraw 0.75s ease forwards;
+  }
+  @keyframes nexusEdgeDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  .nexus-edge-dot-animate {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: nexusDotPop 0.3s ease forwards;
+    animation-delay: 0.6s;
+  }
+  @keyframes nexusDotPop {
+    from { opacity: 0; transform: scale(0.3); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .nexus-node {
+    position: absolute;
+    width: 15rem;
+  }
+  .nexus-node-inner {
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  [data-theme="light"] .nexus-node-inner {
+    background: rgba(255, 255, 255, 0.65);
+  }
+  .nexus-node-inner:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.55);
+  }
+  .nexus-node.is-selected .nexus-node-inner {
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Title bar — a soft frosted strip, tinted by node type */
+  .nexus-node-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid var(--glass-border);
+    border-radius: 1rem 1rem 0 0;
+  }
+  .nexus-node-header svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .nexus-node-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+  }
+  .nexus-node-icon-badge svg { width: 0.75rem !important; height: 0.75rem !important; }
+  .nexus-node-header-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(212, 212, 216, 0.8);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nexus-node-header-id {
+    font-size: 9.5px;
+    opacity: 0.4;
+    flex-shrink: 0;
+  }
+  .nexus-node-thumb {
+    height: 4.5rem;
+    background: rgba(128, 128, 128, 0.06);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .nexus-node-thumb svg { width: 1.4rem; height: 1.4rem; opacity: 0.5; }
+  .nexus-node-body { padding: 0.6rem 0.7rem 0.7rem; }
+  .nexus-node-title {
+    font-family: 'Inter', sans-serif;
+  }
+  .nexus-node-type svg { width: 0.85rem; height: 0.85rem; display: block; }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ---------- Per-node-type card treatments ----------
+     Each node type gets its own footer/CTA + a couple of layout
+     tweaks, on top of the shared .nexus-node-inner shell. Colors
+     stay inline (computed per-node in JS) since they can vary node
+     to node (see material color progression), not just by type. */
+  .nexus-node-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border-top: 1px solid var(--glass-border);
+  }
+  .nexus-node-meta {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .nexus-node-meta svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+  .nexus-node-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .nexus-node-action-btn svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+  .nexus-node-action-btn:hover { filter: brightness(1.15); }
+  .nexus-node-action-btn:active { transform: scale(0.95); }
+
+  /* Course — the hub node. Bigger footprint, richer header/thumb,
+     a stats row + overall progress bar instead of a single CTA. */
+  .nexus-card-course .nexus-node-header { padding: 0.55rem 0.8rem; }
+  .nexus-card-course .nexus-node-header svg { width: 1rem; height: 1rem; }
+  .nexus-card-course .nexus-node-header-label { font-size: 10.5px; }
+  .nexus-card-course .nexus-node-thumb { height: 6rem; }
+  .nexus-card-course .nexus-node-thumb svg { width: 2.1rem; height: 2.1rem; }
+  .nexus-card-course .nexus-node-body { padding-bottom: 0.4rem; }
+  .nexus-card-course .nexus-node-title { font-size: 0.95rem; }
+  .nexus-course-stats {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0 0.7rem 0.6rem;
+  }
+  .nexus-course-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.9);
+  }
+  .nexus-course-stat svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .nexus-progress-track {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+    margin: 0 0.7rem 0.75rem;
+  }
+  .nexus-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  /* Course — hub node gets a circular icon medallion in its header
+     (instead of a plain inline glyph) plus a heavier border, on top
+     of its already-larger footprint/stats/progress bar, so it reads
+     unmistakably as "the anchor" of the whole graph. */
+  .nexus-card-course .nexus-node-inner { border-width: 1.5px; }
+  .nexus-course-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .nexus-course-icon-badge svg { width: 0.9rem !important; height: 0.9rem !important; }
+
+  /* Module — a chapter divider, not a piece of content: no thumb, no
+     footer/CTA, just a numbered chip in a slim dashed-border strip so
+     it visually reads as organizing structure rather than a lesson to
+     open. Height/width fall out of its own content instead of
+     matching the content-node shell. See nexusNodeCardHtml's
+     module-specific branch for the markup this styles. */
+  .nexus-card-module .nexus-node-inner { border-style: dashed; }
+  .nexus-module-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 0.85rem;
+  }
+  .nexus-module-number {
+    font-size: 0.85rem;
+    font-weight: 700;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+  .nexus-module-text { min-width: 0; flex: 1 1 auto; }
+  .nexus-module-text .nexus-node-title { -webkit-line-clamp: unset; line-clamp: unset; display: block; overflow: visible; }
+
+  /* Material — compact thumb, meta (duration) + "Buka Materi" CTA,
+     plus a page/document motif: a colored spine along the card's
+     left edge and a folded-corner triangle in the top-right of the
+     thumbnail, evoking a printed page rather than a generic tile. */
+  .nexus-card-material .nexus-node-thumb { height: 3.75rem; }
+  .nexus-card-material .nexus-node-inner { border-left-width: 3px; }
+  .nexus-material-foldcorner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 1.1rem 1.1rem 0;
+    border-color: transparent currentColor transparent transparent;
+    opacity: 0.4;
+  }
+
+  /* Voyages — compact thumb, meta (question count) + "Mulai Voyage"
+     CTA. Plain thumb, no extra motif needed — a voyage is just a set
+     of questions, not a group activity. */
+  .nexus-card-voyage .nexus-node-thumb { height: 3.75rem; }
+
+  /* Flag — the final exam, a reskin of voyage group's footer, but
+     with its own silhouette: a pennant notch clipped out of the
+     bottom-right corner (like a torn flag edge) plus a thin
+     checkered ribbon under the header, so it stands out as "the big
+     one" rather than a routine voyage. */
+  .nexus-card-flag .nexus-node-thumb { height: 3.75rem; }
+  .nexus-card-flag .nexus-node-inner {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  }
+  .nexus-flag-ribbon {
+    height: 6px;
+    background-image: repeating-linear-gradient(45deg, currentColor 0 6px, transparent 6px 12px);
+    opacity: 0.45;
+  }
+
+  /* Connector ports — little pins poking out of the top/bottom edge,
+     the same visual language as Unity's input/output sockets. */
+  .nexus-port {
+    position: absolute;
+    left: 50%;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-left: -0.3rem;
+    border-radius: 50%;
+    border: 2px solid var(--bg-color, #0a0a0b);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    z-index: 2;
+  }
+  .nexus-port-in { top: -0.3rem; }
+  .nexus-port-out { bottom: -0.3rem; }
+  /* Side ports for branch connections (optional nodes hanging off to
+     the left/right of their anchor) — same pin, just rotated onto the
+     card's side edge instead of top/bottom. */
+  .nexus-port-left { left: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+  .nexus-port-right { left: auto; right: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+
+  /* "Opsional" pill in the header of a branch node — dashed border to
+     echo the dashed connector leading into it. */
+  .nexus-node-optional-badge {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    border: 1px dashed;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ---------- Progress state: completed / current / locked ----------
+     Every node carries a `state` (see applyNexusProgressState) driving
+     one of these three looks. Completed/current stay fully visible —
+     just a status pill in the header — since those are exactly what
+     the person already has access to. Locked is the interesting one:
+     rather than removing the card or graying text, a full blurred
+     dark overlay sits over the whole card, hiding title/description/
+     thumb/CTA completely while the card's shape, port, and position
+     in the graph stay put — so the overall course structure still
+     reads at a glance, just without spoiling what's in it. */
+  .nexus-node-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .nexus-node-status-icon svg { width: 0.65rem; height: 0.65rem; display: block; }
+
+  .nexus-node.is-current .nexus-node-inner {
+    box-shadow: 0 0 0 2px var(--nexus-current-glow, rgba(255,255,255,0.4)), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  .nexus-node.is-locked .nexus-node-inner { cursor: default; }
+  .nexus-node.is-locked .nexus-node-inner:hover {
+    border-color: var(--glass-border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 26px -14px rgba(0,0,0,0.65);
+  }
+  .nexus-node-lock-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: rgba(6, 6, 8, 0.82);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+  [data-theme="light"] .nexus-node-lock-overlay { background: rgba(20, 20, 24, 0.72); }
+  /* One-shot: plays once on the render where a node transitions out
+     of locked, then the element is gone by the next render (a fresh
+     card without this class). forwards keeps it invisible/inert at
+     the end instead of snapping back to opaque after the keyframe. */
+  .nexus-node-lock-overlay.nexus-lock-fading {
+    animation: nexusLockFade 0.7s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes nexusLockFade {
+    0% { opacity: 1; filter: blur(0); }
+    100% { opacity: 0; filter: blur(3px); }
+  }
+  .nexus-node-lock-overlay svg { width: 1.15rem; height: 1.15rem; opacity: 0.55; color: #e5e7eb; }
+  .nexus-node-lock-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  /* ---------- Inspector panel (NOT a modal — graph stays visible/interactive) ---------- */
+  #nexus-inspector {
+    flex: 0 0 0px;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    align-self: stretch;
+    height: 75vh;
+    min-height: 460px;
+    transition: flex-basis 0.22s ease, width 0.22s ease, opacity 0.18s ease;
+  }
+  #nexus-inspector.open {
+    flex: 0 0 21rem;
+    width: 21rem;
+    opacity: 1;
+  }
+  #nexus-inspector-body { width: 21rem; height: 100%; overflow-y: auto; }
+  .nexus-inspector-thumb {
+    height: 9rem;
+    border-radius: 0.75rem;
+    background: rgba(128, 128, 128, 0.08);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border);
+  }
+  .nexus-inspector-thumb svg { width: 2.25rem; height: 2.25rem; opacity: 0.5; }
+  .nexus-relation-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-input-bg);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+  }
+  .nexus-relation-chip:hover { background: rgba(128,128,128,0.1); }
+
+  @media (max-width: 1023px) {
+    #nexus-workspace { position: relative; }
+    #nexus-inspector {
+      position: fixed;
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      width: auto;
+      flex: none;
+      height: auto;
+      max-height: 65vh;
+      min-height: 0;
+      transform: translateY(calc(100% + 1rem));
+      opacity: 1;
+      z-index: 30;
+      transition: transform 0.25s ease;
+    }
+    #nexus-inspector.open { transform: translateY(0); }
+    #nexus-inspector-body { width: auto; }
+  }
+</style>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+<div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+<div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
+      <span class="font-display font-semibold">KIR</span>
+    </a>
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <div class="mb-7">
+      <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="nexus">Nexus</h1>
+    </div>
+
+    <!-- Pannable/zoomable canvas + side inspector -->
+    <div id="nexus-workspace">
+      <div id="chart-viewport" class="glass rounded-2xl relative overflow-hidden" style="height: 75vh; min-height: 460px;">
+
+        <div class="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
+          <button onclick="chartZoom(1.15)" class="chart-ctrl-btn" title="Perbesar">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          </button>
+          <button onclick="chartZoom(1/1.15)" class="chart-ctrl-btn" title="Perkecil">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15" /></svg>
+          </button>
+          <button onclick="chartResetView()" class="chart-ctrl-btn" title="Reset tampilan">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-5M20 15a8 8 0 01-14 5" /></svg>
+          </button>
+          <button onclick="chartToggleFullscreen()" class="chart-ctrl-btn" id="fullscreen-btn" title="Layar penuh">
+            <svg id="fullscreen-icon-expand" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m18 0V5a2 2 0 00-2-2h-4m0 18h4a2 2 0 002-2v-4M3 15v4a2 2 0 002 2h4" /></svg>
+            <svg id="fullscreen-icon-collapse" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9H5m0 0V5m0 4l5-5m5 5h4m0 0V5m0 4l-5-5M9 15H5m0 0v4m0-4l5 5m5-5h4m0 0v4m0-4l-5 5" /></svg>
+          </button>
+        </div>
+
+        <p class="chart-hint absolute bottom-3 left-4 z-20 text-[11px] text-zinc-500" data-i18n="chart_hint">Geser untuk menjelajah</p>
+
+        <div id="chart-canvas">
+          <svg id="nexus-lines"></svg>
+          <div id="nexus-graph"><!-- nodes rendered by script --></div>
+        </div>
+      </div>
+
+      <aside id="nexus-inspector" class="glass rounded-2xl relative">
+        <div id="nexus-inspector-body" class="p-5"><!-- filled by script --></div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script>
+  /* ---------- Nexus graph data ----------
+     Renderer only understands `nodes` + `edges`. Each node has at
+     most one parent (course progression tree, not a general DAG),
+     so a simple layered layout is enough — no graph-solving needed. */
+  /* ---------- Graph content ----------
+     Authored as one course + a list of module "paths" instead of a
+     flat node/edge list. Each path is: a module, then a chain of
+     steps (material/voyage_group/flag, in any order/length/mix —
+     nothing here assumes "materials then one voyage" or "ends in a
+     flag"), where any step can carry its own `branches`: optional
+     side nodes hung off that step (extra practice voyages, alternate
+     exams, whatever), never part of the required top-down chain.
+     buildNexusGraph() below compiles this into the flat
+     {nodes, edges} shape the renderer/layout already understand — so
+     adding a module, extending a path, adding a branch, or gating a
+     path behind its own flag is purely a config edit here; nothing
+     downstream (computeNexusLayout, nexusNodeColor, render, connectors)
+     needs to change.
+
+     NEXUS_COURSE/NEXUS_PATHS below are a PLACEHOLDER — no real course
+     exists yet, so this isn't teaching anything. It's a guide: every
+     supported shape (a plain material chain, a required voyage, a
+     voyage with optional side-branches, those branches converging
+     into an optional exam, and a module ending in its own flag vs.
+     the course-level final flag) is demonstrated once so it's obvious
+     what to replace with a real course's content. Delete/replace this
+     whole block once real data exists. */
+  const NEXUS_COURSE = {
+    id: 'course-1',
+    title: 'Nama Course Anda',
+    description: 'Ini adalah course contoh, bukan course sungguhan — gunakan strukturnya sebagai panduan. Ganti judul dan deskripsi ini, lalu isi setiap modul di bawah dengan materi Anda.',
+    progress: 0.12 // reflects being partway in: module-1 through material-2 done, currently on voyage-1
+  };
+
+  const NEXUS_PATHS = [
+    {
+      // Modul biasa: rantai materi berurutan, ditutup satu voyage
+      // wajib. Ganti isi module/steps ini dengan modul pertama Anda.
+      module: {
+        id: 'module-1',
+        title: 'Modul 1: Nama Modul',
+        description: 'Setiap modul adalah satu bab: rantai materi (berapa pun jumlahnya) yang berurutan, biasanya ditutup satu voyage.'
+      },
+      steps: [
+        {
+          id: 'material-1', type: 'material', title: 'Materi 1: Ganti dengan judul materi',
+          description: 'Materi adalah satu unit bacaan/video. Ganti judul, deskripsi, dan durasi ini dengan materi sungguhan.',
+          duration: '.. menit'
+        },
+        {
+          id: 'material-2', type: 'material', title: 'Materi 2: Ganti dengan judul materi',
+          description: 'Materi boleh berjumlah lebih dari satu, tersusun berurutan sebelum voyage/flag berikutnya.',
+          duration: '.. menit'
+        },
+        {
+          id: 'voyage-1', type: 'voyage_group', title: 'Voyage Wajib: Ganti dengan judul voyage',
+          description: 'Voyage adalah kumpulan soal latihan yang wajib diselesaikan untuk lanjut ke modul berikutnya.',
+          questionInfo: '.. soal',
+          // Contoh cabang opsional: latihan tambahan yang tidak wajib,
+          // ditawarkan di samping voyage wajib di atas. Tambah/hapus
+          // entri di sini untuk mengubah jumlah voyage opsionalnya.
+          branches: [
+            { id: 'voyage-1b', title: 'Voyage Opsional A', description: 'Contoh voyage opsional — latihan tambahan di luar materi wajib. Ganti atau hapus.', questionInfo: '.. soal' },
+            { id: 'voyage-1c', title: 'Voyage Opsional B', description: 'Contoh voyage opsional lain. Jumlahnya bebas, tidak harus tiga.', questionInfo: '.. soal' },
+            { id: 'voyage-1d', title: 'Voyage Opsional C', description: 'Contoh voyage opsional ketiga, hanya untuk menunjukkan pola cabangnya.', questionInfo: '.. soal' }
+          ],
+          // Contoh konvergensi: ketiga voyage opsional di atas
+          // menyatu kembali ke satu flag opsional, bukan masing-masing
+          // jadi jalan buntu sendiri-sendiri. Hapus `branchConverge`
+          // ini jika cabang opsional Anda tidak perlu berujung apa-apa.
+          branchConverge: {
+            id: 'flag-1b', type: 'flag', title: 'Flag Opsional: Ganti dengan judul ujian',
+            description: 'Contoh flag opsional yang baru muncul setelah ketiga voyage opsional di atas diselesaikan.',
+            examInfo: '.. menit'
+          }
+        }
+      ]
+    },
+    {
+      // Modul dengan flag sendiri: sebuah modul boleh ditutup ujian
+      // modulnya sendiri, tidak cuma mengandalkan flag akhir course.
+      module: {
+        id: 'module-2',
+        title: 'Modul 2: Nama Modul',
+        description: 'Contoh modul yang ditutup flag miliknya sendiri — tidak semua modul harus menunggu flag akhir course.'
+      },
+      steps: [
+        {
+          id: 'material-3', type: 'material', title: 'Materi 1: Ganti dengan judul materi',
+          description: 'Ganti dengan materi sungguhan milik modul ini.',
+          duration: '.. menit'
+        },
+        {
+          id: 'material-4', type: 'material', title: 'Materi 2: Ganti dengan judul materi',
+          description: 'Ganti dengan materi sungguhan milik modul ini.',
+          duration: '.. menit'
+        },
+        {
+          id: 'voyage-2', type: 'voyage_group', title: 'Voyage Wajib: Ganti dengan judul voyage',
+          description: 'Voyage wajib untuk modul ini, tanpa cabang opsional — contoh voyage paling sederhana.',
+          questionInfo: '.. soal'
+        },
+        {
+          id: 'flag-2', type: 'flag', title: 'Flag Modul: Ganti dengan judul ujian',
+          description: 'Ujian yang menutup modul ini saja, terpisah dari flag akhir course.',
+          examInfo: '.. menit'
+        }
+      ]
+    },
+    {
+      // Modul terakhir: ditutup flag akhir course, menandai
+      // penyelesaian seluruh course, bukan cuma satu modul.
+      module: {
+        id: 'module-3',
+        title: 'Modul 3: Nama Modul',
+        description: 'Modul terakhir dalam contoh ini, ditutup flag akhir yang menandai seluruh course selesai.'
+      },
+      steps: [
+        {
+          id: 'material-5', type: 'material', title: 'Materi 1: Ganti dengan judul materi',
+          description: 'Ganti dengan materi sungguhan milik modul ini.',
+          duration: '.. menit'
+        },
+        {
+          id: 'material-6', type: 'material', title: 'Materi 2: Ganti dengan judul materi',
+          description: 'Ganti dengan materi sungguhan milik modul ini.',
+          duration: '.. menit'
+        },
+        {
+          id: 'flag-1', type: 'flag', title: 'Flag Akhir: Ganti dengan judul ujian akhir',
+          description: 'Flag terakhir course — menandai keseluruhan course selesai, bukan cuma modul ini.',
+          examInfo: '.. menit'
+        }
+      ]
+    }
+  ];
+
+  /* Compiles {course, paths} into the flat {nodes, edges} shape the
+     renderer/layout expect. `branch` on a step's `branches` entries
+     can override the side ('left'/'right'); defaults to 'left' to
+     match the previous hand-authored graph. Every branch node is
+     implicitly `optional: true` and inherits its anchor step's type
+     (so a branch off a voyage_group step is itself a voyage_group,
+     a branch off a flag step would itself be a flag, etc.) unless
+     the branch entry sets its own `type`. A step's `branchConverge`
+     (optional) is a further node fed by every one of that step's
+     `branches`, on the same side — e.g. 3 optional voyages funneling
+     into one optional exam — rather than each branch being a dead end. */
+  function buildNexusGraph(course, paths) {
+    const nodes = [{ image: '', ...course, type: 'course' }];
+    const edges = [];
+    // Required-path order only — branch/converge nodes are optional
+    // side content, so they're deliberately left out of this list.
+    const mainOrder = [course.id];
+
+    paths.forEach(path => {
+      const moduleNode = { image: '', ...path.module, type: 'module' };
+      nodes.push(moduleNode);
+      edges.push({ from: course.id, to: moduleNode.id });
+      mainOrder.push(moduleNode.id);
+
+      let prevId = moduleNode.id;
+      path.steps.forEach(step => {
+        const { branches, branchConverge, ...stepFields } = step;
+        nodes.push({ image: '', ...stepFields });
+        edges.push({ from: prevId, to: step.id });
+        mainOrder.push(step.id);
+
+        let side = 'left';
+        (branches || []).forEach(branch => {
+          const { branch: branchSide, ...branchFields } = branch;
+          side = branchSide || side;
+          nodes.push({ image: '', type: step.type, ...branchFields, optional: true });
+          edges.push({ from: step.id, to: branch.id, branch: side });
+        });
+
+        if (branchConverge && branches && branches.length) {
+          const { branch: convergeSide, ...convergeFields } = branchConverge;
+          nodes.push({ image: '', ...convergeFields, optional: true });
+          branches.forEach(branch => {
+            edges.push({ from: branch.id, to: branchConverge.id, branch: convergeSide || side });
+          });
+        }
+
+        prevId = step.id;
+      });
+    });
+
+    return { nodes, edges, mainOrder };
+  }
+
+  const NEXUS_GRAPH = buildNexusGraph(NEXUS_COURSE, NEXUS_PATHS);
+
+  /* ---------- Progress state ----------
+     Marks every node `completed` / `current` / `available` / `locked`
+     relative to NEXUS_CURRENT_NODE_ID (the node itself) plus
+     NEXUS_COMPLETED_IDS (everything already finished) — a persistent
+     set, not something re-derived from currentId's ancestors on every
+     call. That matters because each module's path branches directly
+     off the course rather than chaining into the next module: if
+     "completed" were recomputed as just "ancestors of currentId" each
+     time, moving into module 2's path would make module 1's
+     already-finished path (which isn't an ancestor of anything in
+     module 2) flip back to locked.
+     Branch nodes (optional side content hanging off a step) are a
+     special case: they're not on the main chain at all, so they'd
+     otherwise stay locked forever. Instead each one unlocks
+     ("available", clickable, no blur) as soon as its anchor step is
+     completed — that's the step it hangs off — and a converge node
+     (fed by several branches at once) only unlocks once every one of
+     those branches is completed. Real per-user completion data would
+     replace this whole mechanism. */
+  let NEXUS_CURRENT_NODE_ID = 'voyage-1';
+  const NEXUS_COMPLETED_IDS = new Set();
+  (function seedInitialCompleted() {
+    const parentOf = {};
+    NEXUS_GRAPH.edges.filter(e => !e.branch).forEach(e => { parentOf[e.to] = e.from; });
+    let cursor = parentOf[NEXUS_CURRENT_NODE_ID];
+    while (cursor) {
+      NEXUS_COMPLETED_IDS.add(cursor);
+      cursor = parentOf[cursor];
+    }
+  })();
+
+  // nodeId -> ids of every node that has to be completed before it
+  // unlocks (its anchor step, or — for a converge node — all of the
+  // branches feeding into it).
+  const NEXUS_BRANCH_REQUIREMENTS = {};
+  NEXUS_GRAPH.edges.filter(e => e.branch).forEach(e => {
+    (NEXUS_BRANCH_REQUIREMENTS[e.to] = NEXUS_BRANCH_REQUIREMENTS[e.to] || []).push(e.from);
+  });
+
+  function applyNexusProgressState(graph, currentId, completedIds) {
+    graph.nodes.forEach(n => {
+      if (n.id === currentId) { n.state = 'current'; return; }
+      if (completedIds.has(n.id)) { n.state = 'completed'; return; }
+      const requirements = NEXUS_BRANCH_REQUIREMENTS[n.id];
+      n.state = requirements && requirements.every(id => completedIds.has(id)) ? 'available' : 'locked';
+    });
+    return graph;
+  }
+
+  applyNexusProgressState(NEXUS_GRAPH, NEXUS_CURRENT_NODE_ID, NEXUS_COMPLETED_IDS);
+
+  /* ---------- Temporary "finish this" progress control ----------
+     Placeholder for real completion tracking. Two entry points:
+     nexusAdvanceNode moves the main-chain cursor forward (used by the
+     required material/voyage/flag CTAs) — module nodes are pure
+     dividers with no CTA of their own, so landing on one is skipped
+     over automatically, and any module skipped this way is marked
+     completed too. nexusToggleOptionalComplete instead just flips one
+     optional branch/converge node's own completion on or off (it
+     isn't part of the main-chain cursor), so a converge node can be
+     unlocked by finishing all of the branches ahead of it. */
+  /* ---------- Finish animation ----------
+     Two things should animate instead of snapping when progress
+     changes: a node's lock overlay fading away as it unlocks, and the
+     connector into it drawing itself in — rather than both just
+     appearing instantly, which is what a full innerHTML re-render
+     would otherwise produce (fresh elements have no "before" state to
+     transition from). Both diff node state *before* vs *after* the
+     change: NEXUS_ANIM_UNLOCK_IDS is every node that was locked and
+     no longer is, NEXUS_ANIM_EDGE_KEYS is every edge index that was
+     hidden (either end locked) and is now visible. Recomputed fresh
+     on every call, so nothing lingers into later, unrelated renders. */
+  let NEXUS_ANIM_UNLOCK_IDS = new Set();
+  let NEXUS_ANIM_EDGE_KEYS = new Set();
+
+  function nexusCaptureStates() {
+    const m = {};
+    NEXUS_GRAPH.nodes.forEach(n => { m[n.id] = n.state; });
+    return m;
+  }
+
+  function nexusComputeTransitionAnimations(prevStates) {
+    NEXUS_ANIM_UNLOCK_IDS = new Set();
+    NEXUS_ANIM_EDGE_KEYS = new Set();
+    const byId = {};
+    NEXUS_GRAPH.nodes.forEach(n => { byId[n.id] = n; });
+
+    NEXUS_GRAPH.nodes.forEach(n => {
+      if (prevStates[n.id] === 'locked' && n.state !== 'locked') NEXUS_ANIM_UNLOCK_IDS.add(n.id);
+    });
+
+    NEXUS_GRAPH.edges.forEach((edge, i) => {
+      const wasHidden = prevStates[edge.from] === 'locked' || prevStates[edge.to] === 'locked';
+      const fromNode = byId[edge.from], toNode = byId[edge.to];
+      const isVisible = fromNode && toNode && fromNode.state !== 'locked' && toNode.state !== 'locked';
+      if (wasHidden && isVisible) NEXUS_ANIM_EDGE_KEYS.add(i);
+    });
+  }
+
+  function nexusRerenderWithAnimation() {
+    nexusCloseInspector();
+    renderNexusGraph();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        sizeNexusCanvas();
+        drawNexusConnectors();
+      });
+    });
+  }
+
+  function nexusAdvanceNode(nodeId) {
+    const order = NEXUS_GRAPH.mainOrder || [];
+    let idx = order.indexOf(nodeId);
+    if (idx === -1 || idx >= order.length - 1) return; // unknown node, or already at the end of the course
+
+    let nextIdx = idx + 1;
+    const byId = {};
+    NEXUS_GRAPH.nodes.forEach(n => { byId[n.id] = n; });
+    const prevStates = nexusCaptureStates();
+    NEXUS_COMPLETED_IDS.add(order[idx]);
+    while (nextIdx < order.length - 1 && byId[order[nextIdx]] && byId[order[nextIdx]].type === 'module') {
+      NEXUS_COMPLETED_IDS.add(order[nextIdx]);
+      nextIdx++;
+    }
+
+    NEXUS_CURRENT_NODE_ID = order[nextIdx];
+    applyNexusProgressState(NEXUS_GRAPH, NEXUS_CURRENT_NODE_ID, NEXUS_COMPLETED_IDS);
+    nexusComputeTransitionAnimations(prevStates);
+    nexusRerenderWithAnimation();
+  }
+
+  function nexusToggleOptionalComplete(nodeId) {
+    const node = NEXUS_GRAPH.nodes.find(n => n.id === nodeId);
+    if (!node || node.state === 'locked') return; // not unlocked yet — its anchor isn't done
+
+    const prevStates = nexusCaptureStates();
+    if (NEXUS_COMPLETED_IDS.has(nodeId)) {
+      NEXUS_COMPLETED_IDS.delete(nodeId);
+    } else {
+      NEXUS_COMPLETED_IDS.add(nodeId);
+    }
+    applyNexusProgressState(NEXUS_GRAPH, NEXUS_CURRENT_NODE_ID, NEXUS_COMPLETED_IDS);
+    nexusComputeTransitionAnimations(prevStates);
+    nexusRerenderWithAnimation();
+  }
+
+  /* Small icon set for headers/footers/stats — same stroke style
+     throughout. Declared before NEXUS_NODE_TYPES (and reused inside
+     it) so every node type and every stat/CTA that refers to a given
+     concept — material or voyage — renders the exact same glyph.
+     NEXUS_ICON_ROCKET is copied from the "Voyages" taskbar link in
+     auth.js so the voyage concept looks identical everywhere in the
+     app, not just consistent within this graph. */
+  const NEXUS_ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3.5 2"/></svg>';
+  const NEXUS_ICON_QUESTION = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>';
+  const NEXUS_ICON_BOOK_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.5c-1.6-1.2-3.7-1.8-6-1.8v13c2.3 0 4.4.6 6 1.8m0-13c1.6-1.2 3.7-1.8 6-1.8v13c-2.3 0-4.4.6-6 1.8m0-13v13"/></svg>';
+  const NEXUS_ICON_ROCKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.5c2.5 2.2 4 5.4 4 8.9 0 2.1-.6 4-1.6 5.6L12 21.5l-2.4-4.5A10.6 10.6 0 018 11.4c0-3.5 1.5-6.7 4-8.9z" /><circle cx="12" cy="11" r="2" stroke-linecap="round" stroke-linejoin="round" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 15.5c-1.8.7-3 1.8-3 3 0 1.7 3 3 6.5 3s6.5-1.3 6.5-3c0-1.2-1.2-2.3-3-3" /></svg>';
+  /* Flag — the course's final exam. Same pole+banner glyph used for
+     the node type icon, the course footer's "N Flag" stat, and the
+     card's own "Mulai Flag" CTA, so it reads identically everywhere
+     (same convention as NEXUS_ICON_ROCKET for voyage_group above). */
+  const NEXUS_ICON_FLAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 21V4m0 1h13l-2.2 3.2L18 11.5H5"/></svg>';
+  /* Lock — shown centered in a locked node's blur overlay, replacing
+     its real content entirely until it's unlocked. */
+  const NEXUS_ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 018 0v4"/></svg>';
+  /* Check — small "Selesai" status pill on completed nodes. */
+  const NEXUS_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+
+  /* ---------- Accent-derived palette ----------
+     Node colors used to be fixed hex values unrelated to the app's
+     --accent-rgb (indigo/purple/amber/green/red), so the graph clashed
+     with whichever accent theme (data-cabang) was active. Instead we
+     read the live accent color and build every node-type/gradient
+     color as a shade of it — same hue family, spread across a modest
+     arc + lightness/saturation range so types still read as distinct
+     at a glance. Read fresh (not cached at parse time) since
+     data-cabang can be set after this script runs (see auth.js). */
+  function nexusAccentRgb() {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb') || '';
+    const parts = raw.split(',').map(n => parseInt(n.trim(), 10));
+    if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+    return { r: 139, g: 92, b: 246 }; // fallback: violet, matches data-cabang="both"
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4;
+      }
+      h *= 60;
+    }
+    return { h, s: s * 100, l: l * 100 };
+  }
+
+  function hslToHex(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(100, s)) / 100;
+    l = Math.max(0, Math.min(100, l)) / 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+  }
+
+  /* One shade of the accent: hueOffset spreads node types out around
+     the accent's own hue (analogous palette, not a random rainbow),
+     lightness sets how pale/deep it reads. Saturation is floored so
+     the near-grayscale default "Orbit" accent still separates node
+     types visibly instead of rendering as flat gray-on-gray. */
+  function nexusAccentShade(hueOffset, lightness, satOverride) {
+    const { r, g, b } = nexusAccentRgb();
+    const accent = rgbToHsl(r, g, b);
+    const sat = satOverride != null ? satOverride : Math.max(accent.s, 32);
+    return hslToHex(accent.h + hueOffset, sat, lightness);
+  }
+
+  /* Configurable per node type — add a new type here and it renders
+     correctly without touching the layout/render/connector logic. */
+  const NEXUS_NODE_TYPES = {
+    module: {
+      label: 'Module',
+      get color() { return nexusAccentShade(-10, 62); },
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>'
+    },
+    /* Course is the hub node — kept closest to the true accent hue
+       (no offset), just a touch lighter, so it visibly anchors the
+       graph as "the accent color" while everything else fans out
+       from it. */
+    course: {
+      label: 'Course',
+      get color() { return nexusAccentShade(0, 68); },
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 9v6l9 5 9-5V9"/></svg>'
+    },
+    material: {
+      label: 'Material',
+      get color() { return nexusAccentShade(7, 60); },
+      icon: NEXUS_ICON_BOOK_OPEN
+    },
+    voyage_group: {
+      label: 'Voyages',
+      get color() { return nexusAccentShade(15, 56); },
+      icon: NEXUS_ICON_ROCKET
+    },
+    /* Flag — the course's final exam. A reskin of voyage_group: same
+       card shell/footer shape, just its own color/icon/copy so it
+       reads as the "big one" at the end of a course. Sits on the
+       opposite side of the accent hue from voyage_group so the two
+       don't blur together. */
+    flag: {
+      label: 'Flag',
+      get color() { return nexusAccentShade(-15, 52); },
+      icon: NEXUS_ICON_FLAG
+    },
+    default: {
+      label: 'Node',
+      get color() { return nexusAccentShade(0, 58, 12); },
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>'
+    }
+  };
+
+  function nexusTypeConfig(type) {
+    return NEXUS_NODE_TYPES[type] || NEXUS_NODE_TYPES.default;
+  }
+
+  /* ---------- Node color ----------
+     Most types just use their fixed type color. Materials are the
+     exception: their color slowly shifts along a gradient the
+     further along the course they sit, so a course with a handful
+     of lessons visibly "heats up" from a pale amber toward a deep
+     red as materials pile up — a rough at-a-glance read of how
+     substantial the course has gotten. Purely cosmetic/dummy for
+     now: driven by position in NEXUS_GRAPH, not real progress. */
+  /* Each gradient sweeps pale -> deep at the same hue offset used by
+     that type's card color above (material +7, voyage +15, flag
+     -40), so the "heats up" effect stays a shade of the accent
+     instead of jumping to an unrelated amber/green/red. Computed via
+     functions (not top-level consts) so they read the live accent
+     each time they're used, same as nexusAccentShade above. */
+  function nexusMaterialColorStart() { return nexusAccentShade(7, 84); }
+  function nexusMaterialColorEnd() { return nexusAccentShade(7, 38); }
+  function nexusVoyageColorStart() { return nexusAccentShade(15, 82); }
+  function nexusVoyageColorEnd() { return nexusAccentShade(15, 30); }
+  function nexusFlagColorStart() { return nexusAccentShade(-15, 82); }
+  function nexusFlagColorEnd() { return nexusAccentShade(-15, 32); }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+    const int = parseInt(full, 16);
+    return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
+  }
+
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b]
+      .map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  function lerpColor(hexA, hexB, t) {
+    const a = hexToRgb(hexA), b = hexToRgb(hexB);
+    return rgbToHex(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t);
+  }
+
+  function nexusNodeColor(node) {
+    if (node.type === 'material') {
+      const materials = NEXUS_GRAPH.nodes.filter(n => n.type === 'material');
+      const idx = materials.findIndex(n => n.id === node.id);
+      // Enforce a minimum denominator so short curriculums don't instantly hit 100% red
+      const t = materials.length > 1 ? idx / Math.max(materials.length - 1, 5) : 0;
+      return lerpColor(nexusMaterialColorStart(), nexusMaterialColorEnd(), t);
+    }
+    if (node.type === 'voyage_group') {
+      const voyages = NEXUS_GRAPH.nodes.filter(n => n.type === 'voyage_group');
+      const idx = voyages.findIndex(n => n.id === node.id);
+      // Enforce a minimum denominator so 2 voyages only traverse 25% of the gradient
+      const t = voyages.length > 1 ? idx / Math.max(voyages.length - 1, 4) : 0;
+      return lerpColor(nexusVoyageColorStart(), nexusVoyageColorEnd(), t);
+    }
+    if (node.type === 'flag') {
+      const flags = NEXUS_GRAPH.nodes.filter(n => n.type === 'flag');
+      const idx = flags.findIndex(n => n.id === node.id);
+      const t = flags.length > 1 ? idx / (flags.length - 1) : 0;
+      return lerpColor(nexusFlagColorStart(), nexusFlagColorEnd(), t);
+    }
+    return nexusTypeConfig(node.type).color;
+  }
+
+  /* ---------- Node width ----------
+     Course is the hub of the tree, so it gets a wider card to hold
+     its stats/progress footer — everything else shares a common
+     width. Layout math below reads widths from here rather than a
+     single constant so spacing stays correct either way. */
+  const NEXUS_NODE_WIDTHS = { course: 300, module: 250, material: 240, voyage_group: 240, flag: 240, default: 240 };
+  function nexusNodeWidth(node) {
+    return NEXUS_NODE_WIDTHS[node.type] || NEXUS_NODE_WIDTHS.default;
+  }
+
+  /* ---------- Layout ----------
+     Pure function of NEXUS_GRAPH: Calculates the longest path from 
+     root for each node to determine its Y-layer, then centers each 
+     layer horizontally (DAG-friendly layer layout). Output is a 
+     plain {id: {x, y}} map in layout units — no DOM involved. */
+  const NEXUS_GAP_X = 56;
+  /* Row spacing is no longer a flat multiple of one constant — a
+     module's card (a slim chip) is much shorter than a material/
+     voyage/flag card, so a fixed per-row height left a big dead gap
+     under every module. Instead each row's Y is the previous row's
+     tallest *estimated* card height plus one shared gap, so the
+     module -> first-step gap actually matches its content instead of
+     matching whatever the tallest row elsewhere happens to be. These
+     are estimates only (real connector/canvas sizing already
+     re-measures actual rendered rects — see drawNexusConnectors) so
+     they just need to be in the right ballpark, not pixel-perfect. */
+  const NEXUS_NODE_EST_HEIGHT = { course: 300, module: 96, material: 234, voyage_group: 234, flag: 234, default: 234 };
+  const NEXUS_ROW_GAP = 88;
+  /* Horizontal gap between a branch node and whatever it connects to
+     (its anchor, or — for a converging node — the average position of
+     its several sources). Kept clearly larger than NEXUS_GAP_X (the
+     tight side-by-side gap between main-tree siblings) so a branch
+     stack doesn't read as cramped against it. */
+  const NEXUS_BRANCH_GAP_X = 100;
+  const NEXUS_BRANCH_GAP_Y = 280;
+
+  function computeNexusLayout(graph) {
+    const byId = {};
+    graph.nodes.forEach(n => { byId[n.id] = n; });
+
+    /* Branch edges (edge.branch === 'left' | 'right') are optional
+       side paths — e.g. extra practice voyages hanging off the main
+       voyage — and never take part in the primary top-down layering.
+       Everything below keys off mainEdges/branchEdges instead of the
+       raw edge list so the two layouts stay fully independent. */
+    const mainEdges = graph.edges.filter(e => !e.branch);
+    const branchEdges = graph.edges.filter(e => e.branch);
+    const branchNodeIds = new Set(branchEdges.map(e => e.to));
+
+    // 1. Assign depths (longest path from root) over the main
+    //    progression only — branch nodes are excluded so they never
+    //    get a row of their own. Capped to prevent cyclic lock.
+    const depths = {};
+    graph.nodes.forEach(n => { if (!branchNodeIds.has(n.id)) depths[n.id] = 0; });
+
+    let changed = true;
+    let iterations = 0;
+    const maxIterations = graph.nodes.length;
+
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      mainEdges.forEach(e => {
+        if (!byId[e.from] || !byId[e.to]) return;
+        if (depths[e.to] === undefined) return; // e.to is a branch node — not part of this pass
+        if (depths[e.to] < depths[e.from] + 1) {
+          depths[e.to] = depths[e.from] + 1;
+          changed = true;
+        }
+      });
+      iterations++;
+    }
+
+    // 2. Group nodes into layers
+    const layers = [];
+    Object.keys(depths).forEach(id => {
+      const d = depths[id];
+      if (!layers[d]) layers[d] = [];
+      layers[d].push(id);
+    });
+
+    // 2b. Row Y per depth: cumulative sum of each previous row's
+    //     tallest estimated card height + a fixed gap, instead of a
+    //     flat d * ROW_H — see NEXUS_NODE_EST_HEIGHT/NEXUS_ROW_GAP above.
+    const rowY = [0];
+    for (let d = 1; d < layers.length; d++) {
+      const prevLayer = layers[d - 1] || [];
+      const prevMaxH = prevLayer.reduce((max, id) => {
+        const h = NEXUS_NODE_EST_HEIGHT[byId[id].type] || NEXUS_NODE_EST_HEIGHT.default;
+        return Math.max(max, h);
+      }, 0);
+      rowY[d] = rowY[d - 1] + prevMaxH + NEXUS_ROW_GAP;
+    }
+
+    // 3. Position main-tree nodes layer by layer. Every node except
+    //    the root has exactly one main-edge parent (a path's steps
+    //    are a straight chain; the only fan-out is course -> its
+    //    modules), so instead of centering an entire row around
+    //    X = 0 (which can offset a chain of same-width "stuff" away
+    //    from its own, differently-wide module whenever other
+    //    modules'/paths' nodes share that row), each node is grouped
+    //    with its true siblings — nodes sharing the same parent — and
+    //    that group alone is centered directly under the parent's own
+    //    X. A lone child's "group" is just itself, which collapses to
+    //    exactly the parent's X: no offset. Branch stacks are placed
+    //    afterward (step 4) purely relative to their anchor's
+    //    already-final position, same as before.
+    const positions = {};
+    layers.forEach((layer, d) => {
+      if (d === 0) {
+        // Root layer has no parent to center under — center the row around X = 0, as before.
+        const totalW = layer.reduce((sum, id) => sum + nexusNodeWidth(byId[id]), 0) + (layer.length - 1) * NEXUS_GAP_X;
+        let cursor = -totalW / 2;
+        layer.forEach(id => {
+          const w = nexusNodeWidth(byId[id]);
+          positions[id] = { x: cursor + w / 2, y: rowY[d] };
+          cursor += w + NEXUS_GAP_X;
+        });
+        return;
+      }
+
+      // Group this row's nodes by their single main-edge parent.
+      const groups = {};
+      const groupOrder = [];
+      layer.forEach(id => {
+        const parentEdge = mainEdges.find(e => e.to === id);
+        const parentId = parentEdge ? parentEdge.from : '__root__';
+        if (!groups[parentId]) { groups[parentId] = []; groupOrder.push(parentId); }
+        groups[parentId].push(id);
+      });
+
+      // Visit parents left-to-right (by their own X) so sibling
+      // groups still lay out in a sensible order, minimizing crossings.
+      groupOrder
+        .sort((a, b) => (positions[a] ? positions[a].x : 0) - (positions[b] ? positions[b].x : 0))
+        .forEach(parentId => {
+          const group = groups[parentId];
+          const totalW = group.reduce((sum, id) => sum + nexusNodeWidth(byId[id]), 0) + (group.length - 1) * NEXUS_GAP_X;
+          const parentX = positions[parentId] ? positions[parentId].x : 0;
+          let cursor = parentX - totalW / 2;
+          group.forEach(id => {
+            const w = nexusNodeWidth(byId[id]);
+            positions[id] = { x: cursor + w / 2, y: rowY[d] };
+            cursor += w + NEXUS_GAP_X;
+          });
+        });
+    });
+
+    // 4. Place branch nodes. A branch node can have one source (the
+    //    common case: a single anchor fanning out into several
+    //    optional siblings, e.g. voyage-1's 3 practice voyages) or
+    //    several sources (fan-in: those same siblings converging back
+    //    into one further node, e.g. an optional exam gating them) —
+    //    and a branch node can itself be the source of a further
+    //    branch level. Handled generically by resolving iteratively:
+    //    a node is placed once every one of its sources already has a
+    //    position, using the average of those sources' positions as
+    //    its anchor point. Nodes that share an identical source-set +
+    //    side are treated as siblings and stacked vertically around
+    //    that shared anchor point, same as a single anchor's fan-out.
+    const branchTargets = {};
+    branchEdges.forEach(e => {
+      const t = (branchTargets[e.to] = branchTargets[e.to] || { sources: [], side: e.branch });
+      t.sources.push(e.from);
+    });
+    const siblingKey = (sources, side) => side + '|' + [...sources].sort().join(',');
+
+    const pending = new Set(Object.keys(branchTargets));
+    let progress = true;
+    while (pending.size && progress) {
+      progress = false;
+
+      // Group everything that's ready to place (all its sources
+      // already have a position) by shared source-set + side, so
+      // true siblings still stack together in one pass.
+      const readyGroups = {};
+      pending.forEach(id => {
+        const t = branchTargets[id];
+        if (t.sources.every(s => positions[s])) {
+          const key = siblingKey(t.sources, t.side);
+          (readyGroups[key] = readyGroups[key] || []).push(id);
+        }
+      });
+
+      Object.values(readyGroups).forEach(ids => {
+        const t = branchTargets[ids[0]];
+        const srcPositions = t.sources.map(s => positions[s]);
+        const anchorX = srcPositions.reduce((sum, p) => sum + p.x, 0) / srcPositions.length;
+        const anchorY = srcPositions.reduce((sum, p) => sum + p.y, 0) / srcPositions.length;
+        const anchorHalfW = Math.max(...t.sources.map(s => nexusNodeWidth(byId[s]))) / 2;
+        const mid = (ids.length - 1) / 2;
+        ids.forEach((id, idx) => {
+          const w = nexusNodeWidth(byId[id]);
+          const x = t.side === 'right'
+            ? anchorX + anchorHalfW + NEXUS_BRANCH_GAP_X + w / 2
+            : anchorX - anchorHalfW - NEXUS_BRANCH_GAP_X - w / 2;
+          positions[id] = { x, y: anchorY + (idx - mid) * NEXUS_BRANCH_GAP_Y };
+          pending.delete(id);
+          progress = true;
+        });
+      });
+    }
+    // Any branch node whose source(s) never got positioned (e.g. an
+    // anchor that isn't actually in the graph) is silently skipped —
+    // renderNexusGraph already filters nodes without a position.
+
+    // 5. Shift everything — main tree and branch nodes alike, now
+    //    that both have their final positions — so the left-most
+    //    card edge sits at a comfortable padding.
+    const PAD = 60;
+    let minX = Infinity;
+    Object.keys(positions).forEach(id => {
+      const leftEdge = positions[id].x - nexusNodeWidth(byId[id]) / 2;
+      if (leftEdge < minX) minX = leftEdge;
+    });
+
+    const shift = PAD - minX;
+    Object.values(positions).forEach(p => { p.x += shift; });
+
+    return positions;
+  }
+
+  /* ---------- Rendering ---------- */
+
+  /* Type-specific footer: course shows aggregate stats + an overall
+     progress bar (it's the hub, not a single action); material and
+     voyage each get one clear CTA plus a bit of meta context. No
+     click handlers do anything real yet — layout/visual pass only.
+     The "Materi"/"Voyage" stat icons and the voyage CTA icon reuse
+     NEXUS_ICON_BOOK_OPEN / NEXUS_ICON_ROCKET — the same glyphs as the
+     material/voyage node types themselves — so a course's summary
+     always matches what its children actually look like. */
+  /* Optional branch/converge nodes (extra practice voyages, the
+     optional flag they funnel into, etc.) aren't on the main-chain
+     cursor at all — nexusAdvanceNode only walks NEXUS_GRAPH.mainOrder,
+     so calling it on one of these is a silent no-op and finishing an
+     optional voyage would never register or unlock its converge flag.
+     Route optional nodes to nexusToggleOptionalComplete instead; only
+     required, main-chain nodes use nexusAdvanceNode. */
+  function nexusFinishHandler(node) {
+    return node.optional
+      ? `nexusToggleOptionalComplete('${kirEscapeHtml(node.id)}')`
+      : `nexusAdvanceNode('${kirEscapeHtml(node.id)}')`;
+  }
+
+  function nexusCardFooterHtml(node, color, childCounts) {
+    if (node.type === 'course') {
+      const pct = Math.round((node.progress || 0) * 100);
+      return `
+        <div class="nexus-course-stats">
+          <span class="nexus-course-stat">${NEXUS_ICON_BOOK_OPEN} ${childCounts.material || 0} Materi</span>
+          <span class="nexus-course-stat">${NEXUS_ICON_ROCKET} ${childCounts.voyage_group || 0} Voyage</span>
+          <span class="nexus-course-stat">${NEXUS_ICON_FLAG} ${childCounts.flag || 0} Flag</span>
+        </div>
+        <div class="nexus-progress-track"><div class="nexus-progress-fill" style="width:${pct}%; background:${color};"></div></div>`;
+    }
+    if (node.type === 'material') {
+      return `
+        <div class="nexus-node-footer">
+          <span class="nexus-node-meta">${NEXUS_ICON_CLOCK} ${kirEscapeHtml(node.duration || '')}</span>
+          <button type="button" class="nexus-node-action-btn" style="background:${color}26; color:${color}; border-color:${color}4d;" onclick="event.stopPropagation(); ${nexusFinishHandler(node)};">
+            ${NEXUS_ICON_BOOK_OPEN} Buka Materi
+          </button>
+        </div>`;
+    }
+    if (node.type === 'voyage_group') {
+      return `
+        <div class="nexus-node-footer">
+          <span class="nexus-node-meta">${NEXUS_ICON_QUESTION} ${kirEscapeHtml(node.questionInfo || '')}</span>
+          <button type="button" class="nexus-node-action-btn" style="background:${color}26; color:${color}; border-color:${color}4d;" onclick="event.stopPropagation(); ${nexusFinishHandler(node)};">
+            ${NEXUS_ICON_ROCKET} Mulai Voyage
+          </button>
+        </div>`;
+    }
+    /* Flag — deliberately a straight reskin of voyage_group's footer:
+       identical markup/classes, just swapped meta icon+copy (exam
+       duration instead of team size) and CTA icon+label. */
+    if (node.type === 'flag') {
+      return `
+        <div class="nexus-node-footer">
+          <span class="nexus-node-meta">${NEXUS_ICON_CLOCK} ${kirEscapeHtml(node.examInfo || '')}</span>
+          <button type="button" class="nexus-node-action-btn" style="background:${color}26; color:${color}; border-color:${color}4d;" onclick="event.stopPropagation(); ${nexusFinishHandler(node)};">
+            ${NEXUS_ICON_FLAG} Mulai Flag
+          </button>
+        </div>`;
+    }
+    return '';
+  }
+
+  function nexusNodeCardHtml(node, pos, hasParent, hasChildren, childCounts, branchInfo) {
+    const cfg = nexusTypeConfig(node.type);
+    const color = nexusNodeColor(node); // materials use a per-node gradient shade; other types fall back to their fixed type color
+    const w = nexusNodeWidth(node);
+    branchInfo = branchInfo || {};
+    // Anchors get a port facing each side that has a branch stack;
+    // branch nodes themselves get one port facing back toward their
+    // anchor (branchInfo.branchSide) — on top of the usual in/out
+    // ports above, never replacing them.
+    const sidePorts = `
+      ${branchInfo.left ? `<div class="nexus-port nexus-port-left" style="background:${color};"></div>` : ''}
+      ${branchInfo.right ? `<div class="nexus-port nexus-port-right" style="background:${color};"></div>` : ''}
+      ${branchInfo.branchSide === 'left' ? `<div class="nexus-port nexus-port-left" style="background:${color};"></div>` : ''}
+      ${branchInfo.branchSide === 'right' ? `<div class="nexus-port nexus-port-right" style="background:${color};"></div>` : ''}`;
+
+    const isLocked = node.state === 'locked';
+    const isCurrent = node.state === 'current';
+    const isCompleted = node.state === 'completed';
+    const stateClass = isLocked ? ' is-locked' : isCurrent ? ' is-current' : '';
+    // Ports/thumb/CTA colors still use the node's real type color even
+    // when locked — only the overlay on top hides the content itself,
+    // so the underlying card doesn't need a separate "locked palette".
+    const statusBadge = isCurrent
+      ? `<span class="nexus-node-status-icon" style="background:${color}26; color:${color};" title="Sedang Berjalan">${NEXUS_ICON_CLOCK}</span>`
+      : isCompleted
+        ? `<span class="nexus-node-status-icon" style="background:rgba(148,163,184,0.14); color:rgba(203,213,225,0.85);" title="Selesai">${NEXUS_ICON_CHECK}</span>`
+        : '';
+    // Locked nodes get a full opaque-blur overlay instead of their
+    // real header/thumb/body/footer — title, description, duration,
+    // team info, all of it stays hidden until the node unlocks. The
+    // real content still renders underneath (so layout/measurement —
+    // sizeNexusCanvas, drawNexusConnectors — sees a normal card), the
+    // overlay just visually replaces it.
+    // A node that just unlocked (this render only) still gets the
+    // overlay markup, but with a one-shot fade-out animation class —
+    // the real unlocked content is already sitting underneath (see
+    // above), so this purely animates the censor melting away instead
+    // of it just vanishing between one render and the next.
+    const justUnlocked = !isLocked && NEXUS_ANIM_UNLOCK_IDS.has(node.id);
+    const lockOverlay = isLocked
+      ? `<div class="nexus-node-lock-overlay">${NEXUS_ICON_LOCK}<span class="nexus-node-lock-label">Terkunci</span></div>`
+      : justUnlocked
+        ? `<div class="nexus-node-lock-overlay nexus-lock-fading">${NEXUS_ICON_LOCK}<span class="nexus-node-lock-label">Terkunci</span></div>`
+        : '';
+
+    // Module — a chapter divider, not a piece of content: skips the
+    // header/thumb/body/footer shell entirely in favor of one slim,
+    // dashed-border chip (chapter number + title), so it visually
+    // reads as organizing structure rather than a lesson to open.
+    if (node.type === 'module') {
+      const numMatch = /(\d+)$/.exec(node.id);
+      const chapterNum = numMatch ? numMatch[1] : '';
+      return `
+        <div class="nexus-node nexus-card-module${stateClass}" data-node-id="${kirEscapeHtml(node.id)}" style="left:${pos.x - w / 2}px; top:${pos.y}px; width:${w}px; --nexus-current-glow:${color}55;" onclick="nexusSelectNode('${kirEscapeHtml(node.id)}')">
+          <div class="nexus-node-inner overflow-hidden" style="border-color:${color}55;">
+            ${hasParent ? `<div class="nexus-port nexus-port-in" style="background:${color};"></div>` : ''}
+            ${sidePorts}
+            <div class="nexus-module-chip">
+              <span class="nexus-module-number" style="color:${color}; background:${color}26; border-color:${color}4d;">${kirEscapeHtml(chapterNum)}</span>
+              <div class="nexus-module-text">
+                <p class="nexus-node-title font-medium text-sm text-zinc-100 leading-snug line-clamp-2">${kirEscapeHtml(node.title)}</p>
+                <p class="nexus-node-desc text-zinc-500 text-[11px] mt-0.5 leading-snug line-clamp-2">${kirEscapeHtml(node.description || '')}</p>
+              </div>
+              ${statusBadge}
+            </div>
+            ${hasChildren ? `<div class="nexus-port nexus-port-out" style="background:${color};"></div>` : ''}
+            ${lockOverlay}
+          </div>
+        </div>`;
+    }
+
+    const thumbStyle = node.image ? ` style="background-image:url('${kirEscapeHtml(node.image)}')"` : '';
+
+    // Every node type gets its icon in a small accent-tinted badge —
+    // same bg-15/border-30 treatment the dashboard widgets use for
+    // their icon tiles — rather than washing the whole header in
+    // color. Course gets the circular medallion variant since it's
+    // the hub; everything else gets the square version.
+    const headerIcon = node.type === 'course'
+      ? `<span class="nexus-course-icon-badge" style="background:${color}26; border:1px solid ${color}4d; color:${color};">${cfg.icon}</span>`
+      : `<span class="nexus-node-icon-badge" style="background:${color}26; border:1px solid ${color}4d; color:${color};">${cfg.icon}</span>`;
+
+    // Material — folded-corner triangle in the thumb, echoing a
+    // printed page. Flag — thin checkered ribbon under the header,
+    // echoing a finish-line flag (its pennant-notch card shape comes
+    // purely from CSS).
+    const materialFold = node.type === 'material'
+      ? `<span class="nexus-material-foldcorner" style="color:${color};"></span>`
+      : '';
+    const flagRibbon = node.type === 'flag'
+      ? `<div class="nexus-flag-ribbon" style="color:${color};"></div>`
+      : '';
+
+    return `
+      <div class="nexus-node nexus-card-${kirEscapeHtml(node.type)}${stateClass}" data-node-id="${kirEscapeHtml(node.id)}" style="left:${pos.x - w / 2}px; top:${pos.y}px; width:${w}px; --nexus-current-glow:${color}55;" onclick="nexusSelectNode('${kirEscapeHtml(node.id)}')">
+        <div class="nexus-node-inner overflow-hidden">
+          ${hasParent ? `<div class="nexus-port nexus-port-in" style="background:${color};"></div>` : ''}
+          ${sidePorts}
+          <div class="nexus-node-header">
+            ${headerIcon}
+            <span class="nexus-node-header-label">${kirEscapeHtml(cfg.label)}</span>
+            ${node.optional ? `<span class="nexus-node-optional-badge" style="border-color:${color}4d; color:${color};">Opsional</span>` : ''}
+            ${statusBadge}
+            <span class="nexus-node-header-id text-zinc-300">#${kirEscapeHtml(node.id)}</span>
+          </div>
+          ${flagRibbon}
+          <div class="nexus-node-thumb" style="color:${color};"${thumbStyle}>
+            ${node.image ? '' : cfg.icon}
+            ${materialFold}
+          </div>
+          <div class="nexus-node-body">
+            <p class="nexus-node-title font-medium text-sm text-zinc-100 leading-snug line-clamp-2">${kirEscapeHtml(node.title)}</p>
+            <p class="nexus-node-desc text-zinc-500 text-[11px] mt-1.5 leading-snug line-clamp-2">${kirEscapeHtml(node.description || '')}</p>
+          </div>
+          ${nexusCardFooterHtml(node, color, childCounts)}
+          ${hasChildren ? `<div class="nexus-port nexus-port-out" style="background:${color};"></div>` : ''}
+          ${lockOverlay}
+        </div>
+      </div>`;
+  }
+
+
+  function renderNexusGraph() {
+    const positions = computeNexusLayout(NEXUS_GRAPH);
+    const byId = {};
+    NEXUS_GRAPH.nodes.forEach(n => { byId[n.id] = n; });
+
+    const mainEdges = NEXUS_GRAPH.edges.filter(e => !e.branch);
+    const branchEdges = NEXUS_GRAPH.edges.filter(e => e.branch);
+    const parents = new Set(mainEdges.map(e => e.to));
+    const children = new Set(mainEdges.map(e => e.from));
+
+    // Per-node branch info: which side(s) a node fans branches out to
+    // (as an anchor), and which side a node itself sits on relative to
+    // its anchor (as a branch node) — both drive which side port(s)
+    // nexusNodeCardHtml renders, in addition to the normal top/bottom
+    // ports above.
+    const branchInfoById = {};
+    branchEdges.forEach(e => {
+      const anchorInfo = (branchInfoById[e.from] = branchInfoById[e.from] || {});
+      anchorInfo[e.branch] = true; // anchor gets a port facing its branch stack
+      const nodeInfo = (branchInfoById[e.to] = branchInfoById[e.to] || {});
+      nodeInfo.branchSide = e.branch === 'right' ? 'left' : 'right'; // branch node's port faces back toward the anchor
+    });
+
+    // Per-node counts of direct children by type, for the course
+    // footer's "N Materi / N Voyage" stats — derived from the main
+    // edge list so it stays correct as the dummy data grows, and
+    // ignores optional branch nodes (those aren't required progress).
+    const childCountsById = {};
+    mainEdges.forEach(e => {
+      const childType = byId[e.to] && byId[e.to].type;
+      if (!childType) return;
+      const counts = (childCountsById[e.from] = childCountsById[e.from] || {});
+      counts[childType] = (counts[childType] || 0) + 1;
+    });
+
+    const html = NEXUS_GRAPH.nodes
+      .filter(n => positions[n.id])
+      .map(n => nexusNodeCardHtml(n, positions[n.id], parents.has(n.id), children.has(n.id), childCountsById[n.id] || {}, branchInfoById[n.id] || {}))
+      .join('');
+    document.getElementById('nexus-graph').innerHTML = html;
+  }
+
+  /* #chart-canvas has no normal-flow content (every node is
+     position:absolute), so it never picks up a natural size on its
+     own — without this it collapses to 0×0 and centerCanvas() /
+     the connector SVG have nothing to measure against. Sized from
+     the actual rendered card rects, same source of truth the
+     connectors use. */
+  function sizeNexusCanvas() {
+    const canvas = document.getElementById('chart-canvas');
+    let maxRight = 0, maxBottom = 0;
+    document.querySelectorAll('#nexus-graph .nexus-node').forEach(el => {
+      maxRight = Math.max(maxRight, el.offsetLeft + el.offsetWidth);
+      maxBottom = Math.max(maxBottom, el.offsetTop + el.offsetHeight);
+    });
+    canvas.style.width = (maxRight + 60) + 'px';
+    canvas.style.height = (maxBottom + 60) + 'px';
+  }
+
+  /* ---------- Connectors ----------
+     Same technique as members.html: measure real rendered card
+     rects (offsetLeft/offsetTop relative to #chart-canvas) rather
+     than trusting the layout math's pixel values directly, so
+     connectors stay correct even if card height varies with
+     content. Curves are generated per-edge from the edge list —
+     nothing here is a hardcoded coordinate. */
+  function nexusCardRect(el) {
+    return {
+      left: el.offsetLeft,
+      right: el.offsetLeft + el.offsetWidth,
+      top: el.offsetTop,
+      bottom: el.offsetTop + el.offsetHeight,
+      centerX: el.offsetLeft + el.offsetWidth / 2,
+      centerY: el.offsetTop + el.offsetHeight / 2,
+    };
+  }
+
+  function drawNexusConnectors() {
+    const canvas = document.getElementById('chart-canvas');
+    const svg = document.getElementById('nexus-lines');
+    const nodeEls = {};
+    document.querySelectorAll('#nexus-graph .nexus-node').forEach(el => {
+      nodeEls[el.dataset.nodeId] = el;
+    });
+    const nodesById = {};
+    NEXUS_GRAPH.nodes.forEach(n => { nodesById[n.id] = n; });
+
+    let defs = '';
+    let paths = '';
+    NEXUS_GRAPH.edges.forEach((edge, i) => {
+      const fromEl = nodeEls[edge.from];
+      const toEl = nodeEls[edge.to];
+      if (!fromEl || !toEl) return;
+
+      // Locked territory gets no connector at all — a line shouldn't
+      // visually promise more than the censored card(s) it would
+      // connect to. (Previously this dimmed the line instead; now it
+      // simply isn't drawn.)
+      const fromLocked = nodesById[edge.from] && nodesById[edge.from].state === 'locked';
+      const toLocked = nodesById[edge.to] && nodesById[edge.to].state === 'locked';
+      if (fromLocked || toLocked) return;
+
+      const p = nexusCardRect(fromEl);
+      const c = nexusCardRect(toEl);
+
+      const getBorderOffsets = (type) => {
+        if (type === 'course') return { t: 1.5, b: 1.5, l: 1.5, r: 1.5 };
+        if (type === 'material') return { t: 1, b: 1, l: 3, r: 1 };
+        return { t: 1, b: 1, l: 1, r: 1 };
+      };
+
+      const fromType = nodesById[edge.from] ? nodesById[edge.from].type : 'default';
+      const toType = nodesById[edge.to] ? nodesById[edge.to].type : 'default';
+      
+      const fromOffsets = getBorderOffsets(fromType);
+      const toOffsets = getBorderOffsets(toType);
+
+      const fromCenterX = p.centerX + (fromOffsets.l - fromOffsets.r) / 2;
+      const toCenterX = c.centerX + (toOffsets.l - toOffsets.r) / 2;
+      const fromCenterY = p.centerY + (fromOffsets.t - fromOffsets.b) / 2;
+      const toCenterY = c.centerY + (toOffsets.t - toOffsets.b) / 2;
+
+      let startX, startY, endX, endY, bend, isBranch = false;
+      if (edge.branch === 'right') {
+        isBranch = true;
+        startX = p.right - fromOffsets.r; startY = fromCenterY;
+        endX = c.left + toOffsets.l; endY = toCenterY;
+        bend = Math.max(24, (endX - startX) * 0.5);
+      } else if (edge.branch === 'left') {
+        isBranch = true;
+        startX = p.left + fromOffsets.l; startY = fromCenterY;
+        endX = c.right - toOffsets.r; endY = toCenterY;
+        bend = Math.max(24, (startX - endX) * 0.5);
+      } else {
+        startX = fromCenterX; startY = p.bottom - fromOffsets.b;
+        endX = toCenterX; endY = c.top + toOffsets.t;
+        // Unity-style S-curve: control points pulled straight down/up
+        // from each endpoint by a fraction of the vertical gap.
+        bend = Math.max(40, (endY - startY) * 0.55);
+      }
+
+      const fromColor = nodesById[edge.from] ? nexusNodeColor(nodesById[edge.from]) : nexusTypeConfig().color;
+      const toColor = nodesById[edge.to] ? nexusNodeColor(nodesById[edge.to]) : nexusTypeConfig().color;
+      const gradId = `nexus-edge-grad-${i}`;
+
+      const d = isBranch
+        ? `M ${startX} ${startY} C ${startX + (edge.branch === 'right' ? bend : -bend)} ${startY}, ${endX + (edge.branch === 'right' ? -bend : bend)} ${endY}, ${endX} ${endY}`
+        : `M ${startX} ${startY} C ${startX} ${startY + bend}, ${endX} ${endY - bend}, ${endX} ${endY}`;
+
+      defs += `<linearGradient id="${gradId}" x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="${fromColor}" stop-opacity="0.9" />
+        <stop offset="100%" stop-color="${toColor}" stop-opacity="0.9" />
+      </linearGradient>`;
+
+      // A connector that just became visible this render (its source
+      // just finished, or its far end just unlocked) draws itself in
+      // and pops its endpoint dots in, rather than snapping straight
+      // to fully drawn.
+      const justVisible = NEXUS_ANIM_EDGE_KEYS.has(i);
+      const edgeClass = `nexus-edge${isBranch ? ' nexus-edge-branch' : ''}${justVisible ? ' nexus-edge-animate' : ''}`;
+      const dotClass = `nexus-edge-dot${justVisible ? ' nexus-edge-dot-animate' : ''}`;
+
+      paths += `<path class="${edgeClass}" d="${d}" stroke="url(#${gradId})" pathLength="1" />`;
+      paths += `<circle class="${dotClass}" cx="${startX}" cy="${startY}" r="4" stroke="${fromColor}" />`;
+      paths += `<circle class="${dotClass}" cx="${endX}" cy="${endY}" r="4" stroke="${toColor}" />`;
+    });
+
+    svg.innerHTML = `<defs>${defs}</defs>${paths}`;
+    svg.setAttribute('width', canvas.offsetWidth);
+    svg.setAttribute('height', canvas.offsetHeight);
+  }
+
+  /* ---------- Inspector (inline panel, NOT the site's .modal-overlay —
+     graph stays visible and interactive behind it) ---------- */
+  let nexusSelectedId = null;
+
+  function nexusRelationChip(node) {
+    const cfg = nexusTypeConfig(node.type);
+    const color = nexusNodeColor(node);
+    return `
+      <button type="button" class="nexus-relation-chip" onclick="nexusSelectNode('${kirEscapeHtml(node.id)}')">
+        <span style="color:${color};" class="nexus-node-type">${cfg.icon}</span>
+        <span class="text-xs text-zinc-300 truncate">${kirEscapeHtml(node.title)}</span>
+      </button>`;
+  }
+
+  function nexusSelectNode(nodeId) {
+    const node = NEXUS_GRAPH.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    // Locked nodes have their real content hidden behind a blur
+    // overlay on the card itself — opening the inspector would leak
+    // the title/description the overlay is meant to hide, so clicking
+    // a locked card is a no-op instead.
+    if (node.state === 'locked') return;
+    nexusSelectedId = nodeId;
+
+    document.querySelectorAll('#nexus-graph .nexus-node').forEach(el => {
+      el.classList.toggle('is-selected', el.dataset.nodeId === nodeId);
+    });
+
+    const cfg = nexusTypeConfig(node.type);
+    const color = nexusNodeColor(node);
+    const parents = NEXUS_GRAPH.edges
+      .filter(e => e.to === nodeId)
+      .map(e => NEXUS_GRAPH.nodes.find(n => n.id === e.from))
+      .filter(Boolean);
+    const children = NEXUS_GRAPH.edges
+      .filter(e => e.from === nodeId)
+      .map(e => NEXUS_GRAPH.nodes.find(n => n.id === e.to))
+      .filter(Boolean);
+
+    const thumbStyle = node.image ? ` style="background-image:url('${kirEscapeHtml(node.image)}')"` : '';
+    document.getElementById('nexus-inspector-body').innerHTML = `
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <span class="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border" style="color:${color}; background:${color}26; border-color:${color}4d;">${kirEscapeHtml(cfg.label)}</span>
+        <button onclick="nexusCloseInspector()" class="chart-ctrl-btn" title="Tutup" style="width:1.75rem;height:1.75rem;">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="nexus-inspector-thumb mb-4" style="color:${color};"${thumbStyle}>${node.image ? '' : cfg.icon}</div>
+      <h2 class="font-display text-lg font-semibold text-zinc-100 mb-2">${kirEscapeHtml(node.title)}</h2>
+      <p class="text-sm text-zinc-400 leading-relaxed mb-5">${kirEscapeHtml(node.description || 'Belum ada deskripsi.')}</p>
+      ${parents.length || children.length ? `
+        <div class="pt-4" style="border-top: 1px solid var(--glass-border);">
+          ${parents.length ? `
+            <p class="text-[11px] uppercase tracking-wide text-zinc-500 mb-2">Induk</p>
+            <div class="flex flex-col gap-1.5 mb-4">${parents.map(nexusRelationChip).join('')}</div>
+          ` : ''}
+          ${children.length ? `
+            <p class="text-[11px] uppercase tracking-wide text-zinc-500 mb-2">Turunan</p>
+            <div class="flex flex-col gap-1.5">${children.map(nexusRelationChip).join('')}</div>
+          ` : ''}
+        </div>
+      ` : ''}
+    `;
+
+    document.getElementById('nexus-inspector').classList.add('open');
+  }
+
+  function nexusCloseInspector() {
+    nexusSelectedId = null;
+    document.getElementById('nexus-inspector').classList.remove('open');
+    document.querySelectorAll('#nexus-graph .nexus-node').forEach(el => el.classList.remove('is-selected'));
+  }
+
+  /* ---------- Pan & zoom ---------- */
+  let panX = 0, panY = 0, scale = 1;
+  let isDragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+  let didDrag = false;
+
+  function applyTransform() {
+    document.getElementById('chart-canvas').style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    const viewport = document.getElementById('chart-viewport');
+    viewport.style.backgroundPosition = `${panX}px ${panY}px`;
+    viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+  }
+
+  function chartZoom(factor) {
+    scale = Math.min(1.6, Math.max(0.45, scale * factor));
+    applyTransform();
+  }
+
+  function centerCanvas() {
+    const viewport = document.getElementById('chart-viewport');
+    const canvas = document.getElementById('chart-canvas');
+    scale = 1;
+    const vw = viewport.clientWidth, vh = viewport.clientHeight;
+    const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+    panX = Math.max(16, (vw - cw) / 2);
+    panY = Math.max(16, (vh - ch) / 2);
+    applyTransform();
+  }
+
+  function chartResetView() {
+    centerCanvas();
+  }
+
+  /* ---------- Fullscreen ---------- */
+  function chartToggleFullscreen() {
+    const viewport = document.getElementById('chart-viewport');
+    if (!document.fullscreenElement) {
+      (viewport.requestFullscreen || viewport.webkitRequestFullscreen)?.call(viewport);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    }
+  }
+
+  function onFullscreenChange() {
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.getElementById('fullscreen-icon-expand').classList.toggle('hidden', isFullscreen);
+    document.getElementById('fullscreen-icon-collapse').classList.toggle('hidden', !isFullscreen);
+    document.getElementById('fullscreen-btn').title = isFullscreen ? 'Keluar layar penuh' : 'Layar penuh';
+    // Viewport size just changed drastically; re-fit the canvas the
+    // same way a window resize does.
+    sizeNexusCanvas();
+    drawNexusConnectors();
+    centerCanvas();
+  }
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+  function pointFromEvent(e) {
+    return e.touches && e.touches.length ? e.touches[0] : e;
+  }
+
+  function chartPointerDown(e) {
+    if (e.target.closest('.chart-ctrl-btn') || e.target.closest('.nexus-node')) return;
+    isDragging = true;
+    didDrag = false;
+    const p = pointFromEvent(e);
+    dragStartX = p.clientX;
+    dragStartY = p.clientY;
+    panStartX = panX;
+    panStartY = panY;
+    document.getElementById('chart-viewport').classList.add('dragging');
+  }
+
+  function chartPointerMove(e) {
+    if (!isDragging) return;
+    const p = pointFromEvent(e);
+    const dx = p.clientX - dragStartX;
+    const dy = p.clientY - dragStartY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+    panX = panStartX + dx;
+    panY = panStartY + dy;
+    applyTransform();
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function chartPointerUp() {
+    isDragging = false;
+    document.getElementById('chart-viewport').classList.remove('dragging');
+  }
+
+  function initChartInteractions() {
+    const viewport = document.getElementById('chart-viewport');
+    viewport.addEventListener('mousedown', chartPointerDown);
+    window.addEventListener('mousemove', chartPointerMove);
+    window.addEventListener('mouseup', chartPointerUp);
+
+    viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
+    viewport.addEventListener('touchmove', chartPointerMove, { passive: false });
+    viewport.addEventListener('touchend', chartPointerUp);
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      chartZoom(e.deltaY < 0 ? 1.08 : 1 / 1.08);
+    }, { passive: false });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        sizeNexusCanvas();
+        drawNexusConnectors();
+        centerCanvas();
+      }, 150);
+    });
+  }
+
+  renderNexusGraph();
+  initChartInteractions();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      sizeNexusCanvas();
+      drawNexusConnectors();
+      centerCanvas();
+    });
+  });
+
+  // Node/edge colors are computed from --accent-rgb in JS and baked
+  // into inline styles at render time (see nexusAccentRgb/
+  // nexusAccentShade above), so — unlike the plain-CSS parts of the
+  // page — they won't update on their own when the variable changes.
+  // Re-render on the shared toggle event (js/auth.js
+  // kirSetDisableBranchColor) so nodes actually go neutral instead of
+  // only the chrome around them.
+  window.addEventListener('kir:branch-color-change', () => {
+    renderNexusGraph();
+    requestAnimationFrame(() => requestAnimationFrame(drawNexusConnectors));
+    if (nexusSelectedId) nexusSelectNode(nexusSelectedId);
+  });
+
+  kirInjectSidebar('nexus');
+  kirApplyTranslations();
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>

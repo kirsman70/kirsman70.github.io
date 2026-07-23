@@ -26,14 +26,14 @@
 <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
 <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 
-<div class="relative z-10 min-h-screen lg:flex">
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
 
   <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
     <a href="index.html" class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-lg bg-accent-gradient flex items-center justify-center font-display font-bold text-sm">K</div>
       <span class="font-display font-semibold">KIR</span>
     </a>
-    <button onclick="document.getElementById('sidebar').classList.toggle('hidden')" class="text-zinc-300 p-2 -mr-2">
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
@@ -55,9 +55,8 @@
         <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
       </div>
       <div class="flex items-center gap-2 overflow-x-auto pb-2">
-        <button onclick="filterMaterialsByCabang('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm">All</button>
-        <button onclick="filterMaterialsByCabang('robotik')" id="filter-robotik" class="px-3 py-1 rounded-full badge-robotik opacity-50 transition">Robotik</button>
-        <button onclick="filterMaterialsByCabang('sains')" id="filter-sains" class="px-3 py-1 rounded-full badge-sains opacity-50 transition">Sains</button>
+        <button onclick="toggleCabangFilter('robotik')" id="filter-robotik" class="px-3 py-1.5 text-xs font-medium rounded-full badge-robotik transition" data-i18n="robotik">Robotik</button>
+        <button onclick="toggleCabangFilter('sains')" id="filter-sains" class="px-3 py-1.5 text-xs font-medium rounded-full badge-sains transition" data-i18n="sains">Sains</button>
       </div>
     </div>
 
@@ -107,12 +106,12 @@
     renderMaterials();
   }
 
-  let currentFilter = 'all';
+  let activeCabangFilters = new Set(['robotik', 'sains']);
   let currentSearch = '';
 
   function renderMaterials() {
     const filtered = MATERIALS.filter(m => {
-      const matchesCabang = currentFilter === 'all' || m.cabang === currentFilter || m.cabang === 'both';
+      const matchesCabang = activeCabangFilters.has(m.cabang) || (m.cabang === 'both' && activeCabangFilters.size > 0);
       const matchesSearch = currentSearch === '' || m.title.toLowerCase().includes(currentSearch.toLowerCase()) || m.desc.toLowerCase().includes(currentSearch.toLowerCase());
       return matchesCabang && matchesSearch;
     });
@@ -135,21 +134,22 @@
     }).join('') : `
       <div class="col-span-1 sm:col-span-2 glass rounded-xl p-8 text-center flex flex-col items-center justify-center animate-stagger-in">
         <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-        <p class="text-zinc-300 font-medium mb-1">Belum ada materi di sini!</p>
-        <p class="text-zinc-500 text-sm">Pengurus belum mengunggah referensi atau modul pembelajaran. Mohon bersabar, ya!</p>
+        <p class="text-zinc-300 font-medium mb-1" data-i18n="empty_materials_title">Belum ada materi di sini!</p>
+        <p class="text-zinc-500 text-sm" data-i18n="empty_materials_desc">Pengurus belum mengunggah referensi atau modul pembelajaran. Mohon bersabar, ya!</p>
       </div>`;
+    kirApplyTranslations();
   }
 
-  function filterMaterialsByCabang(cabang) {
-    currentFilter = cabang;
-    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
-      btn.classList.add('opacity-50');
-      btn.classList.remove('bg-accent-gradient', 'text-white', 'shadow-glow-sm');
-    });
-    document.getElementById(`filter-${cabang}`).classList.remove('opacity-50');
-    if (cabang === 'all') {
-      document.getElementById(`filter-${cabang}`).classList.add('bg-accent-gradient', 'text-white', 'shadow-glow-sm');
+  function toggleCabangFilter(cabang) {
+    if (activeCabangFilters.has(cabang)) {
+      activeCabangFilters.delete(cabang);
+    } else {
+      activeCabangFilters.add(cabang);
     }
+    ['robotik', 'sains'].forEach(c => {
+      const btn = document.getElementById(`filter-${c}`);
+      if (btn) btn.classList.toggle('opacity-50', !activeCabangFilters.has(c));
+    });
     renderMaterials();
   }
 
