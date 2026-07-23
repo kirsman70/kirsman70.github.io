@@ -16,6 +16,13 @@
    2. data-theme="dark" | "light"
       Sets background/text/glass variables. Dark is default.
 
+   3. data-reduce-motion="true" | "false"
+      User-controlled toggle (Settings → Tampilan, below Mode
+      terang). When "true", every animation/transition on the
+      site is switched off — see the rule right after :root
+      below. Off by default; independent of the OS-level
+      prefers-reduced-motion media query further down this file.
+
    Every "accent" utility class below (bg-accent, text-accent-300,
    shadow-glow, etc.) reads from these variables instead of a
    fixed hex, so the whole site re-colors itself automatically —
@@ -35,6 +42,30 @@ html {
      gutter up front means that width was never "given back" in the
      first place, so nothing moves when the scrollbar toggles off. */
   scrollbar-gutter: stable;
+}
+
+/* Every page's <body> carries Tailwind's `overflow-x-hidden` utility
+   as a horizontal-scroll guard. The problem is `hidden`, specifically:
+   giving an element a non-visible overflow-x with no matching
+   overflow-y forces the used value of overflow-y to `auto` too — so
+   `overflow-x: hidden` on <body> silently turns <body> into its own
+   scroll container, distinct from the real document/viewport scroller.
+   #sidebar's `position: sticky` (the default left/right bar, and the
+   top/bottom taskbar rules further down this file) sticks relative to
+   its nearest scrolling ancestor — which this now-a-scroll-container
+   <body> intercepts. Since <body> itself never actually scrolls (it
+   just grows to fit its content), sticky positioning relative to it
+   never recomputes, so the taskbar silently stops sticking and just
+   scrolls away with the page instead.
+   `overflow: clip` is the fix, not just relocating `hidden`: unlike
+   `hidden`/`scroll`/`auto`, `clip` was specifically designed to NOT
+   force the other axis to change and to NOT establish a scroll
+   container at all — there's no scrollport, no scrolling API, nothing
+   for a descendant's sticky positioning to mistake for its scrolling
+   ancestor. It still visually clips horizontal overflow exactly like
+   `hidden` did; it just can't break sticky the way `hidden` can. */
+body.overflow-x-hidden {
+  overflow-x: clip;
 }
 
 /* Locked while any modal (or Ekspedisi's fullscreen focus mode) is
@@ -61,9 +92,14 @@ html.kir-scroll-locked body {
 }
 
 /* #sidebar is lg:sticky lg:top-0 so it stays visible while the main
-   column scrolls (and, since it's taller than the viewport, it
-   naturally detaches and scrolls along near the bottom of the page so
-   its own bottom — the "Keluar" tab — comes into view). Sticky can't
+   column scrolls. It's also capped to lg:h-screen (exactly the
+   viewport height, never taller) so it can never detach and travel
+   with the page the way an over-tall sticky element normally would —
+   see .sidebar-nav-scroll further down this file, which is the part
+   of #sidebar that actually grows past the available space and
+   absorbs that overflow with its own internal (scrollbar-less)
+   scroll, while the profile footer pinned via .mt-auto stays put at
+   the bottom of the bar at all times. Sticky can't
    be trusted once .kir-scroll-locked engages: it recomputes against a
    scroll offset that's now frozen/fake instead of real. So
    __kirFreezeSidebar() in admin-shared.js swaps it to position:fixed
@@ -86,6 +122,19 @@ html.kir-scroll-locked body {
 }
 
 :root {
+  /* Live height of the taskbar when it's docked to the top or bottom of
+     the screen (data-sidebar-pos="top"/"bottom"), kept in sync by
+     kirWatchTaskbarClearance() in js/auth.js. Since the taskbar is
+     `position: fixed` in that layout (see the media query further down
+     this file), it no longer reserves space in .kir-app-shell's flex
+     flow — <main>'s padding and any fixed-position bottom UI (admin
+     FABs in css/admin-shared.css, the admin toast) add these on top of
+     their normal offset so nothing renders underneath the taskbar. 0px
+     the rest of the time (taskbar elsewhere, or below the lg breakpoint
+     where the top/bottom taskbar layout doesn't apply at all). */
+  --kir-top-taskbar-h: 0px;
+  --kir-bottom-taskbar-h: 0px;
+
   /* Default Orbit Accent (Premium Neutral) — true grayscale, no blue
      tint, and lighter overall so it reads as an extension of the
      white/light-grey logo instead of a colored (blue-ish) accent. */
@@ -107,6 +156,56 @@ html.kir-scroll-locked body {
   --thumb-bg: #ffffff;
 }
 
+/* User-controlled "disable all animations" toggle (Settings page).
+   Kept separate from the OS-level prefers-reduced-motion query below
+   so it always reflects the in-app toggle regardless of system
+   settings. !important is needed since it has to beat both utility
+   classes and any inline styles JS sets during an in-flight
+   animation (e.g. the leaderboard's FLIP reorder transforms). */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: -1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-reduce-motion="true"] .reveal { opacity: 1 !important; transform: none !important; }
+html[data-reduce-motion="true"] #orbit-traveler { display: none !important; }
+html[data-reduce-motion="true"] .pulse { animation: none !important; }
+
+/* The universal `*` selector above can't reach these — view-transition
+   pseudo-elements render on the document root, not as real descendants
+   of <html>. Named groups (kir-sidebar, kir-nav-pill — see .nav-active-
+   pill and #sidebar) get their own morph animation between old/new
+   position & size on every same-document transition, since
+   js/router.js now always runs one (needed so the Tailwind CDN's async
+   class reconciliation stays masked behind the snapshot crossfade —
+   see the comment on the startViewTransition call in router.js).
+   ViewTransition.skipTransition() is supposed to cut that morph short,
+   but named-group animations don't reliably honor it, so this CSS
+   backstop is still required for reduced motion to actually be motion-
+   free (the pill was still visibly gliding without it).
+   IMPORTANT: override animation-duration/delay here, NOT `animation:
+   none`. Killing the whole shorthand strips fill-mode too — with no
+   fill-mode, the old and new snapshots can both fall back to their
+   default full-opacity state and sit stacked on top of each other
+   under `mix-blend-mode: plus-lighter` (the built-in crossfade
+   compositing), which washes out lighter/whiter instead of cleanly
+   showing just the new state. Crushing the duration instead keeps the
+   animation running (so fill-mode still applies and it lands exactly
+   on its intended end frame) while making it visually instant — same
+   technique as the universal `*` rule above, just extended to the one
+   place that selector can't reach. */
+html[data-reduce-motion="true"]::view-transition-group(*),
+html[data-reduce-motion="true"]::view-transition-old(*),
+html[data-reduce-motion="true"]::view-transition-new(*) {
+  animation-duration: 0.001ms !important;
+  animation-delay: -1ms !important;
+}
+
 html[data-cabang="robotik"] {
   --accent-rgb: 224, 70, 95; /* #e0465f */
   --accent-2-rgb: 190, 18, 60;
@@ -126,6 +225,35 @@ html[data-cabang="both"] {
   --accent-2-rgb: 109, 40, 217;
   --accent-light-rgb: 196, 181, 253;
   --accent-lighter-rgb: 221, 214, 254;
+}
+
+/* User toggle: "Nonaktifkan Warna Cabang" (Settings → Tampilan &
+   Bahasa, js/auth.js kirSetDisableBranchColor()). When on, every
+   accent-* utility above falls back to a neutral grayscale instead
+   of the red/blue/purple cabang tint — same idea as the Orbit
+   Accent default a logged-out visitor sees, just forced on while
+   logged in too.
+   Single-attribute selector, same specificity as the data-cabang
+   rules above, so it MUST stay below them in the file to win the
+   cascade tie — don't reorder this block above data-cabang. */
+html[data-disable-branch-color="true"] {
+  --accent-rgb: 212, 212, 216;
+  --accent-2-rgb: 82, 82, 91;
+  --accent-light-rgb: 244, 244, 245;
+  --accent-lighter-rgb: 250, 250, 250;
+}
+
+/* Light mode's background is white, so the dark theme's light-grey
+   "neutral" above would nearly disappear against it — swap to a
+   near-black neutral instead. Two attributes here (vs. one on the
+   rule above) gives this higher specificity on purpose, so it wins
+   regardless of source order once both data-theme="light" and
+   data-disable-branch-color="true" are set. */
+html[data-theme="light"][data-disable-branch-color="true"] {
+  --accent-rgb: 15, 23, 42;
+  --accent-2-rgb: 30, 41, 59;
+  --accent-light-rgb: 51, 65, 85;
+  --accent-lighter-rgb: 71, 85, 105;
 }
 
 html[data-theme="light"] {
@@ -176,6 +304,61 @@ html[data-theme="light"] .nav-active-pill {
   min-width: 16rem;
   view-transition-name: kir-sidebar;
   contain: layout;
+}
+
+/* The scrollable middle of the taskbar — everything between the logo
+   and the profile footer (.mt-auto). #sidebar itself is capped to
+   lg:h-screen, so once the Menu/Voyage/Akun nav groups it wraps don't
+   fit that fixed height, this is what overflows and scrolls — not
+   #sidebar as a whole — which is exactly what keeps the profile
+   footer glued to the bottom of the bar regardless of scroll
+   position. flex-1/min-h-0 (set inline via Tailwind utilities in the
+   markup) are what let it actually shrink to the remaining space
+   instead of pushing #sidebar taller than its cap.
+   Scrollbar is intentionally hidden on all three engines (Firefox,
+   IE/old Edge, WebKit/Blink) — the region still scrolls via wheel,
+   trackpad, touch, or keyboard, it just never shows a visible track,
+   and naturally does nothing at all when there's nothing to scroll. */
+.sidebar-nav-scroll {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Once the nav list itself hits the top/bottom of its own scroll
+     range, stop the scroll gesture there instead of letting the
+     browser hand the rest of the gesture off to the page underneath
+     (the default "scroll chaining" behavior) — mousewheel/trackpad/
+     touch scrolling over the taskbar should only ever move the
+     taskbar's own list, never the page behind it. */
+  overscroll-behavior: contain;
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Edge fade — hints that there's more to scroll to without resorting
+   to a visible scrollbar. Toggled by kirUpdateNavScrollFade() in
+   js/auth.js, which reads the container's real scroll position/size,
+   so the fade on a given edge only ever appears when there's
+   genuinely more content past it — a list that fits entirely within
+   the taskbar never gets faded on either edge. .kir-fade-start is the
+   edge content scrolls away FROM (top in the normal vertical bar,
+   left in the horizontal top/bottom taskbar); .kir-fade-end is the
+   edge it scrolls TOWARD. Both can be active at once, in which case
+   the two gradients below combine into a fade on both edges with the
+   middle left fully opaque. */
+.sidebar-nav-scroll.kir-fade-start {
+  mask-image: linear-gradient(to bottom, transparent, black 20px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px);
+}
+.sidebar-nav-scroll.kir-fade-end {
+  mask-image: linear-gradient(to top, transparent, black 20px);
+  -webkit-mask-image: linear-gradient(to top, transparent, black 20px);
+}
+.sidebar-nav-scroll.kir-fade-start.kir-fade-end {
+  mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
 }
 
 #sidebar.sidebar-collapsed {
@@ -256,10 +439,28 @@ html[data-theme="light"] .nav-active-pill {
 #sidebar.sidebar-collapsed .nav-link,
 #sidebar.sidebar-collapsed .mt-auto > a,
 #sidebar.sidebar-collapsed button[onclick="kirLogout()"] {
-  padding-left: 1.125rem !important;
-  padding-right: 1.125rem !important;
+  /* 1rem (not the old 1.125rem) is what actually leaves the icon's
+     own 1.25rem box flush inside .nav-link's content box once its
+     `border: 1px solid transparent` (always-on, 1px each side, see
+     .nav-link below) is accounted for:
+       collapsed nav content width (54px, itself already reduced by
+       #sidebar's own 0.5rem padding + border) minus .nav-link's own
+       2px border minus 2 * 1rem padding = 20px = exactly the 1.25rem
+       collapsed icon. The old 1.125rem number left the icon 4px too
+       big for its box, so flexbox's default flex-start alignment
+       pushed the overflow entirely to the right.
+  */
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
   gap: 0 !important;
   width: 100% !important;
+  /* Center by construction instead of relying on the padding numbers
+     above happening to net out to zero. That arithmetic is fragile —
+     any future change to the sidebar's border, padding, or icon size
+     silently reintroduces the drift. justify-content: center
+     guarantees centering regardless. Scoped to collapsed mode only:
+     expanded mode still left-aligns the icon+label pair. */
+  justify-content: center !important;
 }
 
 #sidebar.sidebar-collapsed > a:first-of-type > div:first-child,
@@ -275,6 +476,321 @@ html[data-theme="light"] .nav-active-pill {
   margin: 0 !important;
   width: 1.25rem !important;
   height: 1.25rem !important;
+}
+
+/* ==========================================================
+   Mobile nav drawer (below the lg breakpoint)
+   --------------------------------------------------------
+   #sidebar is `hidden lg:flex` — on mobile the hamburger button in
+   each page's top bar calls kirToggleMobileSidebar() (js/auth.js),
+   which removes `hidden` and adds `kir-sidebar-open`. Without the
+   rules below that would just drop the (very tall) desktop sidebar
+   into normal block flow above <main>, pushing the whole page down
+   instead of floating over it — which is exactly what this fixes:
+   under 1024px, an un-hidden #sidebar is pulled out of flow and
+   pinned to the viewport as a slide-in panel, with a dedicated
+   backdrop behind it and the page underneath locked from scrolling.
+   ========================================================== */
+@media (max-width: 1023.98px) {
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 17rem;
+    max-width: 82vw;
+    z-index: 60;
+    display: flex !important;
+    flex-direction: column;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 8px 0 32px -8px rgba(0, 0, 0, 0.5);
+  }
+  #sidebar.kir-sidebar-open {
+    transform: translateX(0);
+  }
+  /* Collapse is a desktop-only affordance (there's no room to save on
+     a 17rem overlay panel) — hide its toggle so it can't get stuck in
+     a collapsed state that the mobile drawer has no way to expand
+     back out of. */
+  #sidebar-collapse-btn {
+    display: none;
+  }
+}
+
+.kir-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 55;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.kir-sidebar-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Lock the page behind the open drawer so a touch-scroll on the
+   backdrop can't drag the content underneath. */
+html.kir-mobile-nav-open {
+  overflow: hidden;
+}
+
+/* ==========================================================
+   Taskbar (sidebar) position — Settings → Appearance & Language.
+   `data-sidebar-pos="left"` is the default and needs nothing
+   extra: it's the exact layout the rules above already produce.
+   The other three are opt-in overrides, scoped to the same lg:
+   breakpoint the sidebar itself only ever renders at (#sidebar is
+   `hidden lg:flex` — below that a separate mobile top bar with a
+   hamburger dropdown takes over, untouched by this setting).
+
+   .kir-app-shell is the flex row (`<div class="... lg:flex">`)
+   that holds #sidebar-root and <main> on every app page.
+   ========================================================== */
+@media (min-width: 1024px) {
+
+  /* ---- right: mirror the default left-hand bar ---- */
+  html[data-sidebar-pos="right"] .kir-app-shell {
+    flex-direction: row-reverse;
+  }
+  html[data-sidebar-pos="right"] #sidebar {
+    border-left: 1px solid var(--glass-border);
+    border-right: 0;
+  }
+  html[data-sidebar-pos="right"] #sidebar-collapse-btn {
+    right: auto;
+    left: -0.75rem;
+  }
+  html[data-sidebar-pos="right"] .collapse-icon { transform: rotate(180deg); }
+  html[data-sidebar-pos="right"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(0deg); }
+
+  /* ---- top / bottom: fold the vertical bar into a horizontal one ---- */
+  html[data-sidebar-pos="top"] .kir-app-shell,
+  html[data-sidebar-pos="bottom"] .kir-app-shell {
+    flex-direction: column;
+  }
+  html[data-sidebar-pos="bottom"] .kir-app-shell {
+    flex-direction: column-reverse;
+  }
+
+  html[data-sidebar-pos="top"] #sidebar,
+  html[data-sidebar-pos="bottom"] #sidebar {
+    /* `position: fixed`, not `sticky`. A horizontal top/bottom taskbar
+       is always shorter than the viewport, so there's none of the
+       "scroll past it, let it detach and travel with the page" nuance
+       that makes `sticky` the right tool for the tall left/right bar
+       further up this file — a taskbar just needs to always be pinned
+       to a viewport edge, full stop, which is exactly what `fixed` is
+       for. It also sidesteps `sticky`'s biggest footgun entirely:
+       sticky positioning is computed relative to the nearest ancestor
+       that establishes a scroll container, and that lookup can get
+       hijacked by all sorts of ancestor styling (overflow, contain,
+       transforms, third-party CSS injected by the Tailwind CDN runtime
+       at unpredictable times, etc.) — `fixed` has no such ancestor
+       dependency; it's relative to the viewport, always, unconditionally.
+       Taking #sidebar out of flow like this does mean <main> needs
+       explicit padding to compensate for the space #sidebar no longer
+       reserves in .kir-app-shell's flex layout — see the
+       `html[data-sidebar-pos="top"/"bottom"] main` rules below, fed by
+       the same --kir-top-taskbar-h / --kir-bottom-taskbar-h variables
+       js/auth.js already measures live. */
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    flex-direction: row !important;
+    align-items: center;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto;
+    min-height: 0;
+    padding: 0.55rem 1.1rem !important;
+    gap: 0;
+    /* Overflow now lives on .sidebar-nav-scroll (below), not here —
+       see that rule for why. */
+    overflow: visible;
+    transition: padding 0.25s ease;
+  }
+
+  /* In the horizontal layout, .sidebar-nav-scroll (the Menu/Voyage/
+     Akun nav groups) becomes the row that can actually run out of
+     space and needs to scroll — sideways this time, not vertically —
+     while the logo before it and the profile chip after it
+     (margin-left: auto, outside this element entirely) stay fixed in
+     place at their end of the bar and never move. min-width: 0 is
+     required for a flex item to shrink below its content's natural
+     width and actually engage overflow-x instead of just forcing
+     #sidebar wider than the viewport. */
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll {
+    flex-direction: row !important;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* Fade runs along whichever axis actually scrolls here: horizontal,
+     not vertical — same start/end logic as the vertical bar, just
+     rotated 90°. Higher specificity than the base .kir-fade-start/
+     .kir-fade-end rules above, so this wins whenever the taskbar is
+     docked top/bottom. */
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-start,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-start {
+    mask-image: linear-gradient(to right, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20px);
+  }
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-end,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-end {
+    mask-image: linear-gradient(to left, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to left, transparent, black 20px);
+  }
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-start.kir-fade-end,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-start.kir-fade-end {
+    mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+  }
+  /* Collapsed = icon-only taskbar strip, noticeably slimmer than the
+     already-compact expanded bar above */
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed {
+    padding: 0.35rem 0.85rem !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar {
+    top: 0 !important; bottom: auto !important;
+    border-bottom: 1px solid var(--glass-border);
+    border-left: 0; border-top: 0;
+  }
+  html[data-sidebar-pos="bottom"] #sidebar {
+    top: auto !important; bottom: 0 !important;
+    border-top: 1px solid var(--glass-border);
+    border-left: 0; border-bottom: 0;
+  }
+
+  /* #sidebar no longer reserves space in .kir-app-shell's flex flow once
+     it's `position: fixed` (see above), so <main> renders straight
+     through where the taskbar visually sits unless compensated here.
+     --kir-top-taskbar-h / --kir-bottom-taskbar-h are the taskbar's live
+     rendered height, kept in sync by kirWatchTaskbarClearance in
+     js/auth.js (0px whenever that position/breakpoint isn't active, so
+     these rules are harmless no-ops the rest of the time). */
+  html[data-sidebar-pos="top"] main {
+    padding-top: calc(2rem + var(--kir-top-taskbar-h, 0px));
+  }
+  html[data-sidebar-pos="bottom"] main {
+    padding-bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px));
+  }
+
+  /* Collapse trigger stays available in top/bottom mode too — same
+     Windows-taskbar-style "show icons only" behavior as left/right,
+     just relocated from the protruding edge tab (which only makes
+     sense on a vertical bar) to an ordinary inline button at the
+     far end of the row, past the account chip. */
+  html[data-sidebar-pos="top"] #sidebar-collapse-btn,
+  html[data-sidebar-pos="bottom"] #sidebar-collapse-btn {
+    position: static;
+    order: 99;
+    margin-left: 0.75rem;
+    top: auto; right: auto; left: auto; bottom: auto;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] .collapse-icon { transform: rotate(90deg); }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(-90deg); }
+  html[data-sidebar-pos="bottom"] .collapse-icon { transform: rotate(-90deg); }
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(90deg); }
+
+  /* Logo: sits flush left, no bottom margin needed in a horizontal bar.
+     Collapsed down to just the mark (no wordmark) once icon-only, same
+     idea as the label-hiding below. */
+  html[data-sidebar-pos="top"] #sidebar > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar > a:first-of-type {
+    margin-bottom: 0 !important;
+    margin-right: 1.5rem;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed > a:first-of-type {
+    margin-right: 0.85rem;
+  }
+
+  /* Nav groups become inline pill-rows instead of stacked lists;
+     the little uppercase "Menu"/"Voyage"/"Akun" group labels don't
+     fit a slim horizontal bar so they're dropped, and a divider
+     line stands in for the visual grouping they used to provide. */
+  html[data-sidebar-pos="top"] #sidebar nav,
+  html[data-sidebar-pos="bottom"] #sidebar nav {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.2rem !important;
+    margin-top: 0 !important;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] #sidebar nav > p.uppercase,
+  html[data-sidebar-pos="bottom"] #sidebar nav > p.uppercase {
+    display: none;
+  }
+  html[data-sidebar-pos="top"] #sidebar nav + nav,
+  html[data-sidebar-pos="bottom"] #sidebar nav + nav {
+    margin-left: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 1px solid var(--glass-border);
+  }
+
+  /* Nav links themselves: trim the default vertical-bar padding down
+     to something a slim horizontal strip can actually hold */
+  html[data-sidebar-pos="top"] #sidebar .nav-link,
+  html[data-sidebar-pos="bottom"] #sidebar .nav-link {
+    padding: 0.45rem 0.65rem !important;
+    gap: 0.5rem !important;
+  }
+
+  /* ---- collapsed (icon-only) state, top/bottom ---- */
+  /* The generic #sidebar.sidebar-collapsed rules elsewhere in this
+     file already hide .nav-label/.sidebar-header-text/.min-w-0 and
+     assume a vertical bar (width: 100% !important on every row,
+     justify-content: center). Those width/centering assumptions are
+     wrong for a horizontal strip, so they're reset back to natural
+     sizing here — higher specificity (html[...] + #sidebar.sidebar-
+     collapsed) wins over the generic versions further up the file. */
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .nav-link,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > a,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed button[onclick="kirLogout()"],
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .nav-link,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > a,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed button[onclick="kirLogout()"] {
+    width: auto !important;
+    padding: 0.4rem !important;
+    gap: 0 !important;
+    justify-content: center !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > div,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > div {
+    width: auto !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .nav-link svg,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .nav-link svg {
+    margin: 0 !important;
+  }
+
+  /* Account footer (avatar/name) rides at the far end of the bar
+     instead of pinned to the bottom of a column */
+  html[data-sidebar-pos="top"] #sidebar > div.mt-auto,
+  html[data-sidebar-pos="bottom"] #sidebar > div.mt-auto {
+    margin-top: 0 !important;
+    margin-left: auto;
+    padding-top: 0 !important;
+    padding-left: 0.85rem;
+    border-top: 0 !important;
+    border-left: 1px solid var(--glass-border);
+    flex-shrink: 0;
+  }
 }
 
 body {
@@ -319,6 +835,18 @@ body {
 .glass-input::placeholder { color: var(--muted-600); }
 .glass-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* iOS Safari auto-zooms the page in on focus for any text input/select
+   under 16px, which is disorienting on ordinary scrolling pages and
+   actively breaks the fixed-height, non-scrolling layouts (auth.html,
+   the dashboard modals) since the browser's own zoom fights the page's
+   own sizing the moment a field is tapped. The inputs are `text-sm`
+   (14px) everywhere for visual consistency with the rest of the UI, so
+   bump only the mobile, only-while-focused size back up to 16px rather
+   than changing how they look normally or on desktop. */
+@media (max-width: 640px) {
+  .glass-input:focus, select.glass-input:focus { font-size: 16px; }
+}
+
 /* ==========================================================
    Custom dropdown — replaces native <select> appearance
    ========================================================== */
@@ -326,16 +854,26 @@ body {
 .kir-select-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
   width: 100%; text-align: left; cursor: pointer;
+  border-radius: 0.5rem; padding: 0.625rem 0.875rem; font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+/* Default ("glass-input") look. Scoped with :not() rather than layered on
+   top of .kir-select-pill below so that when a caller opts into the pill
+   variant, background/border/color simply aren't set by this rule at
+   all — leaving the caller's own utility classes (passed in via
+   data-trigger-class on the source <select>, see kirRefreshCustomSelect
+   in js/auth.js) completely free to color the trigger without having to
+   out-specificity anything here, regardless of CSS load order. */
+.kir-select-trigger:not(.kir-select-pill) {
   background: var(--glass-input-bg); border: 1px solid var(--glass-border);
   backdrop-filter: blur(8px); color: var(--text-color);
-  border-radius: 0.5rem; padding: 0.625rem 0.875rem; font-size: 0.875rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.kir-select-trigger:hover { border-color: rgba(var(--accent-rgb), 0.4); }
-.kir-select-trigger.open {
+.kir-select-trigger:not(.kir-select-pill):hover { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-select-trigger:not(.kir-select-pill).open {
   border-color: rgba(var(--accent-rgb), 0.6);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
+.kir-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .kir-select-trigger.placeholder .kir-select-trigger-label { color: var(--muted-600); }
 .kir-select-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kir-select-chevron {
@@ -344,20 +882,60 @@ body {
 }
 .kir-select-trigger.open .kir-select-chevron { transform: rotate(180deg); }
 
-/* min-width keeps it at least as wide as the trigger; width: max-content
-   lets it grow WIDER than the trigger to fit its longest option instead
-   of wrapping/clipping (the trigger itself can be as narrow as 7rem —
-   see e.g. Voyages' SUBJEK filter — while an option like "Informatika"
-   needs more room than that). max-width plus normal white-space keeps
-   it from running off-screen or off a single line if an option is ever
-   genuinely long: it wraps instead of overflowing.
+/* Compact colored-pill variant - e.g. the per-task status dropdown on
+   tasks.html, which needs to keep looking like the small rounded status
+   badge it always has, just with the site's real dropdown panel behind
+   it instead of the browser's native one. A caller opts in by adding
+   "kir-select-pill" (plus whatever bg-* / text-* / border-* classes give it
+   its color) to data-trigger-class - kirRefreshCustomSelect mirrors that
+   one token onto the WRAPPER too (not just the trigger button), which is
+   what this first rule is for: without it the wrapper stays a normal
+   block box that stretches to fill whatever layout slot it's sitting in
+   (see the plain .kir-select rule below, used everywhere else on the
+   site), and the trigger inside would visually balloon out to match even
+   though the trigger's own width is `auto`. */
+.kir-select.kir-select-pill { display: inline-block; width: auto; }
+.kir-select-trigger.kir-select-pill {
+  display: inline-flex; width: auto; gap: 0.3rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.8rem; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 500;
+}
+.kir-select-trigger.kir-select-pill:hover { filter: brightness(1.12); }
+.kir-select-trigger.kir-select-pill .kir-select-chevron {
+  width: 0.7rem; height: 0.7rem; opacity: 0.75; color: currentColor;
+}
+
+
+/* min-width is set inline per-open (see kirPositionSelectPanel in
+   js/auth.js) to match the trigger's own current width in real viewport
+   pixels — position: fixed means a CSS percentage here can't resolve
+   against the wrapper the way it could when this was position: absolute.
+   width: max-content lets it grow WIDER than the trigger to fit its
+   longest option instead of wrapping/clipping (the trigger itself can be
+   as narrow as 7rem — see e.g. Voyages' SUBJEK filter — while an option
+   like "Informatika" needs more room than that). max-width plus normal
+   white-space keeps it from running off-screen or off a single line if
+   an option is ever genuinely long: it wraps instead of overflowing.
    No max-height/overflow-y here on purpose — panels grow to fit every
    option instead of scrolling. kirPositionSelectPanel (auth.js) flips
    the panel above the trigger, and/or shifts it left, whenever growing
-   would push it past the viewport edge. */
+   would push it past the viewport edge.
+
+   position: fixed (rather than absolute, relative to the wrapper) is
+   deliberate: an absolutely-positioned panel is clipped by ANY ancestor
+   with overflow:hidden — a task card, a modal's scrollable body, etc. —
+   which used to cut the panel off after a sliver of its first option.
+   Fixed positioning is relative to the viewport instead, so it always
+   renders in full regardless of what it's nested inside. The trade-off
+   is that a fixed element doesn't track the page scrolling underneath it
+   the way an absolute one would, so open panels are closed on scroll
+   (see the window 'scroll' listener further down this file) rather than
+   left visually detached from their trigger. z-index is set above every
+   modal-overlay z-index on the site (highest is 80, the admin toast) so
+   a dropdown opened from inside a modal still renders on top of it. */
 .kir-select-panel {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
-  min-width: 100%; width: max-content; max-width: min(24rem, calc(100vw - 2rem));
+  position: fixed; z-index: 100;
+  width: max-content; max-width: min(24rem, calc(100vw - 2rem));
   background: var(--bg-color); border: 1px solid var(--glass-border);
   border-radius: 0.65rem; padding: 0.35rem;
   box-shadow: 0 12px 28px rgba(0,0,0,0.35);
@@ -609,7 +1187,7 @@ body.kir-alt-held .kir-range-ticks {
 .shadow-glow-sm { box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.35); }
 
 .hero-gradient {
-  background-image: linear-gradient(to right, #ffffff, #ffffff, rgb(var(--accent-light-rgb)));
+  background-image: linear-gradient(to right, #ffffff, rgb(var(--accent-light-rgb)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -630,7 +1208,7 @@ html[data-theme="light"] .text-gradient-accent {
 }
 
 html[data-theme="light"] .hero-gradient {
-  background-image: linear-gradient(to right, #0f172a, #1e293b, rgb(var(--accent-2-rgb)));
+  background-image: linear-gradient(to right, #0f172a, rgb(var(--accent-2-rgb)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -642,6 +1220,13 @@ html[data-theme="light"] .hero-gradient {
    apart even when your own accent is purple ("both"). */
 .badge-robotik { background: rgba(224, 70, 95, 0.15); color: #ee8fa0; border: 1px solid rgba(224, 70, 95, 0.35); }
 .badge-sains   { background: rgba(56, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(56, 130, 246, 0.35); }
+
+html[data-disable-branch-color="true"] .badge-robotik,
+html[data-disable-branch-color="true"] .badge-sains {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: rgb(var(--accent-light-rgb));
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
 
 .accent-theme {
   accent-color: rgb(var(--accent-rgb));
@@ -660,6 +1245,45 @@ html[data-theme="light"] .hero-gradient {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .toggle-track.on .toggle-thumb { transform: translateX(20px); }
+
+/* Settings: taskbar (sidebar) position picker — four little mock
+   "device screens" showing where the bar will sit, rather than a
+   plain radio list, so the choice is legible at a glance. */
+.pos-option {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  padding: 0.6rem 0.4rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.pos-option:hover { background: rgba(128,128,128,0.12); transform: translateY(-1px); }
+.pos-option.active {
+  border-color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.pos-option-label {
+  font-size: 0.6875rem; font-weight: 500; color: var(--muted-500);
+}
+.pos-option.active .pos-option-label { color: var(--text-color); }
+
+.pos-option-preview {
+  width: 100%; aspect-ratio: 4 / 3;
+  border-radius: 0.4rem;
+  background: rgba(128,128,128,0.15);
+  border: 1px solid var(--glass-border);
+  display: flex; overflow: hidden;
+}
+.pos-option.active .pos-option-preview { border-color: rgba(var(--accent-rgb), 0.5); }
+.pos-option-preview .pos-bar { background: rgb(var(--accent-rgb)); flex-shrink: 0; }
+.pos-option-preview .pos-page { flex: 1; background: rgba(128,128,128,0.1); margin: 3px; border-radius: 2px; }
+
+.pos-preview-left, .pos-preview-right { flex-direction: row; }
+.pos-preview-left .pos-bar, .pos-preview-right .pos-bar { width: 28%; height: 100%; }
+
+.pos-preview-top, .pos-preview-bottom { flex-direction: column; }
+.pos-preview-top .pos-bar, .pos-preview-bottom .pos-bar { height: 28%; width: 100%; }
 
 /* Cabang picker chip (register + settings) */
 .cabang-chip {
@@ -1197,8 +1821,8 @@ html[data-theme="light"] .item-thumb-slot::after {
   color: var(--text-color); line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
-  box-orient: vertical;
   overflow: hidden; word-break: break-word; padding: 0 0.15rem; min-height: 2.1em;
 }
 

@@ -18,7 +18,10 @@
 .admin-fab {
   position: fixed;
   right: 1.5rem;
-  bottom: 1.5rem;
+  /* Add clearance for the taskbar when it's docked to the bottom of the
+     screen — see --kir-bottom-taskbar-h in css/style.css. Defaults to
+     0px (no-op) everywhere else, so this is safe unconditionally. */
+  bottom: calc(1.5rem + var(--kir-bottom-taskbar-h, 0px));
   z-index: 40;
   width: 3.25rem;
   height: 3.25rem;
@@ -37,7 +40,7 @@
 
 /* Room for a bottom nav / mobile chrome — pages can opt into this
    variant with an extra class if the fab would otherwise overlap. */
-.admin-fab.admin-fab-raised { bottom: 5.5rem; }
+.admin-fab.admin-fab-raised { bottom: calc(5.5rem + var(--kir-bottom-taskbar-h, 0px)); }
 
 /* Secondary/tertiary/quaternary stacked circular actions — sit directly
    above the main "+" fab (same right alignment), icon-only, smaller and
@@ -58,9 +61,9 @@
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.15s ease;
 }
-.admin-fab-secondary { bottom: 5.5rem; }
-.admin-fab-tertiary { bottom: 9rem; }
-.admin-fab-quaternary { bottom: 12.5rem; }
+.admin-fab-secondary { bottom: calc(5.5rem + var(--kir-bottom-taskbar-h, 0px)); }
+.admin-fab-tertiary { bottom: calc(9rem + var(--kir-bottom-taskbar-h, 0px)); }
+.admin-fab-quaternary { bottom: calc(12.5rem + var(--kir-bottom-taskbar-h, 0px)); }
 .admin-fab-secondary:hover, .admin-fab-tertiary:hover, .admin-fab-quaternary:hover { filter: brightness(1.15); transform: translateY(-2px); }
 .admin-fab-secondary:active, .admin-fab-tertiary:active, .admin-fab-quaternary:active { transform: translateY(0); }
 .admin-fab-secondary svg, .admin-fab-tertiary svg, .admin-fab-quaternary svg { width: 1.15rem; height: 1.15rem; }
@@ -479,7 +482,7 @@
    the app, without depending on that class directly.
    ---------------------------------------------------------- */
 .admin-toast {
-  position: fixed; left: 50%; bottom: 2rem; transform: translate(-50%, 20px);
+  position: fixed; left: 50%; bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px)); transform: translate(-50%, 20px);
   z-index: 80; opacity: 0; pointer-events: none;
   transition: all 0.35s cubic-bezier(.2,.8,.2,1);
   display: flex; align-items: center; gap: 0.6rem;
