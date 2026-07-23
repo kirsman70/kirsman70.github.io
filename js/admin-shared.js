@@ -145,6 +145,18 @@ function __kirModalLock(delta) {
     // to position:sticky — it recalculates correctly once scrollY is
     // genuine again.
     __kirFreezeSidebar(false);
+    // If the taskbar position was changed via the Settings modal while
+    // it was open, #sidebar was pinned at its OLD (pre-change) frozen
+    // dimensions the whole time (see __kirFreezeSidebar), so the top/
+    // bottom clearance variables in js/auth.js could've been computed
+    // against stale/mid-freeze numbers. Recompute now that the sidebar
+    // is back in normal flow, once the browser's applied that — this
+    // reads the CURRENT data-sidebar-pos, so it correctly clears
+    // whichever side is no longer active as well as measuring whichever
+    // side just became active.
+    if (typeof kirUpdateTaskbarClearance === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(() => kirUpdateTaskbarClearance()));
+    }
   }
 }
 

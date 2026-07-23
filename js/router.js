@@ -50,6 +50,16 @@
   if (window.__kirRouterInit) return;
   window.__kirRouterInit = true;
 
+  function isReducedMotion() {
+    // Two independent sources: the OS/browser-level media query, and
+    // the site's own "disable all animations" toggle in Settings
+    // (data-reduce-motion, set by kirSetReduceMotion in auth.js).
+    // Either one being on should suppress motion everywhere the router
+    // touches, not just the CSS-driven stuff style.css already covers.
+    return document.documentElement.getAttribute('data-reduce-motion') === 'true'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   function absoluteUrl(path) {
     return new URL(path, window.location.href).href;
   }
@@ -166,7 +176,7 @@
   ];
 
   function syncOrbitAnimations(root) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (isReducedMotion()) return;
     const elapsedSec = (performance.now() - ORBIT_CLOCK_START) / 1000;
     ORBIT_ANIMATIONS.forEach(({ selector, durationSec }) => {
       const phase = elapsedSec % durationSec;
@@ -176,19 +186,28 @@
     });
   }
 
+  let kirNavController = null;
+
   async function navigate(url, { push = true } = {}) {
+    if (kirNavController) kirNavController.abort();
+    kirNavController = new AbortController();
+    const signal = kirNavController.signal;
+
     document.documentElement.classList.add('kir-router-loading');
 
     let html;
     try {
-      const res = await fetch(url, { credentials: 'same-origin' });
+      const res = await fetch(url, { credentials: 'same-origin', signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       html = await res.text();
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Router: fetch failed, falling back to a real navigation', err);
       window.location.href = url;
       return;
     }
+    
+    if (signal.aborted) return;
 
     const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -201,7 +220,7 @@
     // flash for no reason.
     const fromPath = window.location.pathname;
     const toPath = new URL(url, window.location.href).pathname;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduceMotion = isReducedMotion();
     const revealPending = !reduceMotion
       && /\/auth\.html$/i.test(fromPath)
       && /\/index\.html$/i.test(toPath);
@@ -248,12 +267,26 @@
     // auth.js) — has anything real to animate from. Falls back to the
     // normal full replacement whenever either page doesn't have a
     // #sidebar-root (e.g. navigating to/from a public page).
+    //
+    // IMPORTANT: don't detach oldSidebarRoot out here. document.
+    // startViewTransition() snapshots the CURRENT render state the
+    // instant it's called, a few lines below — if the sidebar is
+    // already removed from the live DOM by then, that "old" snapshot
+    // simply never contains it. The browser then has no choice but to
+    // treat the sidebar in the "new" snapshot as brand-new content
+    // with nothing to morph from, and plays its default entrance fade
+    // on it — a visible flash, on every single navigation. Keeping the
+    // detach + reattach both inside swapBody (the transition's update
+    // callback) means both happen atomically between the "old" and
+    // "new" snapshots, so the same node is recognized as persisting
+    // across the transition instead of appearing out of nowhere.
     const oldSidebarRoot = document.getElementById('sidebar-root');
     const preserveSidebar = !!(oldSidebarRoot && doc.getElementById('sidebar-root'));
-    if (preserveSidebar) oldSidebarRoot.remove();
 
     const swapBody = () => {
       document.title = doc.title;
+
+      if (preserveSidebar) oldSidebarRoot.remove();
 
       // --------------------------------------------------------------
       // Orbit-animation continuity (architectural fix)
@@ -328,9 +361,54 @@
     // only fires on real cross-document navigations — since this router
     // intercepts internal links and never triggers a real navigation,
     // that CSS rule was never actually doing anything for in-app clicks.
-    // Falls back to an instant swap on browsers without the API.
+    //
+    // IMPORTANT: this path is not just cosmetic, and it must run even
+    // when reduced motion is on. Between swapBody()'s replaceChildren()
+    // and the new page's classes actually having generated CSS, there's
+    // a real (if brief) window: the Tailwind CDN runtime compiles
+    // utility CSS for newly-introduced markup via a MutationObserver,
+    // asynchronously, not synchronously with the DOM mutation that
+    // triggered it (see kirSettleNavPill's comment in auth.js for the
+    // same underlying fact biting the nav pill). A whole-body
+    // replaceChildren() is a big batch of new markup for it to
+    // reconcile. document.startViewTransition() rasterizes an "old"
+    // screenshot, runs swapBody(), rasterizes a "new" screenshot, and
+    // shows a crossfade between those two static images — so whatever
+    // the live DOM looks like mid-reconciliation is never actually
+    // painted to the screen; it's masked behind the screenshots the
+    // whole time, and by the time they're revealed Tailwind has caught
+    // up. That's what was hiding the flash — not the animation itself.
+    //
+    // Skipping startViewTransition() entirely for reduced motion (the
+    // previous approach) throws that masking away, so the same
+    // mid-reconciliation state becomes the very next thing painted —
+    // exposing the flash instead of fixing it. And forcing `animation:
+    // none` on the ::view-transition-* pseudo-elements from CSS alone
+    // isn't a safe substitute either: it strips their fill-mode along
+    // with the animation, so the old and new snapshots can end up both
+    // sitting at full opacity, briefly composited on top of each other
+    // instead of one cleanly replacing the other — a different flash.
+    //
+    // The correct way to make this instant is the API's own escape
+    // hatch: start the transition normally (so the atomic snapshot/
+    // update behavior — and its masking — always applies), then call
+    // skipTransition() to cut the animation phase short without ever
+    // constructing a half-animated pseudo-element tree. This is also
+    // genuinely cheaper than a full crossfade: no compositor work is
+    // sustained over the transition's duration, so reduced-motion
+    // navigation ends up lighter than animated navigation, not just
+    // motion-free. Falls back to a plain synchronous swapBody() only on
+    // browsers that lack the API entirely.
     if (document.startViewTransition) {
-      await document.startViewTransition(swapBody).finished;
+      try {
+        const transition = document.startViewTransition(swapBody);
+        if (isReducedMotion() && typeof transition.skipTransition === 'function') {
+          transition.skipTransition();
+        }
+        await transition.finished;
+      } catch (e) {
+        swapBody();
+      }
     } else {
       swapBody();
     }

@@ -191,67 +191,67 @@ const HEATMAP_LEVEL_OPACITY = [0.06, 0.25, 0.45, 0.7, 1];
    ---------------------------------------------------------- */
 const WIDGET_CATALOG = {
   profile: {
-    label: 'Profil Pengguna', desc: 'Kartu ID keanggotaan kamu.',
+    label: 'Profil Pengguna', desc: 'Kartu ID keanggotaan kamu.', labelKey: 'widget_cat_profile_label', descKey: 'widget_cat_profile_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`,
     sizes: [[1,1],[2,1],[3,1],[4,1],[1,2],[2,2],[3,2],[4,2]], default: [2,1],
   },
   quote: {
-    label: 'Kutipan Harian', desc: 'Motivasi acak untuk hari ini.',
+    label: 'Kutipan Harian', desc: 'Motivasi acak untuk hari ini.', labelKey: 'widget_cat_quote_label', descKey: 'widget_cat_quote_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>`,
     sizes: [[1,1],[1,2],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2]], default: [2,1],
   },
   tasks: {
-    label: 'Tugas Aktif', desc: 'Ringkasan tugas yang sedang berjalan.',
+    label: 'Tugas Aktif', desc: 'Ringkasan tugas yang sedang berjalan.', labelKey: 'widget_cat_tasks_label', descKey: 'widget_cat_tasks_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,2],[4,2],[3,3],[4,3],[4,4]], default: [2,2],
   },
   events: {
-    label: 'Acara Mendatang', desc: 'Acara klub berikutnya, sekilas.',
+    label: 'Acara Mendatang', desc: 'Acara klub berikutnya, sekilas.', labelKey: 'widget_cat_events_label', descKey: 'widget_cat_events_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,2],[4,2],[3,3],[4,3],[4,4]], default: [2,2],
   },
   deltas: {
-    label: 'Deltas', desc: 'Grafik perolehan poin kamu dari waktu ke waktu.',
+    label: 'Deltas', desc: 'Grafik perolehan poin kamu dari waktu ke waktu.', labelKey: 'widget_cat_deltas_label', descKey: 'widget_cat_deltas_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0V9a2 2 0 00-2-2h-2m-8 12h12" /></svg>`,
     sizes: [[1,1],[1,2],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2],[3,3],[4,3]], default: [3,2],
   },
   streak: {
-    label: 'Beruntun', desc: 'Nyala si api streak harian kamu.',
+    label: 'Beruntun', desc: 'Nyala si api streak harian kamu.', labelKey: 'widget_cat_streak_label', descKey: 'widget_cat_streak_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.5 6.5 16.5 9c0 1-.5 2-1 2.5 2.5.5 3.157 3.157 2.157 7.157z" /></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[4,1],[3,2],[4,2]], default: [1,2],
   },
   activity: {
-    label: 'Aktivitas Terbaru', desc: 'Update terbaru dari tim kamu.',
+    label: 'Aktivitas Terbaru', desc: 'Update terbaru dari tim kamu.', labelKey: 'widget_cat_activity_label', descKey: 'widget_cat_activity_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" /></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2],[3,3],[4,3],[4,4]], default: [2,2],
   },
   clock: {
-    label: 'Jam', desc: 'Jam analog yang mengikuti warna cabang kamu.',
+    label: 'Jam', desc: 'Jam analog yang mengikuti warna cabang kamu.', labelKey: 'widget_cat_clock_label', descKey: 'widget_cat_clock_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2],[4,3]], default: [2,1],
   },
   leaderboard: {
-    label: 'Peringkat', desc: 'Peringkat deltas kamu di klub.',
+    label: 'Peringkat', desc: 'Peringkat deltas kamu di klub.', labelKey: 'widget_cat_leaderboard_label', descKey: 'widget_cat_leaderboard_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>`,
     sizes: [[1,1],[1,2],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2],[4,3],[4,4]], default: [2,2],
   },
   quicklinks: {
-    label: 'Tautan Cepat', desc: 'Jalan pintas ke halaman lain di Orbit.',
+    label: 'Tautan Cepat', desc: 'Jalan pintas ke halaman lain di Orbit.', labelKey: 'widget_cat_quicklinks_label', descKey: 'widget_cat_quicklinks_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>`,
     sizes: [[1,1],[1,2],[2,1],[3,1],[4,1],[2,2],[3,2],[4,2],[2,3],[4,3]], default: [4,1],
   },
   notes: {
-    label: 'Catatan', desc: 'Tulis catatan atau pengingat cepat.',
+    label: 'Catatan', desc: 'Tulis catatan atau pengingat cepat.', labelKey: 'widget_cat_notes_label', descKey: 'widget_cat_notes_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" /></svg>`,
     sizes: [[1,1],[1,2],[1,3],[2,1],[3,1],[2,2],[3,2],[4,2],[4,3],[4,4]], default: [2,2],
   },
   heatmap: {
-    label: 'Peta Kontribusi', desc: 'Sekilas seberapa aktif kamu tiap hari.',
+    label: 'Peta Kontribusi', desc: 'Sekilas seberapa aktif kamu tiap hari.', labelKey: 'widget_cat_heatmap_label', descKey: 'widget_cat_heatmap_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h4v4H4V5zm6 0h4v4h-4V5zm6 0h4v4h-4V5zM4 11h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 17h4v4H4v-4zm6 0h4v4h-4v-4z" /></svg>`,
     sizes: [[1,1],[1,2],[2,1],[2,2],[3,2],[4,2],[3,3],[4,3]], default: [3,2],
   },
   roster: {
-    label: 'Anggota Aktif', desc: 'Siapa saja yang lagi aktif di klub.',
+    label: 'Anggota Aktif', desc: 'Siapa saja yang lagi aktif di klub.', labelKey: 'widget_cat_roster_label', descKey: 'widget_cat_roster_desc',
     icon: `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>`,
     sizes: [[1,1],[2,1],[1,2],[2,2],[3,2],[4,2],[3,3],[4,3]], default: [2,2],
   },
@@ -310,6 +310,13 @@ function redoLayout() {
 function updateUndoRedoUI() {
   const undoBtn = document.getElementById('undo-btn');
   const redoBtn = document.getElementById('redo-btn');
+  const addBtn = document.getElementById('add-widget-btn');
+
+  if (addBtn) {
+    addBtn.classList.toggle('hidden', !editMode);
+    addBtn.classList.toggle('flex', editMode);
+  }
+
   if (!undoBtn || !redoBtn) return;
   
   if (editMode) {
@@ -417,20 +424,6 @@ function resetDashboardLayout() {
 /* ----------------------------------------------------------
    Drag to reorder (native HTML5 DnD, edit mode only)
    ---------------------------------------------------------- */
-function handleWidgetDragStart(e, type) {
-  draggedType = type;
-  e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  try { e.dataTransfer.setData('text/plain', type); } catch (err) {}
-}
-function handleWidgetDragOver(e, type) {
-  if (!draggedType || draggedType === type) return;
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over-target');
-}
-function handleWidgetDragLeave(e) {
-  e.currentTarget.classList.remove('drag-over-target');
-}
 let draggedEl = null;
 let phantomEl = null;
 
@@ -481,9 +474,7 @@ function handleGridDragOver(e) {
   phantomEl.dataset.y = safeRow;
 }
 
-function handleWidgetDragOver(e, type) { handleGridDragOver(e); }
 function handleGridDrop(e) { e.preventDefault(); }
-function handleWidgetDrop(e, targetType) { e.preventDefault(); e.stopPropagation(); }
 
 function syncWidgetDOM() {
   dashLayout.forEach(item => {
@@ -778,23 +769,24 @@ function openAddWidgetModal() {
   const available = Object.keys(WIDGET_CATALOG).filter(t => !existing.has(t));
 
   list.innerHTML = available.length === 0
-    ? `<p class="text-zinc-500 text-sm text-center py-6 sm:col-span-2">Semua widget sudah ada di dasbor kamu.</p>`
+    ? `<p class="text-zinc-500 text-sm text-center py-6 sm:col-span-2" data-i18n="dash_no_more_widgets">Semua widget sudah ada di dasbor kamu.</p>`
     : available.map(t => {
         const def = WIDGET_CATALOG[t];
         return `
           <button onclick="addWidget('${t}')" class="widget-catalog-tile glass rounded-xl p-4 text-left hover:bg-white/5 transition flex items-start gap-3">
             <div class="w-9 h-9 shrink-0 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center">${def.icon}</div>
             <div class="min-w-0">
-              <p class="font-medium text-sm">${def.label}</p>
-              <p class="text-zinc-500 text-xs mt-0.5">${def.desc}</p>
+              <p class="font-medium text-sm" data-i18n="${def.labelKey}">${def.label}</p>
+              <p class="text-zinc-500 text-xs mt-0.5" data-i18n="${def.descKey}">${def.desc}</p>
             </div>
           </button>`;
       }).join('');
 
-  document.getElementById('add-widget-modal').classList.remove('hidden');
+  kirLocalModalShow(document.getElementById('add-widget-modal'));
+  kirApplyTranslations();
 }
 function closeAddWidgetModal() {
-  document.getElementById('add-widget-modal').classList.add('hidden');
+  kirLocalModalHide(document.getElementById('add-widget-modal'));
 }
 async function addWidget(type) {
   const def = WIDGET_CATALOG[type];
@@ -879,7 +871,7 @@ function renderWidgetGrid() {
           ${renderWidgetContent(item.type, w, h)}
         </div>
         ${editMode ? `
-          <button class="widget-remove-btn" onclick="removeWidget('${item.type}')" title="Hapus widget" aria-label="Hapus widget">
+          <button class="widget-remove-btn" onclick="removeWidget('${item.type}')" title="${(I18N[localStorage.getItem('kir_lang') || 'id'] || {}).dash_remove_widget || 'Hapus widget'}" aria-label="${(I18N[localStorage.getItem('kir_lang') || 'id'] || {}).dash_remove_widget || 'Hapus widget'}">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
           <div class="resize-handle resize-n" onpointerdown="startResize(event, '${item.type}', 'n')"></div>
@@ -927,6 +919,8 @@ function renderWidgetContent(type, w, h) {
     case 'notes': return renderNotesWidget(w, h);
     case 'profile': return renderProfileWidget(w, h);
     case 'quote': return renderQuoteWidget(w, h);
+    case 'heatmap': return renderHeatmapWidget(w, h);
+    case 'roster': return renderRosterWidget(w, h);
     default: return '';
   }
 }
@@ -949,12 +943,14 @@ function saveDashboardNote(content) {
 }
 
 function renderNotesWidget(w, h) {
-  const savedNote = localStorage.getItem('kir_dashboard_note') || 'Tulis sesuatu di sini...';
+  const lang = localStorage.getItem('kir_lang') || 'id';
+  const hasSavedNote = !!localStorage.getItem('kir_dashboard_note');
+  const savedNote = hasSavedNote ? localStorage.getItem('kir_dashboard_note') : I18N[lang].dash_notes_placeholder;
   const compact = w === 1 || h === 1;
   return `
     <div class="relative h-full flex flex-col">
       <div class="flex items-center justify-between mb-2 shrink-0">
-        <p class="text-zinc-400 ${w === 1 ? 'text-xs' : 'text-sm'} font-medium">Catatan</p>
+        <p class="text-zinc-400 ${w === 1 ? 'text-xs' : 'text-sm'} font-medium" data-i18n="dash_notes_title">Catatan</p>
         ${!compact ? `
         <div class="flex items-center gap-1 bg-black/20 p-1 rounded-lg border border-white/5 pointer-events-auto">
           <button onclick="changeNoteFontSize()" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/10 text-zinc-300 transition" title="Ubah Ukuran Teks">
@@ -1030,7 +1026,7 @@ function renderProfileWidget(w, h) {
         ${profileAvatarHtml('w-12 h-12 text-base')}
         <p class="font-display font-semibold text-sm truncate max-w-full">${name}</p>
         ${profileCabangBadge()}
-        ${h >= 2 && w === 2 ? `<p class="text-zinc-500 text-[11px] mt-1">${kirDeltasTotal().toLocaleString('id-ID')} deltas</p>` : ''}
+        ${h >= 2 && w === 2 ? `<p class="text-zinc-500 text-[11px] mt-1">${kirDeltasTotal().toLocaleString('id-ID')} <span data-i18n="deltas_points">deltas</span></p>` : ''}
       </div>`;
   }
 
@@ -1139,6 +1135,7 @@ function refreshDashQuote() {
 }
 function renderQuoteWidget(w, h) {
   const q = DASH_QUOTES[quoteIndex];
+  const lang = localStorage.getItem('kir_lang') || 'id';
 
   if (w === 1 && h === 1) {
     return `
@@ -1161,7 +1158,7 @@ function renderQuoteWidget(w, h) {
       <div class="relative h-full flex items-center gap-3">
         ${quoteGlyphSvg('w-5 h-5')}
         <p class="text-zinc-300 text-sm truncate flex-1 min-w-0">${q.text}</p>
-        <span class="text-zinc-500 text-xs shrink-0">Oleh ${q.author}</span>
+        <span class="text-zinc-500 text-xs shrink-0">${I18N[lang].quote_by} ${q.author}</span>
       </div>`;
   }
 
@@ -1172,11 +1169,11 @@ function renderQuoteWidget(w, h) {
       ${quoteGlyphSvg(big ? 'w-8 h-8 mb-3' : 'w-6 h-6 mb-2')}
       <p class="${big ? 'text-lg' : 'text-sm'} text-zinc-200 leading-relaxed flex-1">${q.text}</p>
       <div class="flex items-center justify-between mt-3 shrink-0">
-        <span class="text-zinc-500 text-xs">Oleh ${q.author}</span>
+        <span class="text-zinc-500 text-xs">${I18N[lang].quote_by} ${q.author}</span>
         ${big ? `
         <button onclick="refreshDashQuote()" class="pointer-events-auto flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition text-zinc-300">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Kutipan lain
+          ${I18N[lang].quote_refresh}
         </button>` : ''}
       </div>
     </div>`;
@@ -1193,6 +1190,8 @@ function renderQuoteWidget(w, h) {
    w>=3,h>=3 — full scrollable task list with status badges
    ---------------------------------------------------------- */
 function renderTasksWidget(w, h) {
+  const lang = localStorage.getItem('kir_lang') || 'id';
+  const statusLabel = (status) => (I18N[lang] && I18N[lang]['status_' + status]) || status;
   const icon = `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
 
   if (DASH_TASKS_TOTAL === 0) {
@@ -1200,8 +1199,8 @@ function renderTasksWidget(w, h) {
       <div class="glow-blob w-32 h-32 bg-accent-20 -top-10 -right-10"></div>
       <div class="relative h-full flex flex-col items-center justify-center text-center px-2">
         <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center mb-2">${icon}</div>
-        <p class="font-display font-semibold text-sm">Bebas tugas!</p>
-        ${h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1">Semua tugas sudah selesai atau belum ada tugas baru.</p>' : ''}
+        <p class="font-display font-semibold text-sm" data-i18n="empty_dash_tasks_title">Bebas tugas!</p>
+        ${h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1" data-i18n="empty_dash_tasks_desc">Semua tugas sudah selesai atau belum ada tugas baru.</p>' : ''}
       </div>`;
   }
 
@@ -1247,7 +1246,7 @@ function renderTasksWidget(w, h) {
           ${DASH_TASKS_PREVIEW.slice(0, 2).map(t => `
             <div class="flex-1 min-w-0">
               <p class="text-zinc-200 text-xs font-medium truncate">${t.title}</p>
-              <p class="text-[10px] text-zinc-500 truncate mt-0.5">${t.due} &middot; <span class="${TASK_STATUS_CLS[t.status].split(' ')[1]}">${t.status}</span></p>
+              <p class="text-[10px] text-zinc-500 truncate mt-0.5">${t.due} &middot; <span class="${TASK_STATUS_CLS[t.status].split(' ')[1]}">${statusLabel(t.status)}</span></p>
             </div>`).join('')}
         </div>` : ''}
         <p class="font-display text-3xl font-semibold shrink-0">${DASH_TASKS_TOTAL}</p>
@@ -1316,6 +1315,7 @@ function renderTasksWidget(w, h) {
    w>=3,h>=3 — full vertical timeline (dots + line)
    ---------------------------------------------------------- */
 function renderEventsWidget(w, h) {
+  const lang = localStorage.getItem('kir_lang') || 'id';
   const icon = `<svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
 
   if (DASH_EVENTS_TOTAL === 0) {
@@ -1323,8 +1323,8 @@ function renderEventsWidget(w, h) {
       <div class="glow-blob w-32 h-32 bg-accent-20 -bottom-10 -left-10"></div>
       <div class="relative h-full flex flex-col items-center justify-center text-center px-2">
         <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-2 text-zinc-500">${icon}</div>
-        <p class="text-zinc-300 text-xs font-medium">Belum ada acara</p>
-        ${h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1">Harap sabar, pengurus akan segera mengatur jadwal baru.</p>' : ''}
+        <p class="text-zinc-300 text-xs font-medium" data-i18n="empty_dash_events_title">Belum ada acara</p>
+        ${h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1" data-i18n="empty_dash_events_desc">Harap sabar, pengurus akan segera mengatur jadwal baru.</p>' : ''}
       </div>`;
   }
 
@@ -1347,8 +1347,8 @@ function renderEventsWidget(w, h) {
       <div class="glow-blob w-24 h-24 bg-accent-20 -bottom-6 -left-6"></div>
       <div class="relative h-full flex flex-col items-center justify-center text-center gap-1.5">
         <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center">${icon}</div>
-        <p class="font-display text-lg font-semibold leading-tight">${(next.dateLabel || '').split(', ')[1] || next.dateLabel || 'Segera'}</p>
-        <p class="text-zinc-500 text-[10px] truncate max-w-full px-1">${next.title || 'Acara Baru'}</p>
+        <p class="font-display text-lg font-semibold leading-tight">${(next.dateLabel || '').split(', ')[1] || next.dateLabel || I18N[lang].events_soon}</p>
+        <p class="text-zinc-500 text-[10px] truncate max-w-full px-1">${next.title || I18N[lang].events_new_default}</p>
       </div>`;
   }
 
@@ -1523,11 +1523,11 @@ function renderDeltasWidget(w, h) {
       <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10 shrink-0">
         <div>
           <p class="font-display text-lg font-semibold leading-none">${Math.round((currentDeltasHistory()[currentDeltasHistory().length - 1] - currentDeltasHistory()[0]) / currentDeltasHistory().length)}</p>
-          <p class="text-zinc-500 text-[11px] mt-1">rata-rata / hari</p>
+          <p class="text-zinc-500 text-[11px] mt-1" data-i18n="dash_avg_per_day">rata-rata / hari</p>
         </div>
         <div>
           <p class="font-display text-lg font-semibold leading-none">${Math.max(...currentDeltasHistory())}</p>
-          <p class="text-zinc-500 text-[11px] mt-1">titik tertinggi</p>
+          <p class="text-zinc-500 text-[11px] mt-1" data-i18n="dash_highest_point">titik tertinggi</p>
         </div>
       </div>` : ''}
     </div>`;
@@ -1731,8 +1731,8 @@ function renderActivityWidget(w, h) {
     return `
       <div class="relative h-full flex flex-col items-center justify-center text-center p-4">
         <svg class="w-6 h-6 text-zinc-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        <p class="text-zinc-300 text-xs font-medium">Belum ada aktivitas</p>
-        ${w > 1 && h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1">Kegiatan terbaru dari anggota akan muncul di sini.</p>' : ''}
+        <p class="text-zinc-300 text-xs font-medium" data-i18n="empty_dash_activity_title">Belum ada aktivitas</p>
+        ${w > 1 && h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1" data-i18n="empty_dash_activity_desc">Kegiatan terbaru dari anggota akan muncul di sini.</p>' : ''}
       </div>`;
   }
 
@@ -1914,7 +1914,7 @@ function renderLeaderboardWidget(w, h) {
           <div class="w-9 h-9 shrink-0 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center">${trophyIcon}</div>
           <div class="min-w-0">
             <p class="text-zinc-400 text-xs font-medium truncate" data-i18n="leaderboard_title">Peringkat</p>
-            <p class="text-zinc-500 text-[11px] truncate">${kirDeltasTotal().toLocaleString('id-ID')} deltas</p>
+            <p class="text-zinc-500 text-[11px] truncate">${kirDeltasTotal().toLocaleString('id-ID')} <span data-i18n="deltas_points">deltas</span></p>
           </div>
         </div>
         <p class="font-display text-2xl font-semibold text-accent-300 shrink-0">#${yourRank}</p>
@@ -2133,18 +2133,20 @@ function renderRosterWidget(w, h) {
    Widget: Tautan Cepat (icon grid)
    ---------------------------------------------------------- */
 function renderQuicklinksWidget(w, h) {
+  const lang = localStorage.getItem('kir_lang') || 'id';
   const links = [
-    { href: 'tasks.html', label: 'Tugas', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>` },
-    { href: 'schedule.html', label: 'Jadwal', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>` },
-    { href: 'materials.html', label: 'Materi', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>` },
-    { href: 'leaderboard.html', label: 'Peringkat', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>` },
+    { href: 'tasks.html', key: 'tugas', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>` },
+    { href: 'schedule.html', key: 'jadwal', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>` },
+    { href: 'materials.html', key: 'materials', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>` },
+    { href: 'leaderboard.html', key: 'leaderboard_title', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>` },
   ];
+  const linkLabel = (l) => (I18N[lang] && I18N[lang][l.key]) || l.key;
 
   if (w === 1 && h === 1) {
     return `
       <div class="relative h-full flex flex-col items-center justify-center gap-2">
         <div class="grid grid-cols-2 gap-2 w-full h-full">
-          ${links.map(l => `<a href="${l.href}" class="rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-accent-300 hover:bg-white/10 transition" title="${l.label}">${l.icon}</a>`).join('')}
+          ${links.map(l => `<a href="${l.href}" class="rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-accent-300 hover:bg-white/10 transition" title="${linkLabel(l)}">${l.icon}</a>`).join('')}
         </div>
       </div>`;
   }
@@ -2158,7 +2160,7 @@ function renderQuicklinksWidget(w, h) {
         ${links.map(l => `
           <a href="${l.href}" class="flex ${compact ? 'flex-row justify-center' : 'flex-col justify-center'} items-center gap-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent-30 transition text-center p-2">
             <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center text-accent-300 shrink-0">${l.icon}</div>
-            <span class="text-[11px] text-zinc-400 ${compact ? 'hidden sm:inline' : ''}">${l.label}</span>
+            <span class="text-[11px] text-zinc-400 ${compact ? 'hidden sm:inline' : ''}" data-i18n="${l.key}">${linkLabel(l)}</span>
           </a>`).join('')}
       </div>
     </div>`;
