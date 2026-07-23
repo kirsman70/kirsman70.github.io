@@ -119,9 +119,10 @@
 /* ----------------------------------------------------------
    Boot
    ---------------------------------------------------------- */
+updateCellSize();
 renderWidgetGrid();
 window.addEventListener('resize', () => requestAnimationFrame(updateCellSize));
-window.matchMedia('(min-width: 640px)').addEventListener('change', () => renderWidgetGrid());
+window.matchMedia('(min-width: 640px)').addEventListener('change', () => { updateCellSize(); renderWidgetGrid(); });
 fetchDashboardWidgetsData();
 </script>
 <script src="js/router.js"></script>
