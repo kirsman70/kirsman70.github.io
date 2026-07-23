@@ -528,6 +528,21 @@ html[data-theme="light"] .nav-active-pill {
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
+
+/* The mobile top bar (logo + hamburger) is a sibling of #sidebar-root
+   inside .kir-app-shell, same as .kir-sidebar-backdrop, but it only
+   carries Tailwind's z-20 — well under the backdrop's z-index: 55.
+   So the instant the drawer opens, the backdrop paints over the top
+   bar too: it visually dims and, because pointer-events flips to
+   auto while `.visible`, swallows clicks meant for the hamburger/logo
+   before they ever reach it. #sidebar itself (z-index: 60) is fine;
+   this is only about that top bar. Bumping it above the backdrop
+   (but below the drawer, which should still slide over it) fixes
+   both. !important matches the rest of this file's convention for
+   beating Tailwind CDN utility classes injected at runtime. */
+.kir-app-shell > .sticky.z-20 {
+  z-index: 56 !important;
+}
 .kir-sidebar-backdrop.visible {
   opacity: 1;
   pointer-events: auto;
