@@ -877,7 +877,18 @@ function kirToggleMobileSidebar() {
     backdrop.id = 'sidebar-mobile-backdrop';
     backdrop.className = 'kir-sidebar-backdrop';
     backdrop.onclick = () => kirCloseMobileSidebar();
-    document.body.appendChild(backdrop);
+    // Insert into the same stacking context as #sidebar (the
+    // .kir-app-shell wrapper, which is `relative z-10`) instead of
+    // document.body. Appending to <body> puts the backdrop in the
+    // ROOT stacking context, where its z-index:55 is compared against
+    // the *entire* z-10 wrapper (sidebar included) rather than against
+    // #sidebar individually — so the backdrop was painting over the
+    // wrapper as a whole, dimming the sidebar along with the page
+    // behind it, no matter how high #sidebar's own z-index (60) was
+    // set. Keeping both inside the same wrapper lets that z-index
+    // actually apply, so the sidebar renders above the dim overlay.
+    const shell = document.querySelector('.kir-app-shell') || document.body;
+    shell.appendChild(backdrop);
   }
 
   const isOpen = sidebar.classList.contains('kir-sidebar-open');

@@ -844,6 +844,42 @@ function hideAddTile() {
   }
 }
 
+/* ----------------------------------------------------------
+   Mobile-safe compaction
+   --------------------------------------------------------
+   dashLayout's x/y coordinates are authored against the 4-column
+   desktop grid. Simply clamping X to fit 2 columns (the old
+   behavior) while leaving Y untouched collapses several
+   side-by-side desktop widgets onto the very same mobile cell —
+   they render stacked on top of each other, while other cells in
+   that same row sit empty, showing up as dead space elsewhere in
+   the grid. computeCompactLayout() rebuilds a clean, gapless,
+   non-overlapping packing (reading order: top-to-bottom, then
+   left-to-right) for narrow grids instead of reusing desktop
+   coordinates as-is. It only computes positions for rendering —
+   the underlying dashLayout (and its desktop x/y) is left
+   untouched, so the desktop layout and localStorage/DB-saved
+   layout are unaffected.
+   ---------------------------------------------------------- */
+function computeCompactLayout(layout, cols) {
+  const colHeights = new Array(cols).fill(1); // next free row per column (1-indexed)
+  return layout
+    .slice()
+    .sort((a, b) => (a.y || 1) - (b.y || 1) || (a.x || 1) - (b.x || 1))
+    .map(item => {
+      const w = Math.min(item.w, cols);
+      const h = item.h;
+      let bestCol = 0;
+      for (let i = 1; i <= cols - w; i++) {
+        if (colHeights[i] < colHeights[bestCol]) bestCol = i;
+      }
+      const y = Math.max(...colHeights.slice(bestCol, bestCol + w));
+      const x = bestCol + 1;
+      for (let i = bestCol; i < bestCol + w; i++) colHeights[i] = y + h;
+      return { type: item.type, x, y, w, h };
+    });
+}
+
 function renderWidgetGrid() {
   const grid = document.getElementById('widget-grid');
   const cols = currentCols();
@@ -852,12 +888,25 @@ function renderWidgetGrid() {
   grid.onmousemove = editMode ? handleGridHover : null;
   grid.onmouseleave = editMode ? hideAddTile : null;
 
-  let html = dashLayout.map((item, idx) => {
-    const w = Math.min(item.w, cols);
+  // Below the 4-column desktop breakpoint, repack instead of just
+  // clamping — see computeCompactLayout() above. Edit mode keeps the
+  // original clamp so dragging/resizing math (which already reasons
+  // in terms of raw dashLayout coordinates) isn't disrupted.
+  const positioned = (cols < 4 && !editMode)
+    ? computeCompactLayout(dashLayout, cols)
+    : dashLayout.map(item => ({
+        type: item.type,
+        w: Math.min(item.w, cols),
+        h: item.h,
+        x: Math.min(item.x || 1, cols - Math.min(item.w, cols) + 1),
+        y: item.y || 1,
+      }));
+
+  let html = positioned.map((item, idx) => {
+    const w = item.w;
     const h = item.h;
-    // Constrain X so widgets don't overflow the viewport width
-    const x = Math.min(item.x || 1, cols - w + 1);
-    const y = item.y || 1;
+    const x = item.x;
+    const y = item.y;
 
     const dnd = editMode
       ? `draggable="true"
