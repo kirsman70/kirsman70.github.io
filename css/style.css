@@ -817,6 +817,27 @@ body {
 
 .font-display { font-family: 'Space Grotesk', sans-serif; }
 
+/* Fixed, viewport-clipped layer the glow blobs live in. Pure decoration:
+   `position: fixed` + `inset: 0` locks this to the exact viewport box
+   regardless of how tall/wide the rest of the page ends up, and
+   `overflow: hidden` means nothing inside it — no matter how far a
+   blob's blur/negative-offset pushes it — can ever register as part
+   of the page's scrollable width or height. Previously the blobs were
+   plain `position: absolute` children of <body>, relying on body's own
+   overflow-x:clip to contain them; that's a *paint* clip, not a layout
+   one, so their boxes could still count toward the document's
+   scrollable overflow and quietly widen the page. Giving them their
+   own out-of-flow, self-clipping layer removes that possibility
+   entirely — they're now guaranteed to be background-only, never
+   layout-affecting, on any device. */
+.glow-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ambient glow blobs — the site's signature visual motif */
 .glow-blob {
   position: absolute;
@@ -1294,6 +1315,20 @@ html[data-disable-branch-color="true"] .badge-sains {
 .pos-option-preview .pos-bar { background: rgb(var(--accent-rgb)); flex-shrink: 0; }
 .pos-option-preview .pos-page { flex: 1; background: rgba(128,128,128,0.1); margin: 3px; border-radius: 2px; }
 
+/* Locked state — below the lg breakpoint the taskbar position setting
+   has no effect (see the @media (min-width: 1024px) block further
+   down), so the picker is shown disabled instead of pretending it's
+   still a live control. Kept visible rather than hidden so people can
+   still see their current choice and understand why it's greyed out. */
+.pos-option.pos-option-locked {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.pos-option.pos-option-locked:hover {
+  background: var(--glass-input-bg);
+  transform: none;
+}
+
 .pos-preview-left, .pos-preview-right { flex-direction: row; }
 .pos-preview-left .pos-bar, .pos-preview-right .pos-bar { width: 28%; height: 100%; }
 
@@ -1372,7 +1407,7 @@ html[data-disable-branch-color="true"] .badge-sains {
 .modal-card {
   background: var(--bg-color);
   border: 1px solid var(--glass-border);
-  max-width: 32rem; width: 100%; max-height: 88vh; overflow-y: auto;
+  max-width: 28rem; width: 100%; max-height: 88vh; overflow-y: auto; overflow-x: hidden;
   border-radius: 1rem;
   opacity: 0;
   transform: scale(0.97) translateY(6px);
