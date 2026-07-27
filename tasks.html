@@ -12,7 +12,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -62,14 +62,14 @@
     </div>
 
     <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm" data-i18n="admin_type_individual">Individual</button>
-      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_type_ekskul">Ekstrakurikuler</button>
-      <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition" data-i18n="admin_type_kelompok">Kelompok</button>
+      <button onclick="setTaskFilter('individual')" id="filter-individual" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition" data-i18n="admin_type_individual">Individual</button>
+      <button onclick="setTaskFilter('ekskul')" id="filter-ekskul" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50" data-i18n="admin_type_ekskul">Ekstrakurikuler</button>
+      <button onclick="setTaskFilter('kelompok')" id="filter-kelompok" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50" data-i18n="admin_type_kelompok">Kelompok</button>
       
       <div class="w-px h-6 bg-white/10 mx-2"></div>
       
-      <button onclick="toggleCabangFilter('robotik')" id="filter-cabang-robotik" class="px-3 py-1 rounded-full badge-robotik transition" data-i18n="robotik">Robotik</button>
-      <button onclick="toggleCabangFilter('sains')" id="filter-cabang-sains" class="px-3 py-1 rounded-full badge-sains transition" data-i18n="sains">Sains</button>
+      <button onclick="toggleCabangFilter('robotik')" id="filter-cabang-robotik" class="px-3 py-1.5 text-sm font-medium rounded-lg badge-robotik transition" data-i18n="robotik">Robotik</button>
+      <button onclick="toggleCabangFilter('sains')" id="filter-cabang-sains" class="px-3 py-1.5 text-sm font-medium rounded-lg badge-sains transition" data-i18n="sains">Sains</button>
     </div>
 
     <div id="task-list" class="space-y-3"><!-- filled by script below --></div>
@@ -164,21 +164,14 @@
   let currentTaskFilter = 'individual';
   let activeCabangFilters = kirCurrentUserCabang() === 'both' ? new Set(['robotik', 'sains']) : new Set([kirCurrentUserCabang()]);
 
-  function setTaskFilter(filter) {
-    currentTaskFilter = filter;
-    ['individual', 'ekskul', 'kelompok'].forEach(f => {
-      const btn = document.getElementById('filter-' + f);
+  function setApplyFilter(filter) {
+    applyFilter = filter;
+    ['pending', 'approved', 'all'].forEach(f => {
+      const btn = document.getElementById(`apply-filter-${f}`);
       if (!btn) return;
-      const active = f === filter;
-      btn.classList.toggle('bg-accent-gradient', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('shadow-glow-sm', active);
-      btn.classList.toggle('bg-white/5', !active);
-      btn.classList.toggle('border', !active);
-      btn.classList.toggle('border-white/10', !active);
-      btn.classList.toggle('text-zinc-400', !active);
+      btn.classList.toggle('opacity-50', f !== filter);
     });
-    renderTaskList();
+    renderApplicants();
   }
 
   function toggleCabangFilter(cabang) {
@@ -259,7 +252,10 @@
       const userStatus = window.USER_STATUSES[t.id] || 'todo';
       const meta = STATUS_META[userStatus] || STATUS_META['todo'];
       const submitted = getSubmission(t.id);
-      const formattedDue = t.due_date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(t.due_date)) : 'Tanpa Tenggat';
+      const locale = lang === 'en' ? 'en-US' : 'id-ID';
+      const noDue = lang === 'en' ? 'No Due Date' : 'Tanpa Tenggat';
+      const everyoneLabel = lang === 'en' ? 'All Members' : 'Semua Anggota';
+      const formattedDue = t.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(t.due_date)) : noDue;
       const canSubmit = kirCanSubmitTask(t);
 
       const cardHtml = `
@@ -268,7 +264,7 @@
             ${t.image_url ? `<div class="item-thumb-slot item-thumb-slot-wide"><img src="${t.image_url}" alt="" /></div>` : ''}
             <div class="relative z-10 min-w-0">
               <p class="font-medium text-zinc-100">${t.title}</p>
-              <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">Ditugaskan ke</span> ${t.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}${submitted ? ' &middot; <span class="text-accent-300" data-i18n="submitted">jawaban terkirim</span>' : ''}</p>
+              <p class="text-zinc-500 text-xs mt-1"><span data-i18n="assigned_to">${I18N[lang].assigned_to}</span> ${t.assignee || everyoneLabel} &middot; <span data-i18n="due">${I18N[lang].due}</span> ${formattedDue}${submitted ? ` &middot; <span class="text-accent-300" data-i18n="submitted">${I18N[lang].submitted}</span>` : ''}</p>
             </div>
             <div class="relative z-10 self-start sm:self-center shrink-0" onclick="event.stopPropagation();">
               <select id="task-status-select-${t.id}" onchange="handleTaskStatusChange(this.value, '${t.id}')" ${!canSubmit ? 'disabled' : ''} data-trigger-class="kir-select-pill ${meta.cls}">
@@ -368,10 +364,15 @@
     document.getElementById('modal-file-input').disabled = !canSubmit;
     const userStatus = window.USER_STATUSES[task.id] || 'todo';
     const meta = STATUS_META[userStatus] || STATUS_META['todo'];
-    const formattedDue = task.due_date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(task.due_date)) : 'Tanpa Tenggat';
+    
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const locale = lang === 'en' ? 'en-US' : 'id-ID';
+    const noDue = lang === 'en' ? 'No Due Date' : 'Tanpa Tenggat';
+    const everyoneLabel = lang === 'en' ? 'All Members' : 'Semua Anggota';
+    const formattedDue = task.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(task.due_date)) : noDue;
 
     document.getElementById('modal-title').textContent = task.title;
-    document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">Ditugaskan ke</span> ${task.assignee || 'Semua Anggota'} &middot; <span data-i18n="due">Tenggat:</span> ${formattedDue}`;
+    document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">${I18N[lang].assigned_to}</span> ${task.assignee || everyoneLabel} &middot; <span data-i18n="due">${I18N[lang].due}</span> ${formattedDue}`;
     
     const selectEl = document.getElementById('modal-status-select');
     selectEl.value = userStatus;

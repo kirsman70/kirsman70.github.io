@@ -11,7 +11,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -61,22 +61,25 @@
       <input
         id="lb-search"
         type="text"
-        class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
+        class="glass-input w-full rounded-lg pl-10 pr-9 py-2.5 text-sm"
         data-i18n-placeholder="leaderboard_search_placeholder"
         placeholder="Cari anggota…"
         oninput="handleFilterChange()"
       />
       <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <button type="button" id="lb-search-clear" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Clear search">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
     </div>
 
     <!-- Filters -->
     <div class="flex items-center gap-2 mb-7 overflow-x-auto pb-1">
-      <button class="lb-chip" id="lb-range-all" onclick="setRangeFilter('all')" data-i18n="leaderboard_range_all">Sepanjang Waktu</button>
-      <button class="lb-chip" id="lb-range-month" onclick="setRangeFilter('month')" data-i18n="leaderboard_range_month">Bulan Ini</button>
-      <button class="lb-chip" id="lb-range-week" onclick="setRangeFilter('week')" data-i18n="leaderboard_range_week">Minggu Ini</button>
+      <button id="lb-range-all" onclick="setRangeFilter('all')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-15 text-accent-300 border border-accent-30 transition" data-i18n="leaderboard_range_all">Sepanjang Waktu</button>
+      <button id="lb-range-month" onclick="setRangeFilter('month')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50" data-i18n="leaderboard_range_month">Bulan Ini</button>
+      <button id="lb-range-week" onclick="setRangeFilter('week')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50" data-i18n="leaderboard_range_week">Minggu Ini</button>
       <span class="lb-chip-divider"></span>
-      <button id="lb-branch-robotik" onclick="toggleCabangFilter('robotik')" class="px-3 py-1.5 text-xs font-medium rounded-full badge-robotik transition" data-i18n="robotik">Robotik</button>
-      <button id="lb-branch-sains" onclick="toggleCabangFilter('sains')" class="px-3 py-1.5 text-xs font-medium rounded-full badge-sains transition" data-i18n="sains">Sains</button>
+      <button id="lb-branch-robotik" onclick="toggleCabangFilter('robotik')" class="px-3 py-1.5 text-xs font-medium rounded-lg badge-robotik transition" data-i18n="robotik">Robotik</button>
+      <button id="lb-branch-sains" onclick="toggleCabangFilter('sains')" class="px-3 py-1.5 text-xs font-medium rounded-lg badge-sains transition" data-i18n="sains">Sains</button>
     </div>
 
     <!-- Podium -->
@@ -127,11 +130,12 @@
 
   function cabangBadgeHtml(cabang) {
     if (cabang === 'both') {
-      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains">Sains</span>`;
+      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik" data-i18n="robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains" data-i18n="sains">Sains</span>`;
     }
     const cls = cabang === 'sains' ? 'badge-sains' : 'badge-robotik';
-    const label = cabang === 'sains' ? 'Sains' : 'Robotik';
-    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
+    const labelKey = cabang === 'sains' ? 'sains' : 'robotik';
+    const labelFallback = cabang === 'sains' ? 'Sains' : 'Robotik';
+    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}" data-i18n="${labelKey}">${labelFallback}</span>`;
   }
 
   function rangeValue(m) {
@@ -212,7 +216,8 @@
 
   function updateFilterChipsUI() {
     ['all', 'month', 'week'].forEach(r => {
-      document.getElementById('lb-range-' + r).classList.toggle('active', rangeFilter === r);
+      const btn = document.getElementById('lb-range-' + r);
+      if (btn) btn.classList.toggle('opacity-50', rangeFilter !== r);
     });
     ['robotik', 'sains'].forEach(b => {
       const btn = document.getElementById('lb-branch-' + b);
@@ -221,11 +226,6 @@
   }
 
   function rankIconSvg(rank) {
-    if (rank === 1) {
-      return `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" />
-      </svg>`;
-    }
     return `<span>${rank}</span>`;
   }
 
@@ -255,8 +255,7 @@
         <span class="podium-rank-icon ${badgeCls[i]}">${rankIconSvg(rank)}</span>
         <div class="podium-avatar bg-accent-gradient"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>${m.avatar ? '' : m.name.charAt(0).toUpperCase()}</div>
         <p class="podium-name">${m.name}${m.isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</p>
-        <p class="font-display font-bold text-lg mt-1">${rangeValue(m).toLocaleString('id-ID')}</p>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 ${badgeCls[i]}">#${rank}</span>
+        <p class="font-display font-bold text-lg mt-0.5">${rangeValue(m).toLocaleString('id-ID')}</p>
       </div>`;
     }).join('');
   }
@@ -322,6 +321,42 @@
   kirApplyTranslations();
   kirInjectSidebar('leaderboard');
   fetchLeaderboardFromDatabase();
+</script>
+<script>
+  // Search bar UX: the "×" clear button, plus letting someone start
+  // typing anywhere on the page and have it land in the search box
+  // without clicking into it first. Self-contained per page — see
+  // router.js's note on why a document-level keydown listener needs
+  // its own explicit kir:teardown cleanup here.
+  (function () {
+    const input = document.getElementById('lb-search');
+    const clearBtn = document.getElementById('lb-search-clear');
+    if (!input || !clearBtn) return;
+
+    function updateClearBtn() {
+      clearBtn.classList.toggle('hidden', input.value.length === 0);
+    }
+    updateClearBtn();
+    input.addEventListener('input', updateClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+
+    function onKeydown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('keydown', onKeydown);
+    }, { once: true });
+  })();
 </script>
 <script src="js/router.js"></script>
 </body>

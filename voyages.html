@@ -13,7 +13,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -128,10 +128,12 @@
                 <stop offset="100%" style="stop-color: rgb(var(--accent-light-rgb))" />
               </linearGradient>
             </defs>
-            <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
-            <g clip-path="url(#voyages-flame-clip)">
-              <g id="voyages-flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
-                <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#voyages-flame-gradient)" class="flame-wave" />
+            <g class="flame-body" style="transform-origin: 12px 21px;">
+              <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
+              <g clip-path="url(#voyages-flame-clip)">
+                <g id="voyages-flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
+                  <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#voyages-flame-gradient)" class="flame-wave" />
+                </g>
               </g>
             </g>
           </svg>
@@ -230,12 +232,15 @@
             <input
               id="voyage-search"
               type="text"
-              class="glass-input w-full rounded-lg pl-10 pr-4 py-2.5 text-sm"
+              class="glass-input w-full rounded-lg pl-10 pr-9 py-2.5 text-sm"
               oninput="handleVoyageSearchChange()"
               data-i18n-placeholder="voyages_search_placeholder"
               placeholder="Cari soal…"
             />
             <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <button type="button" id="voyage-search-clear" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Clear search">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         </div>
         <div class="w-full sm:w-[9.5rem] shrink-0">
@@ -1734,14 +1739,64 @@
   }
 
   const VOYAGES_STREAK_DAYS = 0;
-  const VOYAGES_STREAK_FILL_GOAL = 10; // days for a visually "full" flame, cosmetic only, matches dashboard
+  const VOYAGES_STREAK_FILL_GOAL = 7; // days for a visually "full" flame, cosmetic only, matches dashboard
 
+  let voyagesStreakRiseTimer = null;
   function renderVoyagesStreak() {
-    document.getElementById('voyages-streak-count').textContent = VOYAGES_STREAK_DAYS;
-    const pct = Math.min(VOYAGES_STREAK_DAYS / VOYAGES_STREAK_FILL_GOAL, 1);
+    const countEl = document.getElementById('voyages-streak-count');
+    const group = document.getElementById('voyages-flame-fill-group');
+    const wave = document.querySelector('#voyages-streak-flame .flame-wave');
+    const body = document.querySelector('#voyages-streak-flame .flame-body');
     const flameTop = 2, flameBottom = 21; // approx vertical bounds of the flame path
-    const currentY = flameBottom - ((flameBottom - flameTop) * pct);
-    document.getElementById('voyages-flame-fill-group').setAttribute('transform', `translate(0, ${currentY})`);
+
+    if (voyagesStreakRiseTimer) { clearInterval(voyagesStreakRiseTimer); voyagesStreakRiseTimer = null; }
+    if (body) body.classList.remove('flame-swaying');
+
+    const target = VOYAGES_STREAK_DAYS;
+    if (target <= 0) {
+      countEl.textContent = 0;
+      group.setAttribute('transform', `translate(0, ${flameBottom})`);
+      group.classList.add('flame-fill-empty');
+      if (wave) wave.classList.add('flame-wave-paused');
+      return;
+    }
+
+    // Start cold every time, then rapidly count up to the real streak
+    // while the fill rises with it, reaching full right at the goal.
+    group.classList.remove('flame-fill-empty');
+    if (wave) wave.classList.remove('flame-wave-paused');
+
+    // Two independent reduced-motion sources — the OS/browser media
+    // query and the site's own Settings toggle (data-reduce-motion, set
+    // by kirSetReduceMotion in auth.js). Either one means: skip the
+    // count-up/rise entirely and just load the finished flame.
+    const reducedMotion = document.documentElement.getAttribute('data-reduce-motion') === 'true'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) {
+      const pct = Math.min(target / VOYAGES_STREAK_FILL_GOAL, 1);
+      const y = flameBottom - (flameBottom - flameTop) * pct;
+      group.setAttribute('transform', `translate(0, ${y})`);
+      countEl.textContent = target;
+      if (pct >= 1 && body) body.classList.add('flame-swaying');
+      return;
+    }
+
+    group.setAttribute('transform', `translate(0, ${flameBottom})`);
+    countEl.textContent = 0;
+
+    let current = 0;
+    voyagesStreakRiseTimer = setInterval(() => {
+      current++;
+      const pct = Math.min(current / VOYAGES_STREAK_FILL_GOAL, 1);
+      const y = flameBottom - (flameBottom - flameTop) * pct;
+      group.setAttribute('transform', `translate(0, ${y})`);
+      countEl.textContent = current;
+      if (pct >= 1 && body) body.classList.add('flame-swaying');
+      if (current >= target) {
+        clearInterval(voyagesStreakRiseTimer);
+        voyagesStreakRiseTimer = null;
+      }
+    }, 110);
   }
 
   const VOYAGE_DIFF_BANDS = [
@@ -2397,6 +2452,42 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
       telemetryData.tab_switch_count++;
     }
   });
+</script>
+<script>
+  // Search bar UX: the "×" clear button, plus letting someone start
+  // typing anywhere on the page and have it land in the search box
+  // without clicking into it first. Self-contained per page — see
+  // router.js's note on why a document-level keydown listener needs
+  // its own explicit kir:teardown cleanup here.
+  (function () {
+    const input = document.getElementById('voyage-search');
+    const clearBtn = document.getElementById('voyage-search-clear');
+    if (!input || !clearBtn) return;
+
+    function updateClearBtn() {
+      clearBtn.classList.toggle('hidden', input.value.length === 0);
+    }
+    updateClearBtn();
+    input.addEventListener('input', updateClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+
+    function onKeydown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('keydown', onKeydown);
+    }, { once: true });
+  })();
 </script>
 <script src="js/router.js"></script>
 </body>

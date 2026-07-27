@@ -14,7 +14,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -190,6 +190,20 @@
   // month is on screen at that moment (see scheduleStepChain).
   let scheduleChainQueue = [];
   let scheduleChainTimer = null;
+  // Absolute timestamp (Date.now()-based) the NEXT step is due at. Anchoring
+  // to a fixed point in time — rather than just doing setTimeout(fn, 80)
+  // again from whenever the previous step happened to finish running — is
+  // what keeps this chase at the same steady 80ms/cell pace as the
+  // click-driven travel animation in scheduleRunTravelAnimation (which
+  // schedules every step up front at stepDelay*i from a single anchor).
+  // Plain recursive setTimeout drifts slower over a long chain: each
+  // callback's own execution time (DOM queries, classList writes) gets
+  // added on top of the 80ms before the *next* delay even starts counting,
+  // so the gap between steps creeps past 80ms and the whole chase visibly
+  // lags behind an equivalent click. Recomputing the delay as
+  // "time left until the next scheduled tick" instead of "80ms from now"
+  // cancels that drift back out.
+  let scheduleChainNextTick = null;
   // Where the traveling glow head physically is right now, updated on
   // every single step it takes (not just on arrival) — as opposed to
   // scheduleVisualSelectedKey, which only updates once the chase actually
@@ -400,6 +414,7 @@
     if (scheduleChainTimer) { clearTimeout(scheduleChainTimer); scheduleChainTimer = null; }
     scheduleChainQueue = [];
     scheduleChainHeadKey = null;
+    scheduleChainNextTick = null;
   }
 
   // Returns an ordered list of intermediate 'YYYY-MM-DD' keys (excluding the
@@ -763,6 +778,7 @@
     if (scheduleIsReducedMotion()) {
       if (scheduleChainTimer) { clearTimeout(scheduleChainTimer); scheduleChainTimer = null; }
       scheduleChainQueue = [];
+      scheduleChainNextTick = null;
       if (head !== newKey) {
         const prevHeadCell = document.querySelector(`.kir-month-cal-day[data-key="${head}"]`);
         if (prevHeadCell) prevHeadCell.classList.remove('kir-cal-selected');
@@ -804,7 +820,7 @@
   // visually the moment its cell is back on screen.
   function scheduleStepChain() {
     const key = scheduleChainQueue.shift();
-    if (key === undefined) { scheduleChainTimer = null; return; }
+    if (key === undefined) { scheduleChainTimer = null; scheduleChainNextTick = null; return; }
 
     scheduleChainHeadKey = key; // the snake's real position, updated on every step so a redirect can recalculate from here
 
@@ -821,7 +837,17 @@
       cell.classList.add('kir-cal-travel-pulse');
       setTimeout(() => cell.classList.remove('kir-cal-travel-pulse'), 200);
     }
-    scheduleChainTimer = setTimeout(scheduleStepChain, 80);
+    // Advance the anchor by a fixed 80ms regardless of how long this call
+    // itself took, then schedule against however much of that 80ms is
+    // actually left — that's the self-correcting part. A plain
+    // `setTimeout(scheduleStepChain, 80)` here would restart the 80ms count
+    // fresh every time, so this callback's own execution time (however
+    // small) keeps getting added on top step after step, same as a clock
+    // that gets reset instead of corrected. Math.max(0, ...) covers the (rare)
+    // case where this call ran so long the target time already passed —
+    // fire the next step right away instead of going negative.
+    scheduleChainNextTick = (scheduleChainNextTick || Date.now()) + 80;
+    scheduleChainTimer = setTimeout(scheduleStepChain, Math.max(0, scheduleChainNextTick - Date.now()));
   }
 
   /* ----------------------------------------------------------

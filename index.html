@@ -10,7 +10,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -65,7 +65,16 @@
     background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
   }
 
-  .obt-header { flex: 0 0 auto; position: relative; z-index: 50; }
+  /* The header used to be a normal flex item, which reserved its own
+     row and pushed .obt-cosmos (and therefore the planet/ring) down to
+     start only below it — so the top of the ring/glow could never
+     reach that high, and the area behind the nav read as a flat empty
+     bar instead of fading naturally like the rest of the scene.
+     Taking it out of flow and pinning it over the top of the viewport
+     lets .obt-cosmos claim the full height underneath, so the glow and
+     orbit rings now extend up behind the (transparent) header instead
+     of stopping short of it. */
+  .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
   .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
@@ -121,6 +130,13 @@
     justify-content: center;
     overflow: hidden;
     touch-action: none;
+    /* The header is now position:fixed (out of flow) so the ring/glow
+       can show through it, but that also gives .obt-cosmos the full
+       viewport height to center in — which pulled the planet up by
+       roughly half the header's height. Padding the top back in by the
+       header's actual measured height (set as --obt-header-h below)
+       puts the centered content back where it originally sat. */
+    padding-top: var(--obt-header-h, 92px);
   }
 
   .obt-stage-outer {
@@ -505,20 +521,40 @@
   .obt-eyebrow-count { color: var(--muted-500); font-weight: 500; letter-spacing: 0.05em; }
 
   /* ---------------- Typewriter effect on each panel's heading ----------------
-     .obt-typing is toggled by JS for exactly as long as a heading is
-     mid-type or mid-erase; the blinking caret is pure CSS so it can't
-     drift out of sync with the JS-driven character timing. */
-  .obt-typehead.obt-typing::after {
+     The caret lives on .obt-typehead itself (not gated behind a
+     .obt-typing flag) so it blinks continuously forever, including
+     while the heading sits fully typed and idle between scenes — it's
+     pure CSS so it can't drift out of sync with the JS-driven character
+     timing. .obt-typing is still toggled by JS purely to mark when a
+     heading is mid-type/mid-erase, in case anything else hooks into it. */
+  .obt-typehead::after {
     content: '';
     display: inline-block;
     width: 2px;
     height: 0.85em;
     margin-left: 2px;
-    background: currentColor;
-    vertical-align: text-bottom;
+    background: var(--text-color);
+    vertical-align: middle;
     animation: obt-caret-blink 0.85s step-end infinite;
   }
   @keyframes obt-caret-blink { 50% { opacity: 0; } }
+
+  /* "Ctrl+A" erase variant — the whole heading gets a selection-style
+     highlight for a beat before it's cleared in one shot, standing in
+     for the moments transitionTypeHead() decides to select-all instead
+     of holding backspace. box-decoration-break keeps the highlight
+     looking like a real per-line text selection if the heading wraps.
+     No caret while "selected", same as a real editor with a selection. */
+  .obt-typehead.obt-selected {
+    background: rgba(var(--accent-rgb), 0.35) !important;
+    border-radius: 3px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    width: fit-content;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+  }
+  .obt-typehead.obt-selected::after { display: none; }
 
   .obt-feat-row { display: flex; gap: 0.85rem; align-items: flex-start; padding: 0.6rem 0; border-top: 1px solid var(--glass-border); }
   .obt-feat-row:first-of-type { border-top: none; }
@@ -622,7 +658,14 @@
 
   /* ---------------- Scroll hint ---------------- */
   .obt-hint {
-    position: absolute; left: 50%; top: clamp(0.75rem, 3vh, 1.75rem);
+    position: absolute; left: 50%;
+    /* Absolutely-positioned children measure their offset from
+       .obt-cosmos's own top edge, ignoring the padding-top we added
+       there to re-center the planet — so without this, the hint stayed
+       pinned right under the (now floating, out-of-flow) header instead
+       of moving down with everything else. Add the same measured
+       header height here so it clears the nav. */
+    top: calc(var(--obt-header-h, 92px) + clamp(0.75rem, 3vh, 1.75rem));
     transform: translateX(-50%);
     z-index: 50;
     display: flex; align-items: center; gap: 0.6rem;
@@ -646,186 +689,9 @@
       animation: none !important;
     }
     .obt-stage, .obt-node, .obt-panel, .obt-card, .obt-stars { transition: none !important; }
-    .obt-typehead.obt-typing::after { animation: none !important; }
+    .obt-typehead::after { animation: none !important; }
   }
 
-  /* ============================================================
-     Cross-document view transition: index.html <-> auth.html
-     Both pages opt in via the @view-transition at-rule below (the
-     old <meta name="view-transition"> tag was deprecated around
-     Chrome 126 and silently does nothing now, giving no console warning;
-     it just falls back to a plain instant navigation, which is
-     exactly the "nothing happens" symptom this replaces). Both
-     pages also tag their planet sphere with the same
-     view-transition-name, so the browser automatically morphs its
-     position/size across the navigation instead of just
-     cross-fading it. This is what makes the planet visibly slide
-     over and grow when moving to the auth screen (and shrink back
-     when returning). Everything here is a no-op (plain instant
-     navigation) in browsers that don't support the API yet. */
-  @media (prefers-reduced-motion: no-preference) {
-    @view-transition {
-      navigation: auto;
-    }
-  }
-
-  .obt-sphere { view-transition-name: kir-planet; }
-
-  /* auth.html has its own ring too (same markup, scaled to its bigger
-     sphere), tagged with this same name, so this is a real morph
-     between the two rings' positions/sizes, not just a fade, exactly
-     like the planet itself. The nav nodes (.obt-nodes) deliberately get
-     NO name, so unlike the ring they stay part of the quick root
-     cross-fade below and disappear well before the ring/planet finish
-     moving. */
-  .obt-ring-group { view-transition-name: kir-ring; }
-
-  @media (prefers-reduced-motion: no-preference) {
-    /* ------------------------------------------------------------
-       ::view-transition-group(root) was 0.55s with the browser's
-       default easing, while ::view-transition-old/new(root) below
-       are 0.5s with a custom cubic-bezier. The GROUP is what actually
-       interpolates the snapshot's size/position (relevant whenever
-       the two pages differ in height/scrollbar presence); the OLD/NEW
-       pseudo-elements are what carry the opacity+translateX slide.
-       With two different durations+easings racing each other, the
-       slide finished and froze (both-fill) ~50ms before the container
-       was done adjusting size/position, so for that last beat the
-       page kept moving after its own translateX had already stopped,
-       which reads as a jerk/stutter right at the tail of the
-       navigation. Matching duration AND easing here means the
-       container and the slide finish in the same frame, so the
-       motion resolves as one continuous move instead of two
-       slightly-offset ones.
-       ------------------------------------------------------------ */
-    ::view-transition-group(root) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
-    ::view-transition-old(root) {
-      animation: kir-vt-out 0.5s cubic-bezier(.2,.8,.2,1) both;
-    }
-    ::view-transition-new(root) {
-      animation: kir-vt-in 0.5s cubic-bezier(.2,.8,.2,1) both;
-    }
-    @keyframes kir-vt-out { to { opacity: 0; transform: translateX(-4%); } }
-    @keyframes kir-vt-in { from { opacity: 0; transform: translateX(4%); } }
-
-    /* The 4th control point here used to be 1.05, not 1 — a curve
-       whose y-value goes past 1 necessarily overshoots past its target
-       size before settling back. On kir-planet/kir-ring specifically
-       that read as the planet growing larger than its landing size and
-       shrinking back down, and since the planet visually dominates the
-       stage, that lurch also made the static background glow behind it
-       look like it stuttered along for the ride. Capping the curve at
-       1 keeps the same fast-start/gentle-finish shape without ever
-       overshooting the target.
-
-       The GROUP rule (below) drives the actual box resize/reposition —
-       i.e. the planet's real on-screen size as it morphs — while
-       OLD/NEW just crossfade the two snapshots inside that box. These
-       two used to only share a duration, not an easing: the group ran
-       on the browser's default curve while old/new ran on this one, so
-       the box's resize and the crossfade settled at different rates
-       and the tail end of the move still read as an uneven, slightly
-       swelling wobble even after the 1.05->1 fix above. Explicitly
-       matching the group's timing-function to old/new's — same fix
-       already applied to `root` up above — closes that gap. */
-    ::view-transition-group(kir-planet) {
-      animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1);
-    }
-    ::view-transition-old(kir-planet),
-    ::view-transition-new(kir-planet) {
-      animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1);
-    }
-
-    ::view-transition-group(kir-ring) {
-      animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1);
-    }
-    ::view-transition-old(kir-ring),
-    ::view-transition-new(kir-ring) {
-      animation-duration: 0.7s;
-      animation-timing-function: cubic-bezier(.22,.85,.3,1);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
-      animation: none !important;
-    }
-  }
-
-  /* ============================================================
-     "Surroundings" fade-in, specifically when arriving here FROM
-     auth.html (see revealPending in router.js — every other way of
-     landing on this page, direct load included, never adds any of
-     the classes below, so nothing here ever applies then).
-
-     .obt-sphere / .obt-ring-group / .obt-guide-1 / .obt-guide-2 are
-     deliberately NOT in this list: those three already morph
-     continuously in from auth.html via their shared
-     view-transition-name (and the guides/moons phase-sync above),
-     so hiding and re-fading them here would undo that continuity
-     and make them blink instead of glide. Everything else in the
-     scene (plus the header/footer/starfield around it) pops in
-     fresh either way, so it gets the fade instead of just
-     appearing abruptly.
-
-     This is now a strict two-phase sequence, not one big group:
-       1. kir-nodes-in — the ring's nav nodes appear first, one at a
-          time in ring order (rest of the scene stays hidden, still
-          governed by kir-reveal-pending below).
-       2. kir-scene-in — only added once every node has finished
-          appearing, plus a further pause (see the timing in
-          router.js) — the rest of the scene then breathes in
-          together, slowly.
-     Both "in" rules are declared after kir-reveal-pending so they
-     win the (tied) specificity fight against it wherever they apply,
-     letting reveal-pending keep hiding whichever group hasn't had
-     its own "in" class added yet.
-     ============================================================ */
-  body.kir-reveal-pending #obt-stars,
-  body.kir-reveal-pending .obt-vignette,
-  body.kir-reveal-pending .obt-header,
-  body.kir-reveal-pending .obt-moon-orbit,
-  body.kir-reveal-pending .obt-dust,
-  body.kir-reveal-pending #obt-card,
-  body.kir-reveal-pending #obt-hint,
-  body.kir-reveal-pending .obt-progress,
-  body.kir-reveal-pending .obt-footer-mini,
-  body.kir-reveal-pending .obt-nodes .obt-node {
-    opacity: 0;
-  }
-
-  /* Phase 1: nodes only. The container itself (.obt-nodes) is just a
-     positioning wrapper and stays fully opaque — only the individual
-     .obt-node buttons animate, each a beat after the previous one. */
-  body.kir-nodes-in .obt-nodes .obt-node {
-    opacity: 1;
-    transition: opacity 0.5s ease;
-  }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(1) { transition-delay: 0s; }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(2) { transition-delay: 0.15s; }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(3) { transition-delay: 0.3s; }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(4) { transition-delay: 0.45s; }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(5) { transition-delay: 0.6s; }
-  body.kir-nodes-in .obt-nodes .obt-node:nth-of-type(6) { transition-delay: 0.75s; }
-
-  /* Phase 2: everything else, once the nodes are done — a slower,
-     gentler breathe-in since there's no stagger left to read here,
-     just one collective fade. */
-  body.kir-scene-in #obt-stars,
-  body.kir-scene-in .obt-vignette,
-  body.kir-scene-in .obt-header,
-  body.kir-scene-in .obt-moon-orbit,
-  body.kir-scene-in .obt-dust,
-  body.kir-scene-in #obt-card,
-  body.kir-scene-in #obt-hint,
-  body.kir-scene-in .obt-progress,
-  body.kir-scene-in .obt-footer-mini {
-    opacity: 1;
-    transition: opacity 1.1s ease;
-  }
 </style>
 
 </head>
@@ -866,6 +732,24 @@
   </nav>
 </header>
 
+<script>
+  // Measure the header's real rendered height (it varies by breakpoint —
+  // the tagline drops below 400px, nav wraps differently, etc.) so
+  // .obt-cosmos's padding-top compensation always matches exactly,
+  // instead of guessing a fixed pixel value that only fits one size.
+  // Runs synchronously here (before .obt-cosmos below is painted) and
+  // again on resize so rotating a device or resizing a window stays correct.
+  (function syncHeaderHeightVar() {
+    const headerEl = document.querySelector('.obt-header');
+    function apply() {
+      if (!headerEl) return;
+      document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+    }
+    apply();
+    window.addEventListener('resize', apply);
+  })();
+</script>
+
 <main class="obt-cosmos" id="obt-cosmos">
 
   <div class="obt-stage-outer" id="obt-stage-outer">
@@ -874,11 +758,8 @@
       <div class="obt-guide obt-guide-2"></div>
 
       <!-- obt-ring-group wraps BOTH ring halves (front + back, not the
-           moons/nodes) so they can share a single view-transition-name.
-           z-index on the two children still sandwiches the sphere visually
-           exactly as before. This wrapper is a plain non-positioned box,
-           purely for naming, see the cross-document view-transition rules
-           near the end of <style> for why. -->
+           moons/nodes). z-index on the two children sandwiches the
+           sphere visually. Plain non-positioned wrapper box. -->
       <div class="obt-ring-group">
         <div class="obt-ring obt-ring-back"></div>
         <div class="obt-ring obt-ring-front"></div>
@@ -955,7 +836,7 @@
       </div>
 
       <div class="obt-panel" data-scene="fitur">
-        <p class="obt-eyebrow">FITUR <span class="obt-eyebrow-count">02 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_fitur">FITUR</span> <span class="obt-eyebrow-count">02 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
         <div>
           <div class="obt-feat-row">
@@ -983,7 +864,7 @@
       </div>
 
       <div class="obt-panel" data-scene="cabang">
-        <p class="obt-eyebrow">CABANG <span class="obt-eyebrow-count">03 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_cabang">CABANG</span> <span class="obt-eyebrow-count">03 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
           <div class="glass rounded-xl p-4">
@@ -999,7 +880,7 @@
       </div>
 
       <div class="obt-panel" data-scene="faq">
-        <p class="obt-eyebrow">FAQ <span class="obt-eyebrow-count">04 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_faq">FAQ</span> <span class="obt-eyebrow-count">04 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
         <p class="text-zinc-500 text-sm mb-5" data-i18n="idx_faq_sub">Klik pertanyaan untuk melihat jawabannya.</p>
         <div>
@@ -1043,7 +924,7 @@
 
 
       <div class="obt-panel" data-scene="proker">
-        <p class="obt-eyebrow">PROGRAM KERJA <span class="obt-eyebrow-count">05 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_proker">PROGRAM KERJA</span> <span class="obt-eyebrow-count">05 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
         <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
@@ -1053,7 +934,7 @@
       </div>
 
       <div class="obt-panel" data-scene="galeri">
-        <p class="obt-eyebrow">GALERI <span class="obt-eyebrow-count">06 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_galeri">GALERI</span> <span class="obt-eyebrow-count">06 / 06</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
         <div class="flex flex-wrap items-center gap-3">
@@ -1259,6 +1140,7 @@
       if (nextEl === currentTypeHead) return;
       const gen = ++typeGen;
       if (typeTimer) window.clearTimeout(typeTimer);
+      if (currentTypeHead) currentTypeHead.classList.remove('obt-selected');
       const startText = visibleText;
       currentTypeHead = nextEl;
       if (!nextEl) { visibleText = ''; return; }
@@ -1271,19 +1153,38 @@
       nextEl.classList.add('obt-typing');
       nextEl.textContent = startText;
       visibleText = startText;
-      let text = startText;
-      (function eraseStep() {
-        if (gen !== typeGen) return; // superseded by yet another scene change
-        if (text.length <= 0) {
+
+      // Two different ways to clear the old heading, picked at random
+      // each transition: hold backspace (character by character, as
+      // before) or Ctrl+A — highlight the whole heading, pause for a
+      // beat as if it were actually selected, then delete it all in
+      // one shot. Keeps the erase from feeling like the same canned
+      // animation every single time.
+      if (Math.random() < 0.5) {
+        let text = startText;
+        (function eraseStep() {
+          if (gen !== typeGen) return; // superseded by yet another scene change
+          if (text.length <= 0) {
+            nextEl.classList.remove('obt-typing');
+            typeIntoHead(nextEl, gen);
+            return;
+          }
+          text = text.slice(0, -1);
+          nextEl.textContent = text;
+          visibleText = text;
+          typeTimer = window.setTimeout(eraseStep, eraseDelay());
+        })();
+      } else {
+        nextEl.classList.add('obt-selected');
+        typeTimer = window.setTimeout(() => {
+          if (gen !== typeGen) return; // superseded mid-"selection"
+          nextEl.classList.remove('obt-selected');
+          nextEl.textContent = '';
+          visibleText = '';
           nextEl.classList.remove('obt-typing');
           typeIntoHead(nextEl, gen);
-          return;
-        }
-        text = text.slice(0, -1);
-        nextEl.textContent = text;
-        visibleText = text;
-        typeTimer = window.setTimeout(eraseStep, eraseDelay());
-      })();
+        }, 260 + Math.random() * 140);
+      }
     }
 
     // The whole ring drifts slowly on its own even when idle, which is
@@ -1513,23 +1414,7 @@
         window.removeEventListener('resize', onResize);
         window.removeEventListener('keydown', onKeydown);
         if (lockTimer) window.clearTimeout(lockTimer);
-      }; // supersedes the reduced-motion default above with the same cleanup plus the rAF loop
-
-      cosmos.addEventListener('mousemove', (e) => {
-        const rect = cosmos.getBoundingClientRect();
-        const px = (e.clientX - rect.left) / rect.width - 0.5;
-        const py = (e.clientY - rect.top) / rect.height - 0.5;
-        stage.style.transform = `rotateX(${(-py * 7).toFixed(2)}deg) rotateY(${(px * 9).toFixed(2)}deg)`;
-        starsEl.style.transform = `translate(${(-px * 14).toFixed(1)}px, ${(-py * 14).toFixed(1)}px)`;
-        // The ring inherits its tilt purely from the shared .obt-stage
-        // rotateX/rotateY above (it's a plain descendant, no independent
-        // transform of its own anymore), which keeps ring, sphere, and node
-        // depth ordering correct from every viewing angle.
-      });
-      cosmos.addEventListener('mouseleave', () => {
-        stage.style.transform = 'rotateX(0deg) rotateY(0deg)';
-        starsEl.style.transform = 'translate(0, 0)';
-      });
+      };
     }
   })();
 </script>

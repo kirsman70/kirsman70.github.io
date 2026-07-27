@@ -11,7 +11,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -139,10 +139,6 @@
         <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="anggota">Anggota</h1>
         <p class="text-zinc-500 text-sm mt-1" data-i18n="members_desc">Semua orang yang tergabung di KIR.</p>
       </div>
-      <div class="hidden sm:flex items-center gap-2 text-xs">
-        <span class="px-3 py-1 rounded-full badge-robotik" data-i18n="robotik">Robotik</span>
-        <span class="px-3 py-1 rounded-full badge-sains" data-i18n="sains">Sains</span>
-      </div>
     </div>
 
     <!-- Pannable/zoomable org chart -->
@@ -160,7 +156,7 @@
         </button>
       </div>
 
-      <p class="chart-hint absolute bottom-3 left-4 z-20 text-[11px] text-zinc-500" data-i18n="members_drag_hint">Geser untuk menjelajah struktur</p>
+      <p class="chart-hint absolute bottom-3 left-4 z-20 text-[11px] text-zinc-500" data-i18n="chart_hint">Geser untuk menjelajah</p>
 
       <div id="chart-canvas">
         <svg id="chart-lines" style="position:absolute; top:0; left:0; overflow:visible;"></svg>
@@ -207,11 +203,12 @@
 
   function cabangBadges(cabang) {
     if (cabang === 'both') {
-      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains">Sains</span>`;
+      return `<span class="text-[10px] px-2 py-0.5 rounded-full badge-robotik" data-i18n="robotik">Robotik</span><span class="text-[10px] px-2 py-0.5 rounded-full badge-sains" data-i18n="sains">Sains</span>`;
     }
     const cls = cabang === 'sains' ? 'badge-sains' : 'badge-robotik';
-    const label = cabang === 'sains' ? 'Sains' : 'Robotik';
-    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
+    const labelKey = cabang === 'sains' ? 'sains' : 'robotik';
+    const labelFallback = cabang === 'sains' ? 'Sains' : 'Robotik';
+    return `<span class="text-[10px] px-2 py-0.5 rounded-full ${cls}" data-i18n="${labelKey}">${labelFallback}</span>`;
   }
 
   function getRoleI18n(role) {

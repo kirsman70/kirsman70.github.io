@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kursus</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+<script src="js/wysiwyg-editor.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
+<!-- admin-shared.css also carries the .wce-* WYSIWYG math/code editor
+     styles (toolbar, chips, math-field) used below for the essay
+     answer box, AND the .admin-tooltip styles the material viewer's
+     "i" info button reuses — needed here even though this page has
+     no admin UI. admin-shared.js itself is NOT loaded here on purpose
+     (same reason js/workspace.js already keeps its own local copy of
+     KIR_MATH_SNIPPETS instead of pulling that file in, per the
+     comment at the top of workspace.js): admin-shared.js declares
+     several top-level `let`/`const`s (KIR_MATH_SNIPPETS among them)
+     that workspace.js also declares itself, and two plain <script>
+     tags sharing the same global scope can't both declare the same
+     const/let — it's a parse-time SyntaxError, not just an override.
+     workspace.js instead keeps its own small local copy of just the
+     two tooltip helpers it needs (courseMaterialShowDescTooltip /
+     kirAdminTooltipHide) rather than loading the whole bundle. -->
+<link rel="stylesheet" href="css/admin-shared.css">
+
+<!-- MathJax for rendering LaTeX (node titles/descriptions and voyage/
+     material content can all contain $...$ / $$...$$, same as
+     voyages.html) -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- MathLive: powers the live, caret-inside-the-formula editing view in
+     the essay answer's math chips (see js/wysiwyg-editor.js) — same
+     role it plays on voyages.html. MathJax above is only used for the
+     *static*, non-editing render of node/voyage/material content. -->
+<script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+<!-- marked (Markdown) + DOMPurify (sanitizes the HTML marked produces before
+     it's dropped in via innerHTML) — course.html has no admin CRUD UI,
+     so unlike voyages.html/admin-shared.js this is just the render
+     half (plus the essay editor above), kept local. -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+
+<style id="kir-page-style">
+  /* Same pan/zoom viewport treatment as members.html — kept as its
+     own copy here (rather than sharing selectors) since Course will
+     likely grow its own canvas content that isn't org-chart shaped. */
+  #chart-viewport {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    background-position: 0px 0px;
+  }
+  #chart-viewport.dragging { cursor: grabbing; }
+
+  /* Nothing to pan/zoom until a course is actually loaded — see the
+     .no-course toggle in courseShowEmptyState()/courseShowWorkspace()
+     in js/workspace.js. Pointer/wheel handlers already bail out in
+     that state (chartPointerDown / the wheel listener in
+     initChartInteractions), this just stops the cursor from
+     advertising a drag that won't do anything. */
+  #chart-viewport.no-course { cursor: default; }
+
+  [data-theme="light"] #chart-viewport {
+    background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+  }
+
+  #chart-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .chart-ctrl-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+  }
+  .chart-ctrl-btn:hover { background: rgba(128,128,128,0.12); }
+  .chart-ctrl-btn:active { transform: scale(0.94); }
+
+  .chart-hint {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Casino-style roll on #workspace-deltas-total — see
+     animateWorkspaceDeltasRoll() below. tabular-nums keeps digit
+     width stable while the number is rolling so the pill doesn't
+     jitter horizontally; the pulse is a plain scale wobble (no
+     color change — up and down look the same) while it's mid-roll,
+     settling back to rest once it lands on the real total.
+     .deltas-rolling is only ever added when motion is allowed —
+     refreshWorkspaceDeltasHeader() skips straight to the final value
+     under reduced motion — but the reduce-motion backstop further
+     down this file still zeroes the animation out too if that ever
+     changes. */
+  #workspace-deltas-total {
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+  }
+  #workspace-deltas-total.deltas-rolling {
+    animation: deltas-roll-pulse 0.5s ease-in-out infinite;
+  }
+  @keyframes deltas-roll-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  /* Fullscreen mode: viewport fills the screen, corners go square,
+     canvas gets re-centered by chartResetView() on the resulting
+     resize event (see initChartInteractions). */
+  #chart-viewport:fullscreen {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+  }
+  #chart-viewport:-webkit-full-screen {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+  }
+
+  #chart-viewport:fullscreen .chart-hint {
+    bottom: 1rem;
+    left: 1.25rem;
+  }
+  #chart-viewport:-webkit-full-screen .chart-hint {
+    bottom: 1rem;
+    left: 1.25rem;
+  }
+
+  /* Modals get moved inside #chart-viewport for the duration of
+     fullscreen (see kirMoveModalsIntoFullscreen in the script below —
+     the Fullscreen API doesn't paint anything outside the fullscreen
+     element, so this is required, not just cosmetic). This rule is
+     the belt-and-suspenders part: #chart-viewport's backdrop-filter
+     makes it the containing block for its fixed-position descendants,
+     so pin the modal back to the full fullscreen box explicitly and
+     keep it above every other chart layer. */
+  #chart-viewport:fullscreen > .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+  }
+  #chart-viewport:-webkit-full-screen > .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+  }
+
+  /* Voyage modal, flag nodes only: same "our style" surfaces/colors
+     (var(--bg-color), var(--glass-*), same fonts, same badges/buttons)
+     but laid out like a locked-down exam shell (Safe Exam Browser)
+     instead of a floating dialog — no backdrop gap, no rounded card,
+     title+badges pinned top-left with the close button top-right, and
+     the body split into a question/answer column on the left and a
+     question-navigator column on the right, so nothing else is ever
+     visible while a flag is in progress.
+
+     Used to be scoped to fullscreen (#chart-viewport:fullscreen >
+     #cvm-modal) so *any* voyage got the exam shell once the chart went
+     fullscreen. Now it's keyed off the .cvm-flag class instead, which
+     courseOpenVoyageRunner() toggles onto #cvm-modal based on node.type
+     — so a flag gets this look everywhere (windowed or fullscreen), and
+     a regular voyage_group never does, even in fullscreen: it always
+     stays the plain floating dialog below.
+
+     .cvm-main/.cvm-nav-grid also get base (non-flag) rules right below
+     so voyage_group's layout stays exactly as it was: single column,
+     nav grid hidden, submit button right-aligned at the bottom. */
+  .cvm-main { display: flex; flex-direction: column; }
+  .cvm-nav-grid { display: none; }
+
+  #cvm-modal.cvm-flag {
+    padding: 0;
+    background: var(--bg-color);
+    backdrop-filter: none;
+  }
+  #cvm-modal.cvm-flag .modal-card {
+    width: 100%;
+    height: 100%;
+    max-width: none !important;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    transform: none;
+  }
+  #cvm-modal.cvm-flag .cvm-header {
+    flex: 0 0 auto;
+    /* Was 1.1rem 1.75rem: the subject/rating/type badge row that used
+       to live under the title is gone now (see the courseCardFooterHtml
+       rating/soal pills below for where that info moved instead), so
+       the header is just the title bar — tighten the vertical padding
+       to match, rather than leaving space sized for a row that no
+       longer renders. */
+    padding: 0.8rem 1.75rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+  }
+
+  /* Submit button: was accidentally losing its right-alignment wrapper
+     in an earlier pass, leaving it flush left in both voyage_group and
+     flag layouts. Always-on fix, not scoped to .cvm-flag. */
+  .cvm-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+  /* Body: question/answers on the left, question navigator on the
+     right — overriding the column-stack base rule above. */
+  #cvm-modal.cvm-flag .cvm-main {
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #cvm-modal.cvm-flag .cvm-question-col {
+    flex: 1.7 1 0%;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  /* Soal loses its own boxed card in the exam shell — just the "Soal"
+     label and the question text sitting directly on the page, sized
+     up a bit since there's no card to frame it anymore. The answer
+     controls (mc/dropdown/essay/programming + feedback) are grouped
+     in .cvm-answer-group so justify-content: space-between above can
+     push them down to the bottom of the column instead of sitting
+     right under the question. */
+  #cvm-modal.cvm-flag .cvm-soal-box {
+    background: none;
+    backdrop-filter: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  #cvm-modal.cvm-flag .cvm-soal-box #cvm-question {
+    font-size: 1rem;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-col {
+    flex: 1 1 0%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+    padding: 1.75rem;
+    border-left: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+  }
+
+  /* Question-number navigator grid: up to 5 per row, starting top-left
+     of the right column. One cell per voyage in the node's group, built
+     by renderCourseVoyageNavGrid() in the script below — .cvm-nav-cell is
+     the unanswered default, .cvm-nav-cell-active (+ Tailwind's
+     bg-accent-gradient) is the currently-open question, and
+     .cvm-nav-cell-answered marks ones already filled in so progress
+     through the set is visible without needing to click through each. */
+  #cvm-modal.cvm-flag .cvm-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    max-width: 16rem;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell {
+    aspect-ratio: 1;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgb(161, 161, 170); /* zinc-400 */
+    border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell-answered {
+    background: rgba(var(--accent-rgb), 0.12);
+    border-color: rgba(var(--accent-rgb), 0.35);
+    color: rgb(var(--accent-rgb));
+  }
+
+  /* ---------- Course graph: nodes & connectors ---------- */
+  #course-workspace {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  #chart-viewport {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #course-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .course-edge {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  /* Optional side branches (extra practice voyages, etc.) get a
+     dashed, slightly softer line so they read as "not required" next
+     to the solid main-progression curves. */
+  .course-edge-branch {
+    stroke-dasharray: 5 5;
+    opacity: 0.8;
+  }
+  .course-edge-dot {
+    fill: var(--bg-color, #0a0a0b);
+    stroke-width: 2.5;
+  }
+  /* A connector that just became visible (its node just finished, or
+     the far end just unlocked) draws itself in rather than appearing
+     instantly. pathLength="1" on the <path> normalizes its length to
+     1 unit so "1"/"0" dash values work regardless of the curve's
+     actual pixel length. */
+  .course-edge-animate {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: courseEdgeDraw 0.75s ease forwards;
+  }
+  @keyframes courseEdgeDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  .course-edge-dot-animate {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: courseDotPop 0.3s ease forwards;
+    animation-delay: 0.6s;
+  }
+  @keyframes courseDotPop {
+    from { opacity: 0; transform: scale(0.3); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .course-node {
+    position: absolute;
+    width: 15rem;
+  }
+  .course-node-inner {
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  [data-theme="light"] .course-node-inner {
+    background: rgba(255, 255, 255, 0.65);
+  }
+  .course-node-inner:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.55);
+  }
+  .course-node.is-selected .course-node-inner {
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Title bar — a soft frosted strip, tinted by node type */
+  .course-node-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid var(--glass-border);
+    border-radius: 1rem 1rem 0 0;
+  }
+  .course-node-header svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .course-node-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+  }
+  .course-node-icon-badge svg { width: 0.75rem !important; height: 0.75rem !important; }
+  .course-node-header-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(212, 212, 216, 0.8);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .course-node-header-id {
+    font-size: 9.5px;
+    opacity: 0.4;
+    flex-shrink: 0;
+  }
+  .course-node-thumb {
+    height: 4.5rem;
+    background: rgba(128, 128, 128, 0.06);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .course-node-thumb svg { width: 1.4rem; height: 1.4rem; opacity: 0.5; }
+  .course-node-body { padding: 0.6rem 0.7rem 0.7rem; }
+  .course-node-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .course-node-type svg { width: 0.85rem; height: 0.85rem; display: block; }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ---------- Per-node-type card treatments ----------
+     Each node type gets its own footer/CTA + a couple of layout
+     tweaks, on top of the shared .course-node-inner shell. Colors
+     stay inline (computed per-node in JS) since they can vary node
+     to node (see material color progression), not just by type. */
+  .course-node-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border-top: 1px solid var(--glass-border);
+  }
+  .course-node-meta {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .course-node-meta svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+
+  /* Rating (avg. difficulty) + soal-count meta on voyage_group/flag
+     card footers — see courseVoyageNodeMetaHtml(). Same plain gray
+     .course-node-meta treatment material nodes use for their duration
+     text, just two of them side by side with a small gray divider bar
+     between — not a typed "|" character — instead of the old
+     accent-colored pill badges. */
+  .course-node-meta-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .course-node-meta-sep {
+    width: 1px;
+    height: 0.7rem;
+    flex-shrink: 0;
+    background: rgba(148, 163, 184, 0.3);
+  }
+
+  .course-node-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .course-node-action-btn svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+  .course-node-action-btn:hover { filter: brightness(1.15); }
+  .course-node-action-btn:active { transform: scale(0.95); }
+
+  /* Course — the hub node. Bigger footprint, richer header/thumb,
+     a stats row + overall progress bar instead of a single CTA. */
+  .course-card-course .course-node-header { padding: 0.55rem 0.8rem; }
+  .course-card-course .course-node-header svg { width: 1rem; height: 1rem; }
+  .course-card-course .course-node-header-label { font-size: 10.5px; }
+  .course-card-course .course-node-thumb { height: 6rem; }
+  .course-card-course .course-node-thumb svg { width: 2.1rem; height: 2.1rem; }
+  .course-card-course .course-node-body { padding-bottom: 0.4rem; }
+  .course-card-course .course-node-title { font-size: 0.95rem; }
+  .course-course-stats {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0 0.7rem 0.6rem;
+  }
+  .course-course-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.9);
+  }
+  .course-course-stat svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .course-progress-track {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+    margin: 0 0.7rem 0.75rem;
+  }
+  .course-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  /* Course — hub node gets a circular icon medallion in its header
+     (instead of a plain inline glyph) plus a heavier border, on top
+     of its already-larger footprint/stats/progress bar, so it reads
+     unmistakably as "the anchor" of the whole graph. */
+  .course-card-course .course-node-inner { border-width: 1.5px; }
+  .course-course-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .course-course-icon-badge svg { width: 0.9rem !important; height: 0.9rem !important; }
+
+  /* Module — a chapter divider, not a piece of content: no thumb, no
+     footer/CTA, just a numbered chip in a slim dashed-border strip so
+     it visually reads as organizing structure rather than a lesson to
+     open. Height/width fall out of its own content instead of
+     matching the content-node shell. See courseNodeCardHtml's
+     module-specific branch for the markup this styles. */
+  .course-card-module .course-node-inner { border-style: dashed; }
+  .course-module-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 0.85rem;
+  }
+  .course-module-number {
+    font-size: 0.85rem;
+    font-weight: 700;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+  .course-module-text { min-width: 0; flex: 1 1 auto; }
+  .course-module-text .course-node-title { -webkit-line-clamp: unset; line-clamp: unset; display: block; overflow: visible; }
+
+  /* Material — compact thumb, meta (duration) + "Buka Materi" CTA,
+     plus a page/document motif: a colored spine along the card's
+     left edge and a folded-corner triangle in the top-right of the
+     thumbnail, evoking a printed page rather than a generic tile. */
+  .course-card-material .course-node-thumb { height: 3.75rem; }
+  .course-card-material .course-node-inner { border-left-width: 3px; }
+  .course-material-foldcorner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 1.1rem 1.1rem 0;
+    border-color: transparent currentColor transparent transparent;
+    opacity: 0.4;
+  }
+
+  /* Voyages — compact thumb, meta (question count) + "Mulai Voyage"
+     CTA. Plain thumb, no extra motif needed — a voyage is just a set
+     of questions, not a group activity. */
+  .course-card-voyage .course-node-thumb { height: 3.75rem; }
+
+  /* Flag — the final exam, a reskin of voyage group's footer, but
+     with its own silhouette: a pennant notch clipped out of the
+     bottom-right corner (like a torn flag edge) plus a thin
+     checkered ribbon under the header, so it stands out as "the big
+     one" rather than a routine voyage. */
+  .course-card-flag .course-node-thumb { height: 3.75rem; }
+  .course-card-flag .course-node-inner {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  }
+  .course-flag-ribbon {
+    height: 6px;
+    background-image: repeating-linear-gradient(45deg, currentColor 0 6px, transparent 6px 12px);
+    opacity: 0.45;
+  }
+
+  /* Connector ports — little pins poking out of the top/bottom edge,
+     the same visual language as Unity's input/output sockets. */
+  .course-port {
+    position: absolute;
+    left: 50%;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-left: -0.3rem;
+    border-radius: 50%;
+    border: 2px solid var(--bg-color, #0a0a0b);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    z-index: 2;
+  }
+  .course-port-in { top: -0.3rem; }
+  .course-port-out { bottom: -0.3rem; }
+  /* Side ports for branch connections (optional nodes hanging off to
+     the left/right of their anchor) — same pin, just rotated onto the
+     card's side edge instead of top/bottom. */
+  .course-port-left { left: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+  .course-port-right { left: auto; right: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+
+  /* "Opsional" pill in the header of a branch node — dashed border to
+     echo the dashed connector leading into it. */
+  .course-node-optional-badge {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    border: 1px dashed;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ---------- Progress state: completed / current / locked ----------
+     Every node carries a `state` (see applyCourseProgressState) driving
+     one of these three looks. Completed/current stay fully visible —
+     just a status pill in the header — since those are exactly what
+     the person already has access to. Locked is the interesting one:
+     rather than removing the card or graying text, a full blurred
+     dark overlay sits over the whole card, hiding title/description/
+     thumb/CTA completely while the card's shape, port, and position
+     in the graph stay put — so the overall course structure still
+     reads at a glance, just without spoiling what's in it. */
+  .course-node-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .course-node-status-icon svg { width: 0.65rem; height: 0.65rem; display: block; }
+
+  .course-node.is-current .course-node-inner {
+    box-shadow: 0 0 0 2px var(--course-current-glow, rgba(255,255,255,0.4)), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  .course-node.is-locked .course-node-inner { cursor: default; }
+  .course-node.is-locked .course-node-inner:hover {
+    border-color: var(--glass-border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 26px -14px rgba(0,0,0,0.65);
+  }
+  .course-node-lock-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: rgba(6, 6, 8, 0.82);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+  [data-theme="light"] .course-node-lock-overlay { background: rgba(20, 20, 24, 0.72); }
+  /* One-shot: plays once on the render where a node transitions out
+     of locked, then the element is gone by the next render (a fresh
+     card without this class). forwards keeps it invisible/inert at
+     the end instead of snapping back to opaque after the keyframe. */
+  .course-node-lock-overlay.course-lock-fading {
+    animation: courseLockFade 0.7s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes courseLockFade {
+    0% { opacity: 1; filter: blur(0); }
+    100% { opacity: 0; filter: blur(3px); }
+  }
+  .course-node-lock-overlay svg { width: 1.15rem; height: 1.15rem; opacity: 0.55; color: #e5e7eb; }
+  .course-node-lock-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  /* ---------- Inspector panel (NOT a modal — graph stays visible/interactive) ----------
+     Lives inside #chart-canvas — the same panned/zoomed coordinate
+     space as the node cards — so once positioned beside a node it
+     stays locked to it: panning/zooming moves it exactly like a node,
+     including going offscreen. See coursePositionInspector() for how
+     the side (left/right) is chosen. Styled like a node card
+     (.course-node-inner) so it reads as an extension of the node. */
+  #course-inspector {
+    position: absolute;
+    width: 280px;
+    max-height: 420px;
+    z-index: 25;
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    overflow: hidden;
+    display: flex;
+    transition: opacity 0.16s ease, transform 0.2s ease;
+  }
+  [data-theme="light"] #course-inspector {
+    background: rgba(255, 255, 255, 0.65);
+  }
+  #course-inspector.is-beside-right { transform: translateX(-10px); }
+  #course-inspector.is-beside-left { transform: translateX(10px); }
+  #course-inspector.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+  /* Actual scrolling happens here, one layer in from the rounded
+     border — keeps the (thin) scrollbar inset from the corners
+     instead of overlapping/poking past the outer radius. */
+  #course-inspector-body {
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+  #course-inspector-body::-webkit-scrollbar { width: 6px; }
+  #course-inspector-body::-webkit-scrollbar-track { background: transparent; }
+  #course-inspector-body::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 3px;
+  }
+  #course-inspector-body::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.55); }
+  .course-inspector-thumb {
+    height: 9rem;
+    border-radius: 0.75rem;
+    background: rgba(128, 128, 128, 0.08);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border);
+  }
+  .course-inspector-thumb svg { width: 2.25rem; height: 2.25rem; opacity: 0.5; }
+  .course-relation-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-input-bg);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+  }
+  .course-relation-chip:hover { background: rgba(128,128,128,0.1); }
+
+  /* Same copy-paste deterrent voyages.html puts on .voyage-card/
+     .modal-split-main (see style.css) — the voyage_group/flag runner's
+     soal/options text shouldn't be trivially selectable and dropped
+     into an AI chat. The member's own answer surface (mc/dropdown
+     inputs and the essay's contenteditable editor) is carved back out
+     below so answering still works normally. */
+  #cvm-modal .modal-card {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+  }
+  #cvm-modal .modal-card input,
+  #cvm-modal .modal-card textarea,
+  #cvm-modal .modal-card select,
+  #cvm-modal .modal-card .wce-surface {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+  }
+
+  /* Static diagram renderer (see kirRenderCourseDiagrams further
+     down the page) — "kir-diagram", never "kir-graph"/"kir-chart":
+     this page already uses "graph" everywhere for the unrelated
+     course node-tree (#course-graph, COURSE_GRAPH, ...), so this
+     picks a different word on purpose. These rules aren't next to
+     .kir-markdown's own rules (those live in css/style.css, shared
+     across pages) — kept here instead since every other course.html-
+     specific selector lives in this same inline block. */
+  .kir-diagram {
+    display: flex;
+    justify-content: center;
+    margin: 0.75em 0;
+  }
+  .kir-diagram-svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .kir-diagram-error {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.6em 0.9em;
+    border-radius: 0.5rem;
+    border: 1px dashed var(--glass-border);
+    color: var(--muted-500);
+    font-size: 0.85em;
+  }
+  .kir-diagram-error-icon { opacity: 0.8; }
+  /* Default theme color for shape strokes/fills/arrowheads — always
+     the page's plain foreground text color (--text-color: near-white
+     on dark theme, near-black on light theme), deliberately NOT
+     --accent-rgb. These are meant to read as a neutral textbook
+     diagram (axes, plotted lines, points) regardless of which cabang
+     accent (red/blue/purple) happens to be active, rather than
+     re-tinting itself every time the theme changes. Any shape with an
+     explicit style.color in its JSON still overrides this via an
+     inline stroke/fill attribute set in kirDiagram*() above — this
+     default only applies when a shape doesn't ask for its own color. */
+  .kir-diagram-shapes line,
+  .kir-diagram-shapes polygon,
+  .kir-diagram-shapes polyline,
+  .kir-diagram-shapes path,
+  .kir-diagram-shapes circle {
+    stroke: var(--text-color);
+  }
+  .kir-diagram-point { stroke: none; fill: var(--text-color); }
+  .kir-diagram-grid-line { stroke: var(--glass-border); stroke-width: 1; }
+  .kir-diagram-axis-line { stroke-width: 1.5; }
+  .kir-diagram-arrowhead { fill: var(--text-color); }
+  .kir-diagram-plot { stroke-linecap: round; }
+  .kir-diagram-angle-arc { stroke-width: 1.5; }
+  /* The foreignObject box each label sits in is a 1x1 dummy
+     positioned at the label's anchor point (see kirDiagramMakeLabel)
+     — this is what actually centers the label's real, natural-sized
+     content on that point regardless of how long the text turns out
+     to be. */
+  .kir-diagram-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    font-size: 12.5px;
+    line-height: 1.2;
+    color: var(--text-color);
+    pointer-events: none;
+  }
+
+  /* ==========================================================
+     "Kursus Saya" picker cards — redesigned so each enrolled
+     course reads as: title/status up top, description, then an
+     explicit "Buka Kursus Ini" button paired with its own
+     progress bar (rather than a whole-card click target and a
+     bare "X langkah selesai" line of text).
+     ========================================================== */
+  .course-picker-card {
+    position: relative;
+    border-radius: 0.9rem;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .course-picker-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.3;
+  }
+  .course-picker-card-desc {
+    font-size: 0.76rem;
+    color: var(--muted-500);
+    line-height: 1.45;
+    margin: 0.35rem 0 1rem;
+  }
+  .course-picker-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: auto;
+  }
+  .course-picker-open-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.55rem;
+    color: #fff;
+    background-image: linear-gradient(135deg, rgb(var(--accent-rgb)), rgba(var(--accent-rgb), 0.75));
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25);
+    transition: filter 0.12s ease, transform 0.12s ease;
+    white-space: nowrap;
+  }
+  .course-picker-open-btn svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+  .course-picker-open-btn:hover { filter: brightness(1.12); }
+  .course-picker-open-btn:active { transform: scale(0.96); }
+  .course-picker-open-btn:disabled {
+    background-image: none;
+    background: rgba(128, 128, 128, 0.14);
+    color: var(--muted-500);
+    box-shadow: none;
+    cursor: default;
+  }
+  .course-picker-progress { flex: 1 1 auto; min-width: 0; }
+  .course-picker-progress-track {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+  }
+  .course-picker-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: rgb(var(--accent-rgb));
+    transition: width 0.3s ease;
+  }
+  .course-picker-progress-label {
+    display: block;
+    font-size: 10.5px;
+    color: var(--muted-500);
+    margin-top: 0.35rem;
+  }
+
+  /* Per-card "⋮" menu — top-right of each course-picker-card, opens a
+     small popover with a single, permanently-red "Drop Course" action.
+     Kept visually separate from course-picker-open-btn/progress so it
+     doesn't compete with the primary "open this course" action. */
+  .course-picker-menu-wrap {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 5;
+  }
+  .course-picker-menu-btn {
+    width: 1.65rem;
+    height: 1.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: var(--muted-500);
+    background: transparent;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .course-picker-menu-btn:hover,
+  .course-picker-menu-btn.menu-active { background: rgba(128, 128, 128, 0.16); color: var(--text-color); }
+  .course-picker-menu-btn svg { width: 1.05rem; height: 1.05rem; pointer-events: none; }
+  .course-picker-menu {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    right: 0;
+    min-width: 10.5rem;
+    padding: 0.35rem;
+    border-radius: 0.65rem;
+    background: var(--bg-color);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .course-picker-menu.open { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+  .course-picker-drop-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.45rem;
+    text-align: left;
+    white-space: nowrap;
+    /* Always red — this is a destructive action, never themed to accent. */
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+    transition: background 0.12s ease;
+  }
+  .course-picker-drop-btn:hover { background: rgba(248, 113, 113, 0.22); }
+  .course-picker-drop-btn svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+
+</style>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-layer">
+  <div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+  <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+  <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+</div>
+
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 shrink-0 flex items-center justify-center">
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-7 h-7 object-contain" />
+      </div>
+      <span class="font-display font-semibold tracking-wider text-gradient-accent">orbit.io</span>
+    </a>
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+  <script>
+    // Inject the sidebar here, the moment #sidebar-root exists, rather
+    // than waiting until the very end of body (where it used to live,
+    // right before js/router.js). On a hard reload, a plain <script src>
+    // blocks HTML parsing until it's fully downloaded AND executed —
+    // and js/workspace.js is ~150KB of course-graph/canvas/math setup,
+    // the biggest page script on the site. Calling kirInjectSidebar()
+    // only after that finishes meant #sidebar-root sat empty for
+    // however long that download+execution took, which is what read as
+    // the sidebar "disappearing" for a second on refresh. Lighter pages
+    // like course.html never showed this because their inline script is
+    // a fraction of the size, so the same wait was too short to notice.
+    // kirInjectSidebar only touches auth.js state (kirRenderUserChrome,
+    // kirRefreshAdminPingBadge, etc.), nothing from workspace.js, so
+    // there's no real dependency forcing it to wait this long — moving
+    // it here just lets the sidebar render as soon as it possibly can.
+    kirInjectSidebar('workspace');
+  </script>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <div class="mb-7 flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="workspace_title">Workspace</h1>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="workspace_desc">Lanjutkan progres kursus dan kumpulkan deltas kamu di sini.</p>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+          <svg id="workspace-streak-flame" viewBox="0 0 24 24" class="w-5 h-5" style="filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.5));">
+            <defs>
+              <clipPath id="workspace-flame-clip">
+                <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
+              </clipPath>
+              <linearGradient id="workspace-flame-gradient" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" style="stop-color: rgb(var(--accent-2-rgb))" />
+                <stop offset="100%" style="stop-color: rgb(var(--accent-light-rgb))" />
+              </linearGradient>
+            </defs>
+            <g class="flame-body" style="transform-origin: 12px 21px;">
+              <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
+              <g clip-path="url(#workspace-flame-clip)">
+                <g id="workspace-flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
+                  <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#workspace-flame-gradient)" class="flame-wave" />
+                </g>
+              </g>
+            </g>
+          </svg>
+          <span class="font-display font-semibold text-lg" id="workspace-streak-count">0</span>
+          <span class="text-zinc-500 text-xs" data-i18n="streak_days">hari beruntun</span>
+        </div>
+        <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+          <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+          <span class="font-display font-semibold text-lg" id="workspace-deltas-total">0</span>
+          <span class="text-zinc-500 text-xs" data-i18n="deltas_points">deltas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixed FAB, bottom-right, mirrors voyage-expedition-fab's pattern
+         in voyages.html (single primary action, no stack needed here). -->
+    <button type="button" id="course-picker-fab" onclick="openCoursePickerModal()" class="admin-fab bg-accent-gradient shadow-glow" title="Ganti Kursus" aria-label="Ganti Kursus">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.44 60.44 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 017.731-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>
+    </button>
+
+    <!-- Pannable/zoomable canvas + side inspector. The empty-course
+         placeholder now lives *inside* this same box (#chart-viewport)
+         as a sibling of the canvas region, instead of being its own
+         separate glass card stacked above/before it — courseShowEmptyState()/
+         courseShowWorkspace() below just toggle which of the two inner
+         children (#course-empty-state vs. #course-canvas-region) is
+         visible, rather than swapping two whole sibling containers. -->
+    <div id="course-workspace" class="hidden">
+      <div id="chart-viewport" class="glass rounded-2xl relative overflow-hidden" style="height: 75vh; min-height: 460px;">
+
+        <!-- Shown when the member hasn't taken any course yet (no
+             course_enrollments row) — see courseShowEmptyState() /
+             the end of fetchCourseData() in the script below. -->
+        <div id="course-empty-state" class="hidden absolute inset-0 z-10 p-10 text-center flex flex-col items-center justify-center">
+          <svg class="w-12 h-12 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+          <p class="text-zinc-300 font-medium mb-1" data-i18n="course_empty_title">Kamu belum mengambil kursus apa pun.</p>
+          <p class="text-zinc-500 text-sm mb-5" data-i18n="course_empty_desc">Pilih kursus yang ingin kamu ikuti. Kursus tersebut akan langsung muncul di sini.</p>
+          <a href="course.html" class="px-5 py-2.5 rounded-lg font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="course_pick_btn">Pilih Kursus</a>
+        </div>
+
+        <div id="course-canvas-region" class="hidden">
+          <div class="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
+            <button onclick="chartZoom(1.15)" class="chart-ctrl-btn" title="Perbesar">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+            <button onclick="chartZoom(1/1.15)" class="chart-ctrl-btn" title="Perkecil">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15" /></svg>
+            </button>
+            <button onclick="chartResetView()" class="chart-ctrl-btn" title="Reset tampilan">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-5M20 15a8 8 0 01-14 5" /></svg>
+            </button>
+            <button onclick="chartToggleFullscreen()" class="chart-ctrl-btn" id="fullscreen-btn" title="Layar penuh">
+              <svg id="fullscreen-icon-expand" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m18 0V5a2 2 0 00-2-2h-4m0 18h4a2 2 0 002-2v-4M3 15v4a2 2 0 002 2h4" /></svg>
+              <svg id="fullscreen-icon-collapse" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9H5m0 0V5m0 4l5-5m5 5h4m0 0V5m0 4l-5-5M9 15H5m0 0v4m0-4l5 5m5-5h4m0 0v4m0-4l-5 5" /></svg>
+            </button>
+          </div>
+
+          <p class="chart-hint absolute bottom-3 left-4 z-20 text-[11px] text-zinc-500" data-i18n="chart_hint">Geser untuk menjelajah</p>
+
+          <div id="chart-canvas">
+            <svg id="course-lines"></svg>
+            <div id="course-graph"><!-- nodes rendered by script --></div>
+
+            <aside id="course-inspector">
+              <div id="course-inspector-body" class="p-5"><!-- filled by script --></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Course picker modal. course.html owns browsing/enrolling now (the
+     full `resources` catalog lives only there); this modal just lists
+     the member's own course_enrollments (each with its own saved
+     current_node_id/completed_node_ids) so they can switch which one
+     is loaded into the graph below. Picking a card doesn't enroll
+     anything — it only calls fetchCourseData(courseId) to swap the
+     active course, plus a fire-and-forget touch of that enrollment's
+     updated_at so it's what auto-loads next time too. -->
+<div id="course-picker-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeCoursePickerModal()">
+  <div class="modal-card p-6" style="max-width:52rem;">
+    <div class="flex items-start justify-between gap-4 mb-5">
+      <div>
+        <h2 class="font-display text-lg font-semibold" data-i18n="course_my_courses">Kursus Saya</h2>
+        <p class="text-zinc-500 text-xs mt-1" data-i18n="course_my_courses_desc">Berikut adalah daftar kursus yang sudah kamu ambil. Pilih salah satu untuk dibuka di sini.</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="course.html" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-xs font-medium hover:bg-white/20 transition whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+          <span data-i18n="course_new">Kursus Baru</span>
+        </a>
+        <button onclick="closeCoursePickerModal()" class="text-zinc-500 hover:text-zinc-300 p-1 shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="course-picker-grid" class="grid sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1"><!-- filled by script --></div>
+  </div>
+</div>
+
+<!-- Actually taking the voyage(s) attached to a voyage_group/flag node.
+     Trimmed version of #voyage-modal from voyages.html: no comments panel,
+     no expedition mode, no admin actions, and no code editor yet
+     (programming voyages fall back to a link into voyages.html — the
+     CodeMirror/judge-submit wiring is a separate follow-up). mc/dropdown/
+     essay are fully real: same check_voyage_answer RPC and grade-essay
+     edge function voyages.html uses, so completion here is a real
+     voyage_completions row, not a fake "mark it done" click. -->
+<div id="cvm-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeCourseVoyageModal()">
+  <div class="modal-card p-6" style="max-width:34rem;">
+    <!-- Split into header/body/footer regions purely so the SEB
+         (Safe Exam Browser) exam-shell layout below has something to
+         pin: a voyage_group node ignores the split (each region is
+         just a plain block, same visual result as before), it only
+         becomes a locked title bar / scrollable question / pinned
+         action bar for a flag node — see the #cvm-modal.cvm-flag
+         rules up top, toggled on/off by courseOpenVoyageRunner(). -->
+    <div class="cvm-header">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <h2 id="cvm-title" class="font-display text-lg font-semibold kir-markdown"></h2>
+        <button type="button" onclick="closeCourseVoyageModal()" class="text-zinc-500 hover:text-zinc-300 p-1 shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cvm-main">
+      <div class="cvm-question-col">
+        <div class="cvm-soal-box glass rounded-lg p-4 mb-5">
+          <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5">Soal <span id="cvm-progress"></span></p>
+          <div id="cvm-question" class="text-sm text-zinc-200 leading-relaxed kir-markdown"></div>
+        </div>
+
+        <div class="cvm-answer-group">
+          <div id="cvm-mc-wrap" class="hidden">
+            <div id="cvm-mc-options" class="space-y-2.5 mb-5"></div>
+          </div>
+
+          <div id="cvm-dropdown-wrap" class="hidden">
+            <select id="cvm-dropdown-select" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm mb-5"></select>
+          </div>
+
+          <div id="cvm-essay-wrap" class="hidden mb-5">
+            <!-- Markup injected by kirRenderCourseEssayMathEditor() below, same
+                 reason as voyages.html's #vm-essay-wrap: this needs an id'd
+                 <textarea> to already exist in the DOM before kirRichEditorInit
+                 can bind to it, and this page's markup is static HTML rather
+                 than a JS template. -->
+          </div>
+
+          <div id="cvm-programming-wrap" class="hidden mb-5 text-sm text-zinc-400">
+            <span data-i18n="course_programming_fallback">Voyage pemrograman belum bisa dikerjakan langsung dari halaman kursus.</span>
+            <a href="voyages.html" class="text-accent-300 hover:underline" id="cvm-programming-link" data-i18n="course_programming_link">Buka di halaman Voyages</a> untuk mengerjakannya, lalu kembali ke sini.
+          </div>
+
+          <div id="cvm-feedback" class="hidden text-sm font-medium rounded-lg px-4 py-3 mb-4"></div>
+        </div>
+      </div>
+
+      <!-- Question-number navigator, now driven off COURSE_VOYAGE_RUNNER.voyages
+           by renderCourseVoyageNavGrid()/renderCourseVoyageFooter() — one cell
+           per question in the group, plus Prev/Next + Submit in the footer.
+           These two divs are just the mount points; their contents are fully
+           replaced on every render. Hidden for voyage_group nodes — see
+           .cvm-nav-grid/.cvm-flag above — so a plain voyage is untouched and
+           only the footer buttons show through; a flag shows the grid. -->
+      <div class="cvm-nav-col">
+        <div class="cvm-nav-grid"></div>
+        <div class="cvm-footer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Opening the material attached to a material node (course_nodes.material_id).
+     Same spirit as #cvm-modal above: clicking "Buka Materi" used to just call
+     courseFinishHandler directly and mark the node done without ever showing
+     anything — this replaces that dead end with an actual content viewer.
+     Loads the `materials` row (content_type: 'document' | 'video' | 'text',
+     plus whichever of document_url / video_url / text_content applies) and
+     renders the matching viewer. "Selesai" is still just a local progress
+     toggle (courseFinishNodeById → COURSE_COMPLETED_IDS), same as the old
+     instant-complete click, since materials have no server-side completion
+     record the way voyages do — this modal only changes *when* that click
+     fires (after actually opening it), not what it does. -->
+<!-- The outer .modal-overlay's own onclick="if(event.target===this)..."
+     (same pattern every other modal in this file uses) can never fire
+     here: .cmm-viewer-card fills the entire overlay edge-to-edge (see
+     the "fills the whole viewport" comment on it in style.css), so a
+     click anywhere inside — including the blurred-backdrop-looking
+     padding around the page in .cmm-viewer-stage below — always lands
+     on the card or one of its descendants, never on .modal-overlay
+     itself. .cmm-viewer-stage carries its own target-is-this check
+     instead, since it's the actual element sitting under that visible
+     empty space. -->
+<div id="cmm-modal" class="modal-overlay cmm-viewer hidden" onclick="if(event.target===this) closeCourseMaterialModal()">
+  <div class="cmm-viewer-card">
+
+    <!-- Toolbar: brand mark, title, file extension, and duration in
+         one row on the left (mirrors a file browser's title bar —
+         "name.ext (10 Menit)"), same as Drive's file-name bar; the
+         description (if any) is tucked behind the "i" info icon right
+         after it instead of sitting on its own line, same as Drive's
+         file-details popover. Utilities on the right with Tutup (X)
+         as the outermost/rightmost element, Tandai Selesai (now a
+         single check icon, no label) just inside it. -->
+    <div class="cmm-viewer-toolbar">
+      <div class="cmm-viewer-toolbar-left">
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-6 h-6 object-contain shrink-0" />
+        <h2 id="cmm-title" class="cmm-viewer-title font-display text-sm sm:text-base font-semibold kir-markdown"></h2>
+        <span id="cmm-type-pill" class="cmm-viewer-ext"></span>
+        <span id="cmm-duration-badge" class="cmm-viewer-duration"></span>
+        <!-- Hidden unless the node has a description (toggled in
+             renderCourseMaterialModal); shows a tooltip via a small
+             local copy of admin-shared.js's body-level tooltip
+             helpers (kirAdminTooltipShowHtml/kirAdminTooltipHide,
+             kept local in workspace.js — see the comment there and
+             on this page's admin-shared.css <link> for why the whole
+             admin-shared.js file isn't loaded here). #cmm-desc itself
+             is never shown — it's just where the rendered description
+             HTML is kept, read fresh on every hover so language/
+             content changes are picked up automatically. -->
+        <button id="cmm-info-btn" type="button" class="cmm-viewer-icon-btn hidden shrink-0"
+            onmouseenter="courseMaterialShowDescTooltip(this)" onmouseleave="kirAdminTooltipHide()"
+            onfocus="courseMaterialShowDescTooltip(this)" onblur="kirAdminTooltipHide()"
+            aria-label="Deskripsi materi">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </button>
+        <div id="cmm-desc" class="hidden kir-markdown"></div>
+      </div>
+      <div class="cmm-viewer-toolbar-actions">
+        <a id="cmm-open-tab-link" href="#" target="_blank" rel="noopener" class="cmm-viewer-icon-btn hidden" aria-label="Buka di tab baru">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5v5M19 5l-7 7M7 5H6a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1v-1" /></svg>
+        </a>
+        <button id="cmm-finish-btn" type="button" onclick="courseFinishMaterialModal()" class="cmm-viewer-icon-btn cmm-viewer-finish-btn" aria-label="Tandai Selesai" title="Tandai Selesai">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+        </button>
+        <button type="button" onclick="closeCourseMaterialModal()" class="cmm-viewer-icon-btn" aria-label="Tutup">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stage: transparent, so the modal-overlay's own blurred/dimmed
+         backdrop shows through on either side of the page — only the
+         page itself gets a background, scrolled independently of the
+         toolbar above it. -->
+    <div class="cmm-viewer-stage" onclick="if(event.target===this) closeCourseMaterialModal()">
+      <div id="cmm-text-wrap" class="hidden cmm-viewer-page cmm-page-text">
+        <div id="cmm-text-body" class="cmm-viewer-page-inner text-sm leading-relaxed kir-markdown"></div>
+      </div>
+
+      <div id="cmm-document-wrap" class="hidden cmm-viewer-page cmm-page-document">
+        <iframe id="cmm-document-frame" class="cmm-viewer-doc-frame" referrerpolicy="no-referrer"></iframe>
+      </div>
+
+      <div id="cmm-video-wrap" class="hidden cmm-viewer-page cmm-page-video">
+        <div class="cmm-viewer-video-inner">
+          <iframe id="cmm-video-frame" class="hidden w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <video id="cmm-video-native" class="hidden w-full h-full" controls></video>
+        </div>
+      </div>
+
+      <div id="cmm-empty-wrap" class="hidden cmm-viewer-page cmm-page-empty">
+        <div class="cmm-viewer-page-inner text-sm text-zinc-500 text-center" data-i18n="course_material_empty">
+          Materi ini belum punya konten yang bisa ditampilkan.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/workspace.js"></script>
+<script>
+  // kirApplyTranslations() has to run down here, after the rest of
+  // body has actually parsed (or, on an SPA nav, after swapBody() has
+  // attached the new body) — it walks the whole page for data-i18n
+  // attributes, so calling it before <main>'s content exists would
+  // silently skip all of it. kirInjectSidebar('workspace') used to
+  // live here too, but it doesn't need to wait for any of that (see
+  // the copy next to #sidebar-root above) and waiting was exactly
+  // what made the sidebar visibly pop in late on a hard refresh.
+  // This one still needs to re-run on every visit (unlike
+  // js/workspace.js, which router.js loads once and never
+  // re-executes — see the comment in that file), same as
+  // course.html's own trailing kirApplyTranslations call.
+  kirApplyTranslations();
+
+  // Streak + deltas header widget — same one voyages.html shows, added
+  // here too so a member's progress is visible from the workspace as
+  // well. kirDeltasTotal() lives in js/auth.js and is shared with
+  // Voyages/Leaderboard. This whole block re-runs on every visit (see
+  // the comment above about workspace.js vs. this inline script), so
+  // the numbers stay current after navigating here from elsewhere.
+  // workspaceDeltasKnown tracks the value actually painted into
+  // #workspace-deltas-total so a later call can tell whether the total
+  // moved and roll the digits instead of just snapping to the new
+  // number. null means "nothing painted yet this page load" — the
+  // very first call (initial mount above, or a hard refresh) has
+  // nothing sensible to roll *from*, so it always just snaps in,
+  // same as before this animation existed.
+  let workspaceDeltasKnown = null;
+  let workspaceDeltasRollFrame = null;
+
+  function refreshWorkspaceDeltasHeader() {
+    const el = document.getElementById('workspace-deltas-total');
+    const target = kirDeltasTotal();
+
+    // Same two reduced-motion sources as renderWorkspaceStreak() below
+    // (OS media query + the site's own Settings toggle) — either one
+    // means: skip the roll and just show the finished number.
+    const reducedMotion = document.documentElement.getAttribute('data-reduce-motion') === 'true'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (workspaceDeltasKnown === null || reducedMotion || workspaceDeltasKnown === target) {
+      el.textContent = target.toLocaleString('id-ID');
+      workspaceDeltasKnown = target;
+      return;
+    }
+
+    animateWorkspaceDeltasRoll(el, workspaceDeltasKnown, target);
+    workspaceDeltasKnown = target;
+  }
+
+  // Rolls #workspace-deltas-total from `from` to `to` like a slot-machine
+  // counter: fast, jittery digits early on that settle down and land
+  // exactly on the real total. Works for both directions — earning
+  // deltas (completing a voyage/essay) and losing them (dropping a
+  // course — see dropCourseEnrollment()'s courseSyncDeltasHeader() call
+  // in js/workspace.js, which routes through this same function) both
+  // get the same plain, colorless roll.
+  function animateWorkspaceDeltasRoll(el, from, to) {
+    if (workspaceDeltasRollFrame) cancelAnimationFrame(workspaceDeltasRollFrame);
+
+    const goingUp = to > from;
+    el.classList.add('deltas-rolling');
+
+    const distance = Math.abs(to - from);
+    // Bigger swings roll a little longer, but cap it so a huge drop
+    // (e.g. dropping a course with hundreds of completions) doesn't
+    // spin forever.
+    const duration = Math.min(1200, Math.max(450, distance * 14));
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out: fast start, settles at the end
+
+      let current = Math.round(from + (to - from) * eased);
+
+      // Casino jitter: while still mid-roll, bounce the displayed
+      // number a little past/behind the eased value so it reads as
+      // "spinning" rather than a smooth, obviously-computed tween.
+      // The jitter shrinks as t approaches 1 so it always lands
+      // exactly on `to`, never past it.
+      if (t < 0.85 && distance > 0) {
+        const jitterRange = Math.max(1, Math.round(distance * (1 - t) * 0.2));
+        current += (goingUp ? 1 : -1) * Math.floor(Math.random() * jitterRange);
+      }
+
+      el.textContent = current.toLocaleString('id-ID');
+
+      if (t < 1) {
+        workspaceDeltasRollFrame = requestAnimationFrame(tick);
+      } else {
+        el.textContent = to.toLocaleString('id-ID');
+        el.classList.remove('deltas-rolling');
+        workspaceDeltasRollFrame = null;
+      }
+    }
+    workspaceDeltasRollFrame = requestAnimationFrame(tick);
+  }
+  const WORKSPACE_STREAK_DAYS = 0;
+  const WORKSPACE_STREAK_FILL_GOAL = 7; // days for a visually "full" flame, cosmetic only, matches voyages.html/dashboard
+  let workspaceStreakRiseTimer = null;
+  function renderWorkspaceStreak() {
+    const countEl = document.getElementById('workspace-streak-count');
+    const group = document.getElementById('workspace-flame-fill-group');
+    const wave = document.querySelector('#workspace-streak-flame .flame-wave');
+    const body = document.querySelector('#workspace-streak-flame .flame-body');
+    const flameTop = 2, flameBottom = 21; // approx vertical bounds of the flame path
+
+    if (workspaceStreakRiseTimer) { clearInterval(workspaceStreakRiseTimer); workspaceStreakRiseTimer = null; }
+    if (body) body.classList.remove('flame-swaying');
+
+    const target = WORKSPACE_STREAK_DAYS;
+    if (target <= 0) {
+      countEl.textContent = 0;
+      group.setAttribute('transform', `translate(0, ${flameBottom})`);
+      group.classList.add('flame-fill-empty');
+      if (wave) {
+        wave.classList.add('flame-wave-paused');
+        wave.style.display = 'none';
+      }
+      return;
+    }
+
+    // Start cold every time, then rapidly count up to the real streak
+    // while the fill rises with it, reaching full right at the goal.
+    group.classList.remove('flame-fill-empty');
+    if (wave) {
+      wave.classList.remove('flame-wave-paused');
+      wave.style.display = '';
+    }
+
+    // Two independent reduced-motion sources — the OS/browser media
+    // query and the site's own Settings toggle (data-reduce-motion, set
+    // by kirSetReduceMotion in auth.js). Either one means: skip the
+    // count-up/rise entirely and just load the finished flame.
+    const reducedMotion = document.documentElement.getAttribute('data-reduce-motion') === 'true'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) {
+      const pct = Math.min(target / WORKSPACE_STREAK_FILL_GOAL, 1);
+      const y = flameBottom - (flameBottom - flameTop) * pct;
+      group.setAttribute('transform', `translate(0, ${y})`);
+      countEl.textContent = target;
+      if (pct >= 1 && body) body.classList.add('flame-swaying');
+      return;
+    }
+
+    group.setAttribute('transform', `translate(0, ${flameBottom})`);
+    countEl.textContent = 0;
+
+    let current = 0;
+    workspaceStreakRiseTimer = setInterval(() => {
+      current++;
+      const pct = Math.min(current / WORKSPACE_STREAK_FILL_GOAL, 1);
+      const y = flameBottom - (flameBottom - flameTop) * pct;
+      group.setAttribute('transform', `translate(0, ${y})`);
+      countEl.textContent = current;
+      if (pct >= 1 && body) body.classList.add('flame-swaying');
+      if (current >= target) {
+        clearInterval(workspaceStreakRiseTimer);
+        workspaceStreakRiseTimer = null;
+      }
+    }, 110);
+  }
+  if (window.__kirProfileReady) {
+    window.__kirProfileReady.then(() => refreshWorkspaceDeltasHeader());
+  } else {
+    refreshWorkspaceDeltasHeader();
+  }
+  renderWorkspaceStreak();
+
+  // Load (or reload) the member's taken course. This has to live here
+  // rather than at the bottom of js/workspace.js — see the comment
+  // there — since this inline block is what actually re-runs on every
+  // SPA visit; without it, navigating away from workspace.html and
+  // back left the graph container showing stale data from whichever
+  // course loaded on the very first visit each session.
+  fetchCourseData();
+
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>

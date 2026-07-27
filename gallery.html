@@ -1,228 +1,183 @@
-/* ==========================================================
-   Gallery — a tiny "file explorer" for photo folders.
-   No real photos yet, so images render as colored placeholder
-   tiles (swap PLACEHOLDER: true items for a real `src` later —
-   the renderer already prefers `src` over the placeholder look
-   if one is present).
-   ========================================================== */
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Galeri</title>
 
-const GALLERY_COLORS = {
-  robotik: 'rgba(224,70,95,0.85)',
-  sains: 'rgba(56,130,246,0.85)',
-  ekstrakurikuler: 'rgba(139,92,246,0.85)',
-  neutral: 'rgba(148,163,184,0.85)',
-};
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
 
-const PLACEHOLDER_GRADIENTS = [
-  'linear-gradient(135deg, #f97316, #ea580c)',
-  'linear-gradient(135deg, #06b6d4, #0891b2)',
-  'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-  'linear-gradient(135deg, #ec4899, #db2777)',
-  'linear-gradient(135deg, #22c55e, #15803d)',
-  'linear-gradient(135deg, #eab308, #ca8a04)',
-  'linear-gradient(135deg, #64748b, #334155)',
-  'linear-gradient(135deg, #f43f5e, #be123c)',
-];
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/style.css">
 
-function makeImages(count, prefix) {
-  const out = [];
-  for (let i = 1; i <= count; i++) {
-    out.push({ type: 'image', name: `${prefix}-${String(i).padStart(2, '0')}.jpg`, placeholderIndex: (i + prefix.length) % PLACEHOLDER_GRADIENTS.length });
+<style id="kir-page-style">
+  /* ==========================================================
+     GALLERY (work in progress): same shell as the Orbit landing
+     page (starfield, vignette, header, footer) but with the
+     planet / ring / floating card stripped out — just quiet,
+     centered text while this page gets built.
+     ========================================================== */
+
+  html, body { height: 100%; overscroll-behavior: none; }
+
+  body.obt-body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
   }
-  return out;
-}
 
-let GALLERY_TREE = { name: 'Galeri', type: 'folder', color: 'neutral', children: [] };
+  .obt-stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      radial-gradient(1.5px 1.5px at 8% 18%, rgba(255,255,255,0.55), transparent),
+      radial-gradient(1px 1px at 22% 74%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 38% 32%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 52% 86%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 68% 22%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1px 1px at 80% 66%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1.5px 1.5px at 91% 40%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 14% 52%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1.5px 1.5px at 86% 88%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 30% 92%, rgba(255,255,255,0.28), transparent),
+      radial-gradient(1px 1px at 95% 15%, rgba(255,255,255,0.3), transparent);
+    opacity: 0.65;
+  }
+  html[data-theme="light"] .obt-stars { display: none; }
 
-let currentPath = []; // array of folder names, root = []
-let currentImages = []; // flat list of images in the current folder, for lightbox prev/next
-let currentImageIndex = 0;
+  .obt-vignette {
+    position: fixed; inset: 0; z-index: 6; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,0.55) 100%);
+  }
+  html[data-theme="light"] .obt-vignette {
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
+  }
 
-async function fetchGalleryManifest() {
-  try {
-    const response = await fetch('/gallery/manifest.json');
-    const data = await response.json();
-    
-    const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    
-    function filterNode(node) {
-      if (node.type === 'folder' && node.children) {
-        node.children = node.children.filter(child => {
-          if (child.type === 'folder') {
-            filterNode(child);
-            return true;
-          }
-          const ext = child.name.slice((Math.max(0, child.name.lastIndexOf('.')) || Infinity)).toLowerCase();
-          return validExtensions.includes(ext);
-        });
-      }
+  .obt-header { flex: 0 0 auto; position: relative; z-index: 50; }
+  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
+  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
+  @media (max-width: 560px) {
+    .obt-footer-meta { white-space: normal; text-align: left; }
+  }
+
+  header.obt-header { padding-left: 1rem; padding-right: 0.875rem; }
+  @media (min-width: 640px) {
+    header.obt-header { padding-left: 2rem; padding-right: 1.625rem; }
+  }
+
+  @media (max-width: 400px) {
+    .obt-header-tagline { display: none; }
+  }
+
+  @media (min-width: 768px) {
+    .obt-header-center-nav {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
     }
-    
-    filterNode(data);
-    GALLERY_TREE = data;
-  } catch (error) {
-    console.error('Failed to load gallery data:', error);
   }
-}
 
-function resolveNode(path) {
-  let node = GALLERY_TREE;
-  for (const seg of path) {
-    const next = (node.children || []).find(c => c.name === seg && c.type === 'folder');
-    if (!next) return GALLERY_TREE; // fall back to root if path is bad
-    node = next;
+  @media (max-width: 640px) {
+    .obt-footer-mini { display: none; }
   }
-  return node;
-}
 
-function folderSvg(color) {
-  const fill = GALLERY_COLORS[color] || GALLERY_COLORS.neutral;
-  return `<svg class="folder-icon" viewBox="0 0 52 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2 8a4 4 0 014-4h10.2a4 4 0 012.9 1.25L22 8.5H46a4 4 0 014 4V34a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" fill="${fill}"/>
-  </svg>`;
-}
+  /* ---------------- Stage: no planet, no ring, no card — just
+     centered content in the same space the cosmos used to fill ---------------- */
+  .obt-cosmos {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+</style>
+</head>
 
-function upFolderSvg() {
-  return `<svg class="folder-icon folder-icon-up" viewBox="0 0 52 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2 8a4 4 0 014-4h10.2a4 4 0 012.9 1.25L22 8.5H46a4 4 0 014 4V34a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" fill="rgba(148,163,184,0.35)"/>
-    <path d="M26 15l-6 6h4v6h4v-6h4z" fill="rgba(255,255,255,0.85)"/>
-  </svg>`;
-}
+<body class="obt-body antialiased relative">
 
-function imageIconSvg() {
-  return `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15.5l-5-5L5 21" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-}
+<div class="obt-stars" id="obt-stars"></div>
+<div class="glow-layer">
+  <div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="top:-16rem; left:-11rem;"></div>
+  <div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="bottom:-13rem; right:-9rem;"></div>
+</div>
+<div class="obt-vignette"></div>
 
-function renderBreadcrumbs() {
-  const bar = document.getElementById('finder-pathbar');
-  const parts = [{ label: GALLERY_TREE.name, path: [] }].concat(
-    currentPath.map((seg, i) => ({ label: seg, path: currentPath.slice(0, i + 1) }))
-  );
-  bar.innerHTML = parts.map((p, i) => {
-    const isLast = i === parts.length - 1;
-    return `${i > 0 ? '<span class="finder-sep">/</span>' : ''}<span class="finder-crumb ${isLast ? 'current' : ''}" ${isLast ? '' : `onclick='galleryGoTo(${JSON.stringify(p.path)})'`}>${escapeHtml(p.label)}</span>`;
-  }).join('');
-}
+<header class="obt-header w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-4">
+  <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+    <div class="w-9 h-9 shrink-0 flex items-center justify-center">
+      <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
+    </div>
+    <div>
+      <div class="flex items-center gap-1.5">
+        <span class="font-display font-semibold text-lg block leading-none tracking-wider text-gradient-accent">orbit.io</span>
+        <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="obt-header-tagline text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
+    </div>
+  </a>
+  <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
+    <a href="index.html" class="public-nav-link" data-i18n="nav_beranda">Beranda</a>
+    <a href="gallery.html" class="public-nav-link active" data-i18n="nav_galeri">Galeri</a>
+    <a href="program-kerja.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+  </nav>
+  <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
+    <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+  </nav>
+</header>
 
-function galleryGoTo(path) {
-  currentPath = path;
-  renderGallery();
-}
+<main class="obt-cosmos" id="obt-cosmos">
+  <div class="max-w-lg">
+    <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
+      <span data-i18n="gallery_wip_title">Halaman ini sedang disiapkan</span>
+    </h1>
+    <p class="text-zinc-500 text-sm sm:text-base mb-7" data-i18n="gallery_wip_desc">
+      Kami sedang mengumpulkan dokumentasi kegiatan Robotik dan Sains untuk ditampilkan di sini. Nantikan galeri fotonya, ya!
+    </p>
 
-function galleryGoUp() {
-  currentPath = currentPath.slice(0, -1);
-  renderGallery();
-}
+    <a href="index.html" class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-white transition">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span data-i18n="wip_back_home">Kembali ke Beranda</span>
+    </a>
+  </div>
+</main>
 
-function galleryOpenFolder(name) {
-  currentPath = currentPath.concat([name]);
-  renderGallery();
-}
+<footer class="obt-footer-mini w-full px-4 sm:px-8 py-3 text-[11px] text-zinc-600 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <span class="obt-footer-tagline" data-i18n="idx_footer">KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.</span>
+  <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
+</footer>
 
-function renderGallery() {
-  renderBreadcrumbs();
-  const node = resolveNode(currentPath);
-  const grid = document.getElementById('finder-grid');
-  const children = node.children || [];
-
-  currentImages = children.filter(c => c.type === 'image');
-
-  let html = '';
-  if (currentPath.length > 0) {
+<script>
+  kirApplyTranslations();
+  if (kirIsLoggedIn()) {
+    const authLink = document.getElementById('nav-auth-link');
+    const ctaLink = document.getElementById('nav-cta-link');
     const lang = localStorage.getItem('kir_lang') || 'id';
-    html += `
-      <div class="finder-tile" onclick="galleryGoUp()">
-        ${upFolderSvg()}
-        <span class="finder-tile-label">${I18N[lang].gallery_up}</span>
-      </div>`;
+    authLink.remove();
+    ctaLink.textContent = I18N[lang].idx_dashboard;
+    ctaLink.removeAttribute('data-i18n');
+    ctaLink.href = 'dashboard.html';
   }
-
-  if (children.length === 0) {
-    const lang = localStorage.getItem('kir_lang') || 'id';
-    html += `<p class="finder-empty">${I18N[lang].gallery_empty}</p>`;
-  }
-
-  children.forEach((child, idx) => {
-    if (child.type === 'folder') {
-      const count = (child.children || []).length;
-      html += `
-        <div class="finder-tile" onclick='galleryOpenFolder(${JSON.stringify(child.name)})'>
-          ${folderSvg(child.color)}
-          <span class="finder-tile-label">${escapeHtml(child.name)}</span>
-          <span class="finder-tile-sub">${count}</span>
-        </div>`;
-    } else {
-      const grad = PLACEHOLDER_GRADIENTS[child.placeholderIndex];
-      html += `
-        <div class="finder-tile" onclick="openLightbox(${idx})">
-          <div class="photo-thumb" style="background-image: ${grad}">
-            ${child.src ? `<img src="${child.src}" alt="${escapeHtml(child.name)}" class="w-full h-full object-cover" />` : imageIconSvg()}
-          </div>
-          <span class="finder-tile-label">${escapeHtml(child.name)}</span>
-        </div>`;
-    }
-  });
-
-  grid.innerHTML = html;
-}
-
-function openLightbox(indexAmongImages) {
-  // indexAmongImages is the index within `children`, but we only
-  // want images — recompute the position within currentImages.
-  const node = resolveNode(currentPath);
-  const children = node.children || [];
-  const target = children[indexAmongImages];
-  currentImageIndex = currentImages.indexOf(target);
-  renderLightbox();
-  document.getElementById('lightbox-overlay').classList.remove('hidden');
-}
-
-function closeLightbox() {
-  document.getElementById('lightbox-overlay').classList.add('hidden');
-}
-
-function lightboxNav(delta) {
-  currentImageIndex = (currentImageIndex + delta + currentImages.length) % currentImages.length;
-  renderLightbox();
-}
-
-function renderLightbox() {
-  const img = currentImages[currentImageIndex];
-  if (!img) return;
-  const grad = PLACEHOLDER_GRADIENTS[img.placeholderIndex];
-  document.getElementById('lightbox-photo').style.backgroundImage = grad;
-  document.getElementById('lightbox-photo').innerHTML = img.src
-    ? `<img src="${img.src}" alt="${img.name}" class="w-full h-full object-cover rounded-[0.75rem]" />`
-    : imageIconSvg();
-  document.getElementById('lightbox-name').textContent = img.name;
-  document.getElementById('lightbox-count').textContent = `${currentImageIndex + 1} / ${currentImages.length}`;
-}
-
-async function galleryInitFromQuery() {
-  await fetchGalleryManifest();
-  
-  const params = new URLSearchParams(window.location.search);
-  const path = params.get('path');
-  if (path) {
-    const segs = path.split('/').filter(Boolean);
-    // validate the path actually resolves before trusting it
-    let node = GALLERY_TREE;
-    const valid = [];
-    for (const seg of segs) {
-      const next = (node.children || []).find(c => c.name === seg && c.type === 'folder');
-      if (!next) break;
-      node = next;
-      valid.push(seg);
-    }
-    currentPath = valid;
-  }
-  renderGallery();
-}
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>

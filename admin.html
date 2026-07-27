@@ -20,7 +20,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/tailwind-config.js"></script>
@@ -67,7 +67,7 @@
   .apply-avatar {
     width: 2.5rem; height: 2.5rem; border-radius: 999px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.95rem;
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 0.95rem;
   }
 
   .apply-chip {
@@ -101,7 +101,7 @@
   .apply-modal-avatar {
     width: 3.25rem; height: 3.25rem; border-radius: 999px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.2rem;
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 1.2rem;
     box-shadow: 0 0 20px -2px rgba(var(--accent-rgb), 0.5);
   }
 
@@ -175,21 +175,24 @@
 
     <!-- Status tabs -->
     <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2 animate-stagger-in" style="animation-delay: 45ms">
-      <button onclick="setApplyFilter('pending')" id="apply-filter-pending" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-gradient text-white shadow-glow-sm transition">
+      <button onclick="setApplyFilter('pending')" id="apply-filter-pending" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition">
         <span data-i18n="apply_filter_pending">Menunggu</span> <span id="apply-count-pending" class="opacity-80"></span>
       </button>
-      <button onclick="setApplyFilter('approved')" id="apply-filter-approved" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">
+      <button onclick="setApplyFilter('approved')" id="apply-filter-approved" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50">
         <span data-i18n="apply_filter_approved">Disetujui</span> <span id="apply-count-approved" class="opacity-80"></span>
       </button>
-      <button onclick="setApplyFilter('all')" id="apply-filter-all" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition">
+      <button onclick="setApplyFilter('all')" id="apply-filter-all" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50">
         <span data-i18n="apply_filter_all">Semua</span>
       </button>
     </div>
 
     <!-- Search -->
     <div class="relative mb-5 animate-stagger-in" style="animation-delay: 70ms">
-      <input type="text" id="apply-search-input" data-i18n-placeholder="admin_search_placeholder" placeholder="Cari nama, email, atau kelas…" class="glass-input w-full rounded-lg px-4 py-3 text-sm pl-10" />
+      <input type="text" id="apply-search-input" data-i18n-placeholder="admin_search_placeholder" placeholder="Cari nama, email, atau kelas…" class="glass-input w-full rounded-lg pl-10 pr-9 py-3 text-sm" />
       <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <button type="button" id="apply-search-input-clear" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Clear search">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
     </div>
 
     <div id="apply-list" class="glass rounded-xl overflow-hidden animate-stagger-in" style="animation-delay: 90ms"><!-- filled by script below --></div>
@@ -259,14 +262,8 @@
     applyFilter = filter;
     ['pending', 'approved', 'all'].forEach(f => {
       const btn = document.getElementById(`apply-filter-${f}`);
-      const active = f === filter;
-      btn.classList.toggle('bg-accent-gradient', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('shadow-glow-sm', active);
-      btn.classList.toggle('bg-white/5', !active);
-      btn.classList.toggle('border', !active);
-      btn.classList.toggle('border-white/10', !active);
-      btn.classList.toggle('text-zinc-400', !active);
+      if (!btn) return;
+      btn.classList.toggle('opacity-50', f !== filter);
     });
     renderApplicants();
   }
@@ -438,6 +435,42 @@
 
   kirInjectSidebar('admin');
   fetchApplicants();
+</script>
+<script>
+  // Search bar UX: the "×" clear button, plus letting someone start
+  // typing anywhere on the page and have it land in the search box
+  // without clicking into it first. Self-contained per page — see
+  // router.js's note on why a document-level keydown listener needs
+  // its own explicit kir:teardown cleanup here.
+  (function () {
+    const input = document.getElementById('apply-search-input');
+    const clearBtn = document.getElementById('apply-search-input-clear');
+    if (!input || !clearBtn) return;
+
+    function updateClearBtn() {
+      clearBtn.classList.toggle('hidden', input.value.length === 0);
+    }
+    updateClearBtn();
+    input.addEventListener('input', updateClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+
+    function onKeydown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('keydown', onKeydown);
+    }, { once: true });
+  })();
 </script>
 <script src="js/router.js"></script>
 </body>
