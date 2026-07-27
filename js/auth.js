@@ -37,7 +37,7 @@ const KIR_SIDEBAR_NAV_SCROLL_KEY = 'kir_sidebar_nav_scroll'; // JSON {top, left}
 const I18N = {
   id: { 
     chart_hint: 'Geser untuk menjelajah',
-    tugas: 'Tugas', materials: 'Materi', nexus: 'Nexus', jadwal: 'Jadwal', anggota: 'Anggota', pengaturan: 'Pengaturan', beranda: 'Beranda', keluar: 'Keluar',
+    tugas: 'Tugas', resources: 'Resources', course: 'Kursus', jadwal: 'Jadwal', anggota: 'Anggota', pengaturan: 'Pengaturan', beranda: 'Beranda', keluar: 'Keluar',
     robotik: 'Robotik', sains: 'Sains', both: 'Robotik & Sains',
     menu: 'Menu', akun: 'Akun', kir_long: 'Karya Ilmiah Remaja',
     settings_desc: 'Kelola profil, cabang, dan tampilan akun kamu.',
@@ -57,7 +57,7 @@ const I18N = {
     schedule_holiday_badge: 'Libur', schedule_leave_badge: 'Cuti Bersama',
     schedule_special_badge: 'Hari Spesial', schedule_world_snake_day: 'Hari Ular Sedunia',
     members_desc: 'Semua orang yang tergabung di KIR.', role_ketua: 'Ketua Ekstrakurikuler', role_wakil: 'Wakil Ketua', role_bendahara: 'Bendahara', role_anggota: 'Anggota', you: '(kamu)',
-    materials_desc: 'Modul pembelajaran dan referensi untuk anggota klub.',
+    resources_desc: 'Kursus yang tersedia untuk diikuti anggota ekstrakurikuler.',
     admin_search_placeholder: 'Cari nama, email, atau kelas…',
     clock_label: 'Jam', dash_heatmap: 'Kontribusi', dash_heatmap_less: 'Sedikit', dash_heatmap_more: 'Banyak', dash_heatmap_active_days: 'Hari aktif',
     dash_quicklinks: 'Tautan Cepat', dash_roster_title: 'Anggota Aktif', dash_roster_online: 'Sedang aktif',
@@ -83,7 +83,7 @@ const I18N = {
     widget_cat_notes_label: 'Catatan', widget_cat_notes_desc: 'Tulis catatan atau pengingat cepat.',
     widget_cat_heatmap_label: 'Peta Kontribusi', widget_cat_heatmap_desc: 'Sekilas seberapa aktif kamu tiap hari.',
     widget_cat_roster_label: 'Anggota Aktif', widget_cat_roster_desc: 'Siapa saja yang lagi aktif di klub.',
-    empty_materials_title: 'Belum ada materi di sini!', empty_materials_desc: 'Pengurus belum mengunggah referensi atau modul pembelajaran. Mohon bersabar, ya!',
+    empty_resources_title: 'Belum ada kursus di sini!', empty_resources_desc: 'Pengurus belum mengunggah kursus. Mohon bersabar, ya!',
     empty_schedule_title: 'Belum ada jadwal acara!', empty_schedule_desc: 'Kalender ekstrakurikuler masih kosong. Pengurus akan segera memperbaruinya.',
     empty_tasks_title: 'Belum ada tugas di sini!', empty_tasks_desc_none: 'Santai dulu, atau cek materi untuk belajar hal baru sementara pengurus menyiapkan kegiatan selanjutnya.', empty_tasks_desc_filtered: 'Coba ubah filter, atau cek lagi nanti.',
     no_answer_submitted: 'Belum ada jawaban dikirim.', rank_not_yet: 'Belum ada',
@@ -128,12 +128,16 @@ const I18N = {
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com',
     nav_fitur: 'Fitur', nav_cabang: 'Cabang',
     page_title_home: 'Orbit', page_title_dashboard: 'Beranda', page_title_tasks: 'Tugas',
-    page_title_materials: 'Materi', page_title_nexus: 'Nexus', page_title_schedule: 'Jadwal', page_title_members: 'Anggota',
+    page_title_resources: 'Resources', page_title_course: 'Kursus', page_title_workspace: 'Workspace', page_title_schedule: 'Jadwal', page_title_members: 'Anggota',
     page_title_voyages: 'Voyages', page_title_leaderboard: 'Peringkat',
     page_title_settings: 'Pengaturan', page_title_program_kerja: 'Program Kerja', page_title_gallery: 'Galeri',
     page_title_auth: 'Masuk atau Daftar',
-    idx_dashboard: 'Dasbor', idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
-    greeting_morning: 'Selamat pagi', greeting_afternoon: 'Selamat siang', greeting_evening: 'Selamat sore', greeting_night: 'Selamat malam',
+    idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
+    greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.'],
+    greeting_afternoon: ['Selamat siang, {name}', 'Masih fokus, {name}?', 'Lanjut nugas, {name}?', 'Jangan lupa minum, {name}.'],
+    greeting_evening: ['Selamat sore, {name}', 'Progres aman, {name}?', 'Hampir kelar, {name}?', 'Waktunya rehat bentar, {name}.'],
+    greeting_night: ['Selamat malam, {name}', 'Belum tidur, {name}?', 'Masih lanjut aja nih, {name}?', 'Waktunya log off, {name}.'],
+    greeting_late_night: ['Ngalong nih, {name}?', 'Masih melek aja, {name}?', 'Jangan lupa tidur, {name}.', 'Udah larut malam, {name}.'],
     activity_today: 'Hari ini pukul', activity_yesterday: 'Kemarin pukul', activity_at: 'pukul',
     deltas_label: 'Deltas', this_week: 'minggu ini', all_time: 'sepanjang waktu', deltas_points: 'deltas',
     deltas_range_week: 'Minggu ini', deltas_range_lifetime: 'Sepanjang waktu',
@@ -149,8 +153,33 @@ const I18N = {
     proker_robotik_label: 'Cabang Robotik', proker_sains_label: 'Cabang Sains',
     proker_cta_title: 'Tertarik ikut program ini?', proker_cta_desc: 'Daftar sebagai anggota dan pilih cabang yang kamu minati untuk mendapatkan dasbor yang disesuaikan secara otomatis.',
     proker_cta_btn: 'Daftar Sekarang',
-    voyage_category: 'Voyage', nav_voyages: 'Voyages', nav_leaderboard: 'Peringkat',
+    wip_badge: 'Segera Hadir',
+    gallery_wip_eyebrow: 'Galeri Foto', gallery_wip_title: 'Halaman ini sedang disiapkan',
+    gallery_wip_desc: 'Kami sedang mengumpulkan dokumentasi kegiatan Robotik dan Sains untuk ditampilkan di sini. Nantikan galeri fotonya, ya!',
+    proker_wip_eyebrow: 'Tahun Ajaran 2025/2026', proker_wip_title: 'Halaman ini sedang disiapkan',
+    proker_wip_desc: 'Rincian program kerja cabang Robotik dan Sains untuk tahun ajaran ini sedang kami susun. Kembali lagi sebentar lagi, ya!',
+    wip_back_home: 'Kembali ke Beranda', wip_check_back: 'Terima kasih atas kesabarannya!',
+    course_category: 'Kursus', nav_workspace: 'Workspace', nav_voyages: 'Voyages', nav_leaderboard: 'Peringkat',
     voyages_title: 'Voyages', voyages_desc: 'Latihan soal MIPA dan informatika. Selesaikan soal-soal ini untuk mengumpulkan deltas.',
+    workspace_title: 'Workspace', workspace_desc: 'Lanjutkan progres kursus dan kumpulkan deltas kamu di sini.',
+    course_my_courses: 'Kursus Saya', course_my_courses_desc: 'Berikut adalah daftar kursus yang sudah kamu ambil. Pilih salah satu untuk dibuka di sini.',
+    course_new: 'Kursus Baru', course_empty_title: 'Kamu belum mengambil kursus apa pun.',
+    course_empty_desc: 'Pilih kursus yang ingin kamu ikuti. Kursus tersebut akan langsung muncul di sini.',
+    course_pick_btn: 'Pilih Kursus', course_open_btn: 'Buka Kursus Ini',
+    course_steps_done: 'langkah selesai', course_status_active: 'Sedang Dibuka',
+    course_card_menu: 'Opsi kursus', course_drop_btn: 'Keluar dari Kursus',
+    course_drop_confirm: 'Yakin mau keluar dari kursus ini? Semua progres dan deltas dari kursus ini akan dihapus permanen dan tidak bisa dikembalikan.',
+    course_drop_error: 'Gagal keluar dari kursus. Coba lagi.',
+    course_programming_fallback: 'Voyage pemrograman belum bisa dikerjakan langsung dari halaman kursus.',
+    course_programming_link: 'Buka di halaman Voyages', course_material_empty: 'Materi ini belum punya konten yang bisa ditampilkan.',
+    course_mark_done: 'Tandai Selesai', course_feedback_incomplete: 'Jawab semua soal dulu sebelum mengirim.',
+    course_feedback_incorrect: 'Ada jawaban yang belum tepat, coba lagi.', course_optional_badge: 'Opsional',
+    course_locked_badge: 'Terkunci', course_open_material: 'Buka Materi', course_start_voyage: 'Mulai Voyage',
+    course_start_flag: 'Mulai Flag', course_redo_voyage: 'Ulang Voyage', course_redo_flag: 'Ulang Flag', course_questions_count: 'Soal',
+    course_material_new_tab: 'Buka dokumen di tab baru', course_video_new_tab: 'Buka video di tab baru',
+    course_catalog_desc: 'Kursus yang tersedia untuk diikuti anggota ekstrakurikuler.',
+    course_catalog_search: 'Cari kursus…', course_take: 'Ambil Kursus', course_taken: 'Kursus Diambil',
+    course_modal_desc: 'Deskripsi Kursus',
     voyages_filter_all: 'Semua', voyages_filter_math: 'Matematika', voyages_filter_physics: 'Fisika', voyages_filter_informatika: 'Informatika',
     voyages_filter_chemistry: 'Kimia', voyages_filter_biology: 'Biologi', voyages_filter_selected: 'dipilih', voyages_filter_none: 'Tidak ada',
     voyages_filter_subject_label: 'Subjek', voyages_filter_type_label: 'Tipe',
@@ -158,7 +187,7 @@ const I18N = {
     voyages_expedition_empty: 'Semua voyage yang cocok dengan filter kamu sudah selesai.',
     voyages_expedition_fullscreen_required: 'Mode layar penuh diperlukan untuk memulai Ekspedisi.',
     voyages_expedition_fullscreen_unsupported: 'Perangkat ini tidak mendukung mode layar penuh.',
-    voyages_expedition_complete: 'Ekspedisi selesai — kamu menyelesaikan semua voyage yang cocok!',
+    voyages_expedition_complete: 'Ekspedisi selesai! Kamu telah menyelesaikan semua voyage yang cocok.',
     voyages_search_placeholder: 'Cari soal…', voyages_search_label: 'Cari',voyages_search_placeholder: 'Cari soal…',
  voyages_reward: 'Ganjaran',
     voyages_sort_label: 'Urutkan', voyages_sort_random: 'Acak', voyages_sort_diff_asc: 'Rating: Rendah ke Tinggi',
@@ -177,7 +206,7 @@ const I18N = {
     voyages_bahasa: 'Bahasa',
     voyages_run_samples: 'Jalankan', voyages_console_tests: 'Test Case', voyages_console_output: 'Konsol',
     voyages_console_empty: 'Menunggu kode dijalankan…', voyages_console_running: 'Menjalankan kode…',
-    voyages_submit: 'Kirim Jawaban', voyages_next: 'Selanjutnya', voyages_close: 'Tutup',
+    voyages_submit: 'Kirim Jawaban', voyages_next: 'Selanjutnya', voyages_prev: 'Sebelumnya', voyages_close: 'Tutup',
     voyages_correct: 'Jawaban benar!', voyages_incorrect: 'Belum tepat, coba lagi.',
     voyages_earned: 'deltas didapat', voyages_essay_sent: 'Esai terkirim untuk ditinjau pengurus.',
     voyages_choose_answer: 'Pilih salah satu jawaban di bawah.', voyages_choose_dropdown: 'Pilih jawaban dari menu di bawah.',
@@ -228,7 +257,7 @@ const I18N = {
     admin_url_label: 'Tautan / URL File', admin_file_upload_label: 'Unggah File',
     admin_material_cabang_label: 'Cabang Materi', admin_material_cabang_all: 'Semua Cabang',
     admin_save_material: 'Simpan Materi',
-    materials_search_placeholder: 'Cari materi…', materials_filter_cabang: 'Cabang', materials_all_branches: 'Semua Cabang',
+    resources_search_placeholder: 'Cari kursus…', materials_filter_cabang: 'Cabang', materials_all_branches: 'Semua Cabang',
     admin_subject_label: 'Subjek', admin_subject_math: 'Matematika', admin_subject_physics: 'Fisika',
     admin_subject_chemistry: 'Kimia', admin_subject_biology: 'Biologi', admin_subject_informatika: 'Informatika',
     admin_rating_label: 'Rating',
@@ -255,7 +284,7 @@ const I18N = {
   },
   en: {
     chart_hint: 'Pan to explore',
-    tugas: 'Tasks', materials: 'Materials', nexus: 'Nexus', jadwal: 'Schedule', anggota: 'Members', pengaturan: 'Settings', beranda: 'Home', keluar: 'Log Out',
+    tugas: 'Tasks', resources: 'Resources', course: 'Course', jadwal: 'Schedule', anggota: 'Members', pengaturan: 'Settings', beranda: 'Home', keluar: 'Log Out',
     robotik: 'Robotics', sains: 'Science', both: 'Robotics and Science',
     menu: 'Menu', akun: 'Account', kir_long: 'Karya Ilmiah Remaja',
     settings_desc: 'Manage your profile, branch, and account appearance.',
@@ -275,7 +304,7 @@ const I18N = {
     schedule_holiday_badge: 'Holiday', schedule_leave_badge: 'Collective Leave',
     schedule_special_badge: 'Special Day', schedule_world_snake_day: 'World Snake Day',
     members_desc: 'Everyone currently in KIR.', role_ketua: 'Extracurricular President', role_wakil: 'Vice President', role_bendahara: 'Treasurer', role_anggota: 'Member', you: '(you)',
-    materials_desc: 'Learning modules and references for club members.',
+    resources_desc: 'Courses available for club members to attend.',
     admin_search_placeholder: 'Search by name, email, or class…',
     clock_label: 'Clock', dash_heatmap: 'Contributions', dash_heatmap_less: 'Less', dash_heatmap_more: 'More', dash_heatmap_active_days: 'Active days',
     dash_quicklinks: 'Quick Links', dash_roster_title: 'Active Members', dash_roster_online: 'Currently active',
@@ -301,7 +330,7 @@ const I18N = {
     widget_cat_notes_label: 'Notes', widget_cat_notes_desc: 'Write a quick note or reminder.',
     widget_cat_heatmap_label: 'Contribution Map', widget_cat_heatmap_desc: 'A glance at how active you are each day.',
     widget_cat_roster_label: 'Active Members', widget_cat_roster_desc: 'Who\u2019s currently active in the club.',
-    empty_materials_title: 'No materials here yet!', empty_materials_desc: 'The organizers haven\u2019t uploaded any references or learning modules yet. Hang tight!',
+    empty_resources_title: 'No courses here yet!', empty_resources_desc: 'The organizers haven\u2019t uploaded any courses yet. Hang tight!',
     empty_schedule_title: 'No events scheduled yet!', empty_schedule_desc: 'The extracurricular calendar is still empty. The organizers will update it soon.',
     empty_tasks_title: 'No tasks here yet!', empty_tasks_desc_none: 'Take it easy, or check out the materials to learn something new while the organizers prepare what\u2019s next.', empty_tasks_desc_filtered: 'Try changing the filter, or check back later.',
     no_answer_submitted: 'No answer submitted yet.', rank_not_yet: 'Not yet',
@@ -346,7 +375,11 @@ const I18N = {
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja (KIR) · kirsman70@gmail.com',
     nav_fitur: 'Features', nav_cabang: 'Branches',
     idx_dashboard: 'Dashboard', idx_open_dashboard: 'Open Dashboard', idx_open_dashboard_hero: 'Open your dashboard',
-    greeting_morning: 'Good morning', greeting_afternoon: 'Good afternoon', greeting_evening: 'Good evening', greeting_night: 'Good night',
+    greeting_morning: ['Good morning, {name}', 'Morning {name}! Awake yet?', 'Ready to brainstorm, {name}?', 'Let\'s get to it, {name}.'],
+    greeting_afternoon: ['Good afternoon, {name}', 'Still focused, {name}?', 'Back to work, {name}?', 'Don\'t forget to drink, {name}.'],
+    greeting_evening: ['Good evening, {name}', 'Making progress, {name}?', 'Almost done, {name}?', 'Time for a quick break, {name}.'],
+    greeting_night: ['Good night, {name}', 'Not asleep yet, {name}?', 'Still at it, {name}?', 'Time to log off, {name}.'],
+    greeting_late_night: ['Burning the midnight oil, {name}?', 'Night owl, {name}?', 'Don\'t forget to sleep, {name}.', 'It\'s getting really late, {name}.'],
     activity_today: 'Today at', activity_yesterday: 'Yesterday at', activity_at: 'at',
     deltas_label: 'Deltas', this_week: 'this week', all_time: 'all time', deltas_points: 'deltas',
     deltas_range_week: 'This Week', deltas_range_lifetime: 'Lifetime',
@@ -362,15 +395,40 @@ const I18N = {
     proker_robotik_label: 'Robotics Branch', proker_sains_label: 'Science Branch',
     proker_cta_title: 'Interested in joining a program?', proker_cta_desc: 'Register as a member and choose your preferred branch to get an automatically adjusted dashboard.',
     proker_cta_btn: 'Register Now',
-    voyage_category: 'Voyage', nav_voyages: 'Voyages', nav_leaderboard: 'Leaderboard',
+    wip_badge: 'Coming Soon',
+    gallery_wip_eyebrow: 'Photo Gallery', gallery_wip_title: 'This page is being prepared',
+    gallery_wip_desc: 'We\u2019re gathering documentation from Robotics and Science activities to show here. Stay tuned for the photo gallery!',
+    proker_wip_eyebrow: '2025/2026 School Year', proker_wip_title: 'This page is being prepared',
+    proker_wip_desc: 'The details of the Robotics and Science branch work programs for this school year are still being put together. Check back soon!',
+    wip_back_home: 'Back to Home', wip_check_back: 'Thanks for your patience!',
+    course_category: 'Course', nav_workspace: 'Workspace', nav_voyages: 'Voyages', nav_leaderboard: 'Leaderboard',
     voyages_title: 'Voyages', voyages_desc: 'MIPA and programming practice questions. Solve them to earn deltas.',
+    workspace_title: 'Workspace', workspace_desc: 'Continue your course progress and earn deltas here.',
+    course_my_courses: 'My Courses', course_my_courses_desc: 'These are the courses you have enrolled in. Pick one to open here.',
+    course_new: 'New Course', course_empty_title: 'You haven\'t taken any courses yet.',
+    course_empty_desc: 'Pick a course you want to enroll in. It will appear right here.',
+    course_pick_btn: 'Pick a Course', course_open_btn: 'Open This Course',
+    course_steps_done: 'steps done', course_status_active: 'Currently Open',
+    course_card_menu: 'Course options', course_drop_btn: 'Drop Course',
+    course_drop_confirm: 'Drop this course? All progress and deltas earned from it will be permanently deleted and cannot be recovered.',
+    course_drop_error: 'Could not drop the course. Please try again.',
+    course_programming_fallback: 'Programming voyages cannot be completed directly from the course page yet.',
+    course_programming_link: 'Open in Voyages page', course_material_empty: 'This material has no content to display yet.',
+    course_mark_done: 'Mark as Done', course_feedback_incomplete: 'Answer all questions before submitting.',
+    course_feedback_incorrect: 'Some answers are incorrect, try again.', course_optional_badge: 'Optional',
+    course_locked_badge: 'Locked', course_open_material: 'Open Material', course_start_voyage: 'Start Voyage',
+    course_start_flag: 'Start Flag', course_redo_voyage: 'Redo Voyage', course_redo_flag: 'Redo Flag', course_questions_count: 'Questions',
+    course_material_new_tab: 'Open document in new tab', course_video_new_tab: 'Open video in new tab',
+    course_catalog_desc: 'Courses available for club members to attend.',
+    course_catalog_search: 'Search courses…', course_take: 'Take Course', course_taken: 'Course Taken',
+    course_modal_desc: 'Course Description',
     voyages_filter_all: 'All', voyages_filter_math: 'Math', voyages_filter_physics: 'Physics', voyages_filter_informatika: 'Informatics', voyages_filter_selected: 'selected', voyages_filter_none: 'None',
     voyages_filter_subject_label: 'Subject', voyages_filter_type_label: 'Type',
     voyages_expedition_mode_label: 'Expedition Mode', voyages_expedition_exit: 'Exit Expedition',
     voyages_expedition_empty: 'Every voyage matching your filters is already done.',
     voyages_expedition_fullscreen_required: 'Fullscreen is required to start an Expedition.',
     voyages_expedition_fullscreen_unsupported: 'This device does not support fullscreen mode.',
-    voyages_expedition_complete: 'Expedition complete — you finished every matching voyage!',
+    voyages_expedition_complete: 'Expedition complete! You finished every matching voyage.',
     voyages_search_placeholder: 'Search questions…', voyages_search_label: 'Search',
     voyages_sort_label: 'Sort by', voyages_sort_random: 'Random', voyages_sort_diff_asc: 'Rating: Low to High',
     voyages_sort_diff_desc: 'Rating: High to Low', voyages_sort_title_az: 'Title: A to Z', voyages_sort_newest: 'Newest',
@@ -390,7 +448,7 @@ const I18N = {
     voyages_bahasa: 'Language',
     voyages_run_samples: 'Run', voyages_console_tests: 'Test Cases', voyages_console_output: 'Console',
     voyages_console_empty: 'Waiting for code to run…', voyages_console_running: 'Running code…',
-    voyages_submit: 'Submit Answer', voyages_next: 'Next', voyages_close: 'Close',
+    voyages_submit: 'Submit Answer', voyages_next: 'Next', voyages_prev: 'Previous', voyages_close: 'Close',
     voyages_correct: 'Correct answer!', voyages_incorrect: 'Not quite, try again.',
     voyages_earned: 'deltas earned', voyages_essay_sent: 'Essay submitted for officer review.',
     voyages_choose_answer: 'Choose one answer below.', voyages_choose_dropdown: 'Pick an answer from the menu below.',
@@ -441,7 +499,7 @@ const I18N = {
     admin_url_label: 'Link / File URL', admin_file_upload_label: 'Upload File',
     admin_material_cabang_label: 'Material Branch', admin_material_cabang_all: 'All Branches',
     admin_save_material: 'Save Material',
-    materials_search_placeholder: 'Search materials…', materials_filter_cabang: 'Branch', materials_all_branches: 'All Branches',
+    resources_search_placeholder: 'Search courses…', materials_filter_cabang: 'Branch', materials_all_branches: 'All Branches',
     admin_subject_label: 'Subject', admin_subject_math: 'Math', admin_subject_physics: 'Physics',
     admin_subject_chemistry: 'Chemistry', admin_subject_biology: 'Biology', admin_subject_informatika: 'Informatics',
     admin_rating_label: 'Rating',
@@ -468,20 +526,30 @@ const I18N = {
   }
 };
 
-function kirTimeGreeting() {
+function kirTimeGreeting(name) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
   let hour;
   try {
     hour = parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }).format(new Date()), 10);
+    if (hour === 24) hour = 0;
   } catch (e) {
     hour = new Date().getHours();
   }
+  
   let key;
-  if (hour >= 4 && hour < 11) key = 'greeting_morning';
+  if (hour >= 0 && hour < 4) key = 'greeting_late_night';
+  else if (hour >= 4 && hour < 11) key = 'greeting_morning';
   else if (hour >= 11 && hour < 15) key = 'greeting_afternoon';
   else if (hour >= 15 && hour < 19) key = 'greeting_evening';
   else key = 'greeting_night';
-  return I18N[lang][key];
+  
+  const options = I18N[lang][key];
+  let template = options;
+  if (Array.isArray(options)) {
+    const seed = new Date().getDate() + hour;
+    template = options[seed % options.length];
+  }
+  return template.replace('{name}', name);
 }
 
 function kirJakartaDateParts(date) {
@@ -501,15 +569,15 @@ function kirFormatActivityTime(date) {
   const nowDay = Date.UTC(+now.year, +now.month - 1, +now.day);
   const thenDay = Date.UTC(+then.year, +then.month - 1, +then.day);
   const diffDays = Math.round((nowDay - thenDay) / 86400000);
-  const time = `${then.hour}:${then.minute}:${then.second}`;
+  const time = `${then.hour}:${then.minute}`;
 
-  if (diffDays === 0) return `${I18N[lang].activity_today} ${time}`;
-  if (diffDays === 1) return `${I18N[lang].activity_yesterday} ${time}`;
+  if (diffDays === 0) return time;
+  if (diffDays === 1) return lang === 'id' ? 'Kemarin' : 'Yesterday';
 
   const dateFmt = new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', {
-    timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short'
+    timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric'
   });
-  return `${dateFmt.format(date)} ${I18N[lang].activity_at} ${time}`;
+  return dateFmt.format(date);
 }
 
 /* ----------------------------------------------------------
@@ -1060,20 +1128,12 @@ function kirRenderSidebarNow(activeTab) {
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
         <span class="nav-label" data-i18n="tugas">Tugas</span>
       </a>
-      <a href="materials.html" data-tab="materials" class="nav-link ${activeTab === 'materials' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-        <span class="nav-label" data-i18n="materials">Materials</span>
-      </a>
-      <a href="nexus.html" data-tab="nexus" class="nav-link ${activeTab === 'nexus' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
-        <span class="nav-label" data-i18n="nexus">Nexus</span>
-      </a>
       <a href="schedule.html" data-tab="schedule" class="nav-link ${activeTab === 'schedule' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
         <span class="nav-label" data-i18n="jadwal">Jadwal</span>
       </a>
       <a href="members.html" data-tab="members" class="nav-link ${activeTab === 'members' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
         <span class="nav-label" data-i18n="anggota">Anggota</span>
       </a>
       ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
@@ -1086,10 +1146,14 @@ function kirRenderSidebarNow(activeTab) {
       </a>` : ''}
       </nav>
     <nav class="flex flex-col gap-1.5 mt-6">
-      <p class="text-[11px] font-medium text-zinc-600 uppercase tracking-wider px-3 mb-1" data-i18n="voyage_category">Voyage</p>
-      <a href="voyages.html" data-tab="voyages" class="nav-link ${activeTab === 'voyages' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.5c2.5 2.2 4 5.4 4 8.9 0 2.1-.6 4-1.6 5.6L12 21.5l-2.4-4.5A10.6 10.6 0 018 11.4c0-3.5 1.5-6.7 4-8.9z" /><circle cx="12" cy="11" r="2" stroke-linecap="round" stroke-linejoin="round" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 15.5c-1.8.7-3 1.8-3 3 0 1.7 3 3 6.5 3s6.5-1.3 6.5-3c0-1.2-1.2-2.3-3-3" /></svg>
-        <span class="nav-label" data-i18n="nav_voyages">Voyages</span>
+      <p class="text-[11px] font-medium text-zinc-600 uppercase tracking-wider px-3 mb-1" data-i18n="course_category">Course</p>
+      <a href="course.html" data-tab="course" class="nav-link ${activeTab === 'course' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+        <span class="nav-label" data-i18n="course">Kursus</span>
+      </a>
+      <a href="workspace.html" data-tab="workspace" class="nav-link ${activeTab === 'workspace' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+        <span class="nav-label" data-i18n="nav_workspace">Workspace</span>
       </a>
       <a href="leaderboard.html" data-tab="leaderboard" class="nav-link ${activeTab === 'leaderboard' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>
@@ -1719,8 +1783,8 @@ function kirPageTitleKey() {
     'index.html': 'page_title_home',
     'dashboard.html': 'page_title_dashboard',
     'tasks.html': 'page_title_tasks',
-    'materials.html': 'page_title_materials',
-    'nexus.html': 'page_title_nexus',
+    'course.html': 'page_title_course',
+    'workspace.html': 'page_title_workspace',
     'schedule.html': 'page_title_schedule',
     'members.html': 'page_title_members',
     'voyages.html': 'page_title_voyages',
@@ -1746,25 +1810,27 @@ function resolveBrandAssetName(type = 'icon') {
   const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   const suffix = type === 'glow' ? '_glow' : '';
-
-  // Neutral kir mark: used for logged-out visitors, the "both"/hybrid
-  // cabang (no dedicated asset — it's the same plain mark, tinted purple
-  // via CSS accent vars rather than a separate image), and as the
-  // fallback. Inverted on purpose: light theme's white background needs
-  // the dark-inked logo, and vice versa.
   const invertedTheme = theme === 'light' ? 'dark' : 'light';
-  const neutralName = `kir_${invertedTheme}${suffix}.PNG`;
 
-  // "Nonaktifkan Warna Cabang" only neutralizes accent colors (see
-  // tailwind-config.js / --accent-rgb overrides) — it has no bearing on
-  // which logo file loads, so it's deliberately not checked here.
+  // "Nonaktifkan Warna Cabang" ("Disable Branch Colouring") only
+  // neutralizes the *accent* colors (see tailwind-config.js /
+  // --accent-rgb overrides) — the logo/favicon stays the branded
+  // cabang mark either way, it just switches from the plain version to
+  // the light/dark-inverted one so it still reads against the theme,
+  // same reasoning as the neutral mark below.
+  const disableBranchColor = localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
+
   if (loggedIn && cabang !== 'both') {
-    // Same inversion as the neutral logo above: light theme needs the
-    // dark-inked branded mark, dark theme needs the light-inked one.
-    if (cabang === 'robotik') return `assets/robotik_${invertedTheme}${suffix}.PNG`;
-    if (cabang === 'sains') return `assets/sains_${invertedTheme}${suffix}.PNG`;
+    if (cabang === 'robotik') return disableBranchColor ? `assets/robotik_${invertedTheme}${suffix}.PNG` : `assets/robotik${suffix}.PNG`;
+    if (cabang === 'sains') return disableBranchColor ? `assets/sains_${invertedTheme}${suffix}.PNG` : `assets/sains${suffix}.PNG`;
   }
-  return `assets/${neutralName}`;
+
+  // Neutral kir mark: used for logged-out visitors (no settings to
+  // toggle, so always themed) and the "both"/hybrid cabang (no
+  // dedicated asset — it's the same plain mark, tinted purple via CSS
+  // accent vars instead). Inverted on purpose: light theme's white
+  // background needs the dark-inked logo, and vice versa.
+  return `assets/kir_${invertedTheme}${suffix}.PNG`;
 }
 
 function kirApplyBrandAssets() {
@@ -1796,6 +1862,7 @@ function kirApplyTranslations() {
   });
   kirApplyPageTitle(lang);
   kirApplyBrandAssets();
+  if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
 
   // Not every piece of translated UI is covered by [data-i18n] — e.g.
   // schedule.html's calendar grid (weekday headers, month title) is built
@@ -2095,7 +2162,7 @@ function kirSetDisableBranchColor(enabled) {
   // Most pages pick this up for free through the --accent-* CSS
   // variable cascade (see html[data-disable-branch-color="true"] in
   // css/style.css). Pages that compute colors in JS instead of pure
-  // CSS (e.g. js/nexus.html's per-node-type accent shades, baked into
+  // CSS (e.g. js/course.html's per-node-type accent shades, baked into
   // rendered inline styles) can't rely on that cascade and need to
   // re-render themselves — this event is their hook to do so.
   window.dispatchEvent(new CustomEvent('kir:branch-color-change', { detail: { enabled } }));
@@ -2313,20 +2380,33 @@ function kirCommentAttachmentHtml(att) {
   </span>`;
 }
 
-function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply) {
+function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply, mentionAuthor, hasReplies) {
   const isYou = c.author === you;
   const initial = c.author.charAt(0).toUpperCase();
   const avatarStyle = c.avatar ? `style="background-image:url('${c.avatar}');background-size:cover;background-position:center;"` : '';
   const replyBoxId = `${containerId}-replybox-${c.id}`;
+  // mentionAuthor is only set once thread depth is capped (see
+  // MAX_NEST_DEPTH in kirRenderCommentSection): instead of nesting this
+  // reply another level deeper, it renders as a sibling of its parent
+  // with an "@parent's-author" tag at the start of the text so it's
+  // still clear who it's actually replying to.
+  const mentionHtml = mentionAuthor ? `<span class="comment-mention text-accent-300 font-medium">@${kirEscapeHtml(mentionAuthor)}</span> ` : '';
+  // hasReplies is only true when this comment will actually be followed
+  // by a nested .comment-replies block (see renderThread) — the
+  // connector visually links this comment's own avatar down into that
+  // thread's trunk, so it's only rendered when there's a trunk below to
+  // link to (see .comment-thread-connector in style.css).
+  const threadConnectorHtml = hasReplies ? `<span class="comment-thread-connector"></span>` : '';
   return `
     <div class="comment-item${isReply ? ' comment-item-reply' : ''}">
       <div class="comment-avatar bg-accent-gradient" ${avatarStyle}>${c.avatar ? '' : initial}</div>
+      ${threadConnectorHtml}
       <div class="comment-body min-w-0">
         <div class="flex items-baseline gap-2 flex-wrap">
           <span class="comment-author">${kirEscapeHtml(c.author)}${isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</span>
           <span class="comment-time">${kirFormatActivityTime(new Date(c.createdAt))}</span>
         </div>
-        ${c.text ? `<p class="comment-text">${kirEscapeHtml(c.text)}</p>` : ''}
+        ${c.text || mentionHtml ? `<p class="comment-text">${mentionHtml}${kirEscapeHtml(c.text)}</p>` : ''}
         ${kirCommentAttachmentHtml(c.attachment)}
         <div class="flex items-center gap-3 mt-0.5">
           <button onclick="kirToggleReplyBox('${containerId}','${scope}','${itemId}','${c.id}')" class="comment-reply-btn" data-i18n="comments_reply">${I18N[lang].comments_reply}</button>
@@ -2383,17 +2463,38 @@ async function kirRenderCommentSection(containerId, scope, itemId) {
   });
   const topLevel = formatted.filter(c => !c.parentId);
 
-  const renderThread = (c, isReply) => {
+  // Only indent two reply levels deep. Past that, replies stop nesting
+  // (and stop growing the indent further) and instead render as flat
+  // siblings of the deepest indented comment, each tagged with an
+  // "@author" mention pointing at whichever comment they actually
+  // replied to, so the thread stays readable instead of marching off
+  // the edge of the panel.
+  const MAX_NEST_DEPTH = 2;
+
+  const renderThread = (c, depth, mentionAuthor) => {
+    const isReply = depth > 0;
     const children = byParent[c.id] || [];
-    const childrenHtml = children.length
-      ? `<div class="comment-replies">${children.map(child => renderThread(child, true)).join('')}</div>`
-      : '';
-    return kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply) + childrenHtml;
+    const hasReplies = children.length > 0 && depth < MAX_NEST_DEPTH;
+    const itemHtml = kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply, mentionAuthor, hasReplies);
+
+    if (!children.length) {
+      return isReply ? `<div class="comment-thread-group">${itemHtml}</div>` : itemHtml;
+    }
+
+    if (depth < MAX_NEST_DEPTH) {
+      const childrenHtml = children.map(child => renderThread(child, depth + 1, null)).join('');
+      const content = itemHtml + `<div class="comment-replies">${childrenHtml}</div>`;
+      return isReply ? `<div class="comment-thread-group">${content}</div>` : content;
+    }
+
+    const childrenHtml = children.map(child => renderThread(child, depth, c.author)).join('');
+    const content = isReply ? `<div class="comment-thread-group">${itemHtml}</div>` : itemHtml;
+    return content + childrenHtml;
   };
 
   const listHtml = topLevel.length === 0
     ? `<p class="text-zinc-600 text-xs py-1" data-i18n="comments_empty">${I18N[lang].comments_empty}</p>`
-    : topLevel.map(c => renderThread(c, false)).join('');
+    : topLevel.map(c => renderThread(c, 0, null)).join('');
 
   container.innerHTML = `
     <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="comments_title">${I18N[lang].comments_title}</p>
@@ -2419,7 +2520,12 @@ function kirToggleReplyBox(containerId, scope, itemId, commentId) {
   const box = document.getElementById(boxId);
   if (!box) return;
   const wasHidden = box.classList.contains('hidden');
-  document.querySelectorAll(`[id^="${containerId}-replybox-"]`).forEach(el => el.classList.add('hidden'));
+  // Scoped to .comment-reply-composer (not just an id-prefix match) —
+  // each box's own textarea has an id of the same "<boxId>-text" shape,
+  // which also starts with this prefix, so a bare `[id^=...]` selector
+  // here would catch the textarea too and permanently stick a `hidden`
+  // class on it the first time any reply box was ever opened.
+  document.querySelectorAll(`.comment-reply-composer[id^="${containerId}-replybox-"]`).forEach(el => el.classList.add('hidden'));
   if (wasHidden) {
     box.classList.remove('hidden');
     const textarea = document.getElementById(`${boxId}-text`);
@@ -2520,7 +2626,7 @@ function kirRenderUserChrome() {
     el.textContent = name;
   });
   document.querySelectorAll('[data-kir="greeting"]').forEach(el => {
-    el.textContent = kirTimeGreeting() + ', ' + name + '!';
+    el.textContent = kirTimeGreeting(name);
   });
   document.querySelectorAll('[data-kir="avatar"]').forEach(el => {
     if (avatar) {

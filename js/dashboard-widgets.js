@@ -26,7 +26,7 @@ let ACTIVITIES = [];
 let DELTAS_HISTORY_WEEK = [0, 0, 0, 0, 0, 0, 0]; // last 7 days
 let DELTAS_HISTORY_LIFETIME = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // last 12 months
 let STREAK_DAYS = 0;
-const STREAK_FILL_GOAL = 10; // days for a visually "full" flame — cosmetic only
+const STREAK_FILL_GOAL = 7; // days for a visually "full" flame — cosmetic only
 let STREAK_WEEK_PATTERN = [false, false, false, false, false, false, false]; // last 7 days, Mon..Sun — cosmetic mini-calendar
 let deltasRange = 'week'; // 'week' | 'lifetime'
 
@@ -128,8 +128,12 @@ async function fetchDashboardWidgetsData() {
     }
   }
 
+  if (types.has('quote')) {
+    await fetchNewQuote();
+  }
+
   dashLayout.forEach(item => {
-    if (['tasks', 'events', 'activity', 'leaderboard', 'deltas', 'streak'].includes(item.type)) {
+    if (['tasks', 'events', 'activity', 'leaderboard', 'deltas', 'streak', 'quote'].includes(item.type)) {
       const el = document.querySelector(`.widget-wrap[data-type="${item.type}"] .widget-inner`);
       if (el) {
         el.innerHTML = renderWidgetContent(item.type, item.w, item.h);
@@ -140,14 +144,48 @@ async function fetchDashboardWidgetsData() {
     }
   });
 }
-const DASH_QUOTES = [
-  { text: 'Konsistensi kecil setiap hari mengalahkan usaha besar sesekali.', author: 'Tim Orbit' },
-  { text: 'Karya ilmiah terbaik dimulai dari pertanyaan yang paling sederhana.', author: 'Tim Orbit' },
-  { text: 'Robot yang hebat lahir dari banyak percobaan yang gagal duluan.', author: 'Tim Orbit' },
-  { text: 'Kerja tim membuat tenggat waktu terasa lebih ringan.', author: 'Tim Orbit' },
-  { text: 'Catat idemu sekarang — versi terbaikmu nanti akan berterima kasih.', author: 'Tim Orbit' },
+const initLang = localStorage.getItem('kir_lang') || 'id';
+let currentDashQuote = { 
+  text: initLang === 'en' ? 'Loading quote...' : 'Memuat kutipan...', 
+  author: 'Orbit' 
+};
+
+const DASH_AUTHORS = [
+  "Sultan", "Daffa", "Raihan", "Arya", "Alvian", "Alvin", "Kenzie", 
+  "Aldan", "Shofiya", "Qirani", "Lala", "Raddinayu", "Hira", "Joshua",
+  "Valent", "Azzam", "Belva"
 ];
-let quoteIndex = new Date().getDate() % DASH_QUOTES.length;
+
+async function fetchNewQuote() {
+  const lang = localStorage.getItem('kir_lang') || 'id';
+  const randomAuthor = DASH_AUTHORS[Math.floor(Math.random() * DASH_AUTHORS.length)];
+  
+  try {
+    if (lang === 'en') {
+      const res = await fetch(`https://api.adviceslip.com/advice?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        currentDashQuote = { text: data.slip.advice, author: randomAuthor };
+        return;
+      }
+    } else {
+      const res = await fetch('https://candaan-api.vercel.app/api/text/random');
+      if (res.ok) {
+        const data = await res.json();
+        currentDashQuote = { text: data.data, author: randomAuthor };
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Gagal mengambil kutipan:', err);
+  }
+
+  const fallbacks = {
+    en: { text: "Always code as if the guy who ends up maintaining your code will be a violent psychopath who knows where you live.", author: randomAuthor },
+    id: { text: "Error kuwi wajar, ndak usah panik. Sing penting caina herang laukna beunang.", author: randomAuthor }
+  };
+  currentDashQuote = fallbacks[lang] || fallbacks.id;
+}
 
 // --- Roster (compact table widget) — small snapshot of who's
 // around, distinct from the leaderboard (this is presence/branch,
@@ -1172,9 +1210,17 @@ function renderProfileWidget(w, h) {
 function quoteGlyphSvg(cls) {
   return `<svg class="${cls} text-accent-300/70 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M7.17 6C4.87 6 3 7.87 3 10.17c0 2.06 1.5 3.75 3.46 4.08L5.3 18h2.4l1.36-4.66c.14-.5.24-1.03.24-1.58V10.5C9.3 8.02 8.36 6 7.17 6zm9.66 0c-2.3 0-4.17 1.87-4.17 4.17 0 2.06 1.5 3.75 3.46 4.08L14.96 18h2.4l1.36-4.66c.14-.5.24-1.03.24-1.58V10.5c0-2.48-.94-4.5-2.13-4.5z"/></svg>`;
 }
-function refreshDashQuote() {
-  quoteIndex = (quoteIndex + 1) % DASH_QUOTES.length;
+async function refreshDashQuote() {
+  const lang = localStorage.getItem('kir_lang') || 'id';
   const el = document.querySelector('.widget-wrap[data-type="quote"] .widget-inner');
+  const btn = el?.querySelector('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="text-xs">${lang === 'en' ? 'Loading...' : 'Memuat...'}</span>`;
+  }
+
+  await fetchNewQuote();
+
   if (!el) return;
   const item = dashLayout.find(w => w.type === 'quote');
   el.classList.remove('fade-resize');
@@ -1183,7 +1229,7 @@ function refreshDashQuote() {
   el.classList.add('fade-resize');
 }
 function renderQuoteWidget(w, h) {
-  const q = DASH_QUOTES[quoteIndex];
+  const q = currentDashQuote;
   const lang = localStorage.getItem('kir_lang') || 'id';
 
   if (w === 1 && h === 1) {
@@ -1744,21 +1790,78 @@ function streakFlameSvg(sizeClass) {
           <stop offset="100%" style="stop-color: rgb(var(--accent-light-rgb))" />
         </linearGradient>
       </defs>
-      <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
-      <g clip-path="url(#flame-clip)"><g id="flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
-        <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#flame-gradient)" class="flame-wave" />
-      </g></g>
+      <g class="flame-body" style="transform-origin: 12px 21px;">
+        <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" fill="none" style="stroke: var(--glass-border);" stroke-width="0.75"/>
+        <g clip-path="url(#flame-clip)"><g id="flame-fill-group" transform="translate(0, 21)" class="flame-fill-group">
+          <path d="M 0,0 Q 3,-1.5 6,0 T 12,0 T 18,0 T 24,0 T 30,0 T 36,0 L 36,24 L 0,24 Z" fill="url(#flame-gradient)" class="flame-wave" />
+        </g></g>
+      </g>
     </svg>`;
 }
+let streakRiseTimer = null;
 function renderStreakData() {
   const countEl = document.getElementById('streak-count');
   if (!countEl) return;
-  countEl.textContent = STREAK_DAYS;
-  const pct = Math.min(STREAK_DAYS / STREAK_FILL_GOAL, 1);
-  const flameTop = 2, flameBottom = 21;
-  const currentY = flameBottom - ((flameBottom - flameTop) * pct);
   const group = document.getElementById('flame-fill-group');
-  if (group) group.setAttribute('transform', `translate(0, ${currentY})`);
+  const wave = document.querySelector('#streak-flame .flame-wave');
+  const body = document.querySelector('#streak-flame .flame-body');
+  const flameTop = 2, flameBottom = 21;
+
+  if (streakRiseTimer) { clearInterval(streakRiseTimer); streakRiseTimer = null; }
+  if (body) body.classList.remove('flame-swaying');
+
+  const target = STREAK_DAYS;
+  if (target <= 0) {
+    countEl.textContent = 0;
+    if (group) { group.setAttribute('transform', `translate(0, ${flameBottom})`); group.classList.add('flame-fill-empty'); }
+    if (wave) {
+      wave.classList.add('flame-wave-paused');
+      wave.style.display = 'none';
+    }
+    return;
+  }
+
+  // Start cold every time this widget (re-)renders, then rapidly count
+  // up to the real streak while the fill rises alongside it — reaching
+  // a full flame (and starting the sway) right at STREAK_FILL_GOAL days.
+  if (group) group.classList.remove('flame-fill-empty');
+  if (wave) {
+    wave.classList.remove('flame-wave-paused');
+    wave.style.display = '';
+  }
+
+  // Two independent reduced-motion sources — the OS/browser media query
+  // and the site's own Settings toggle (data-reduce-motion, set by
+  // kirSetReduceMotion in auth.js) — same check used elsewhere on the
+  // site (e.g. router.js, schedule.html). Either one means: skip the
+  // count-up/rise entirely and just load the finished flame.
+  const reducedMotion = document.documentElement.getAttribute('data-reduce-motion') === 'true'
+    || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    const pct = Math.min(target / STREAK_FILL_GOAL, 1);
+    const y = flameBottom - (flameBottom - flameTop) * pct;
+    if (group) group.setAttribute('transform', `translate(0, ${y})`);
+    countEl.textContent = target;
+    if (pct >= 1 && body) body.classList.add('flame-swaying');
+    return;
+  }
+
+  if (group) group.setAttribute('transform', `translate(0, ${flameBottom})`);
+  countEl.textContent = 0;
+
+  let current = 0;
+  streakRiseTimer = setInterval(() => {
+    current++;
+    const pct = Math.min(current / STREAK_FILL_GOAL, 1);
+    const y = flameBottom - (flameBottom - flameTop) * pct;
+    if (group) group.setAttribute('transform', `translate(0, ${y})`);
+    countEl.textContent = current;
+    if (pct >= 1 && body) body.classList.add('flame-swaying');
+    if (current >= target) {
+      clearInterval(streakRiseTimer);
+      streakRiseTimer = null;
+    }
+  }, 110);
 }
 
 /* ----------------------------------------------------------
@@ -2186,7 +2289,7 @@ function renderQuicklinksWidget(w, h) {
   const links = [
     { href: 'tasks.html', key: 'tugas', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>` },
     { href: 'schedule.html', key: 'jadwal', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>` },
-    { href: 'materials.html', key: 'materials', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>` },
+    { href: 'course.html', key: 'course', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>` },
     { href: 'leaderboard.html', key: 'leaderboard_title', icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4M6 4h12v3a6 6 0 01-6 6 6 6 0 01-6-6V4zM6 4H4a2 2 0 000 4h1.5M18 4h2a2 2 0 010 4h-1.5" /></svg>` },
   ];
   const linkLabel = (l) => (I18N[lang] && I18N[lang][l.key]) || l.key;

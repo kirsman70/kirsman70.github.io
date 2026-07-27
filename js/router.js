@@ -211,20 +211,6 @@
 
     const doc = new DOMParser().parseFromString(html, 'text/html');
 
-    // Only this one specific transition (leaving auth.html, landing on
-    // index.html) gets the "surroundings fade in" treatment below —
-    // landing on index.html any other way (typed URL, refresh, link
-    // from some other page) should show everything at once like normal.
-    // Reduced-motion opts out entirely rather than getting an instant
-    // (transition-less) hide-then-show, which would just look like a
-    // flash for no reason.
-    const fromPath = window.location.pathname;
-    const toPath = new URL(url, window.location.href).pathname;
-    const reduceMotion = isReducedMotion();
-    const revealPending = !reduceMotion
-      && /\/auth\.html$/i.test(fromPath)
-      && /\/index\.html$/i.test(toPath);
-
     // We're committed to leaving the current page now, so give it a
     // chance to cancel any rAF loop and remove any window/document-level
     // listener it registered — see the header comment on 'kir:teardown'.
@@ -244,11 +230,40 @@
     // also an inline <script> in every protected page's <head> — never
     // ran on client-side navigation. Single pass, original order, fixes
     // both.
+    // EXCEPTION — async/defer <script src> tags: workspace.html's
+    // MathJax and MathLive tags (~hundreds of KB each) are marked
+    // `async`/`defer` specifically so a normal page load never blocks
+    // on them. Sending them through the same `await loadExternalAsset()`
+    // as everything else undid that: this loop was stalling the ENTIRE
+    // navigation — body swap, sidebar/nav-pill update, all of it —
+    // until those libraries had fully downloaded AND executed, on every
+    // first visit to a page that has them. That's what read as the
+    // sidebar "lagging/twitching" specifically on workspace.html and
+    // not on lighter pages like course.html: the whole swap (including
+    // the nav-pill's slide) sits frozen behind a ~1-2s library load,
+    // then lands and animates all at once the instant it's free, which
+    // reads as a stall-then-jump instead of a smooth transition.
+    // Nothing else in the head depends on MathJax/MathLive being ready
+    // this early (course content rendering already has a
+    // `!window.marked`-style fallback for libraries that aren't loaded
+    // yet), so there's nothing to lose by letting them load in the
+    // background: kick them off (still deduped by URL, still started
+    // in document order relative to any inline config script before
+    // them, e.g. the `window.MathJax = {...}` block) but don't hold up
+    // the rest of the navigation on their onload. Plain (non-async/
+    // non-defer) scripts like auth.js keep blocking as before, since
+    // later inline scripts (kirRequireAuth()) and page code genuinely
+    // need them to have finished first.
     const headChildren = Array.from(doc.head.children);
     for (const node of headChildren) {
       if (node.tagName === 'SCRIPT') {
         if (node.getAttribute('src')) {
-          await loadExternalAsset(node);
+          const isNonBlocking = node.hasAttribute('async') || node.hasAttribute('defer');
+          if (isNonBlocking) {
+            loadExternalAsset(node); // fire-and-forget — don't gate navigation on it
+          } else {
+            await loadExternalAsset(node);
+          }
         } else {
           runInlineScript(node.textContent);
         }
@@ -344,15 +359,6 @@
         const freshSidebarRoot = document.getElementById('sidebar-root');
         if (freshSidebarRoot) freshSidebarRoot.replaceWith(oldSidebarRoot);
       }
-      // This whole block still runs HERE, synchronously inside the same
-      // callback that builds the new body — not after — because when
-      // the View Transition API is available, the browser captures its
-      // "new state" screenshot the moment this callback returns, and
-      // that screenshot is what actually plays during the ~0.55s
-      // cross-fade. The fragment is now fully built with correct delays
-      // BEFORE it ever touched the live DOM, so there's no reset pose
-      // to bake into that screenshot in the first place.
-      if (revealPending) document.body.classList.add('kir-reveal-pending');
     };
 
     // Same-document View Transition for the swap itself, when supported
@@ -422,70 +428,6 @@
       } else {
         runInlineScript(node.textContent);
       }
-    }
-
-    if (revealPending) {
-      // The pending (invisible) state was applied inside swapBody, above,
-      // so it's already what got shown the instant the swap landed —
-      // the planet/ring/orbit guide are already visible and mid-morph,
-      // everything else (nodes included) is at opacity: 0.
-      //
-      // Three beats, strictly in sequence (each of these numbers has a
-      // matching CSS value in index.html — keep them in sync if either
-      // side changes):
-      //   1. Hold everything at opacity 0 until the planet/ring morph
-      //      has actually landed (that morph itself is 0.7s — see the
-      //      ::view-transition-group(kir-planet) rule — so this leaves
-      //      it a bit of margin) — REVEAL_HOLD_MS.
-      //   2. THEN the ring's five nav nodes fade in one at a time, in
-      //      ring order — kir-nodes-in, staggered per-node via the
-      //      transition-delay rules on .obt-nodes .obt-node. NODE_FADE_MS
-      //      / NODE_STAGGER_MS / NODE_COUNT mirror that CSS exactly, so
-      //      nodesTotalMs below is really "how long until the LAST node
-      //      has finished appearing", not just started.
-      //   3. THEN, only once every node is fully in, wait once more
-      //      (SCENE_WAIT_MS) and let the rest of the scene (stars,
-      //      header, moons, dust, card, hint, progress, footer) breathe
-      //      in together as one slow fade — kir-scene-in.
-      // Each stage only starts once the previous one has genuinely
-      // finished, so the reveal reads as three distinct, deliberate
-      // beats rather than everything crossfading over itself.
-      const REVEAL_HOLD_MS = 1000;   // beat 1: wait for the morph to land
-      const NODE_FADE_MS = 500;      // beat 2: each node's own fade-in duration
-      const NODE_STAGGER_MS = 150;   // beat 2: gap between each node starting
-      const NODE_COUNT = 5;
-      const nodesTotalMs = NODE_FADE_MS + (NODE_COUNT - 1) * NODE_STAGGER_MS;
-      const SCENE_WAIT_MS = 1000;    // beat 3: pause after the last node lands
-      const SCENE_FADE_MS = 1100;    // beat 3: the slow collective breathe-in
-
-      setTimeout(() => {
-        // Still wrapped in two rAFs here, same reasoning as before: makes
-        // sure the browser has actually painted the still-pending state
-        // at least once more right before flipping it, so the opacity
-        // transition always has a real "0" frame to animate from rather
-        // than risking a coalesced jump straight to "1".
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            document.body.classList.add('kir-nodes-in');
-          });
-        });
-
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              document.body.classList.remove('kir-reveal-pending');
-              document.body.classList.add('kir-scene-in');
-            });
-          });
-          // Marker classes are only meaningful mid-transition; drop them
-          // once the fade is done so they can't affect some later,
-          // unrelated navigation that happens to reuse the same elements.
-          setTimeout(() => {
-            document.body.classList.remove('kir-nodes-in');
-            document.body.classList.remove('kir-scene-in');
-          }, SCENE_FADE_MS + 100);
-        }, nodesTotalMs + SCENE_WAIT_MS);
-      }, REVEAL_HOLD_MS);
     }
 
     document.documentElement.classList.remove('kir-router-loading');
