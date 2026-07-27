@@ -44,6 +44,25 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Paired with kirRevealPage()/`.kir-ready` in auth.js. Without this,
+   the browser paints <body> the instant it's parsed — showing the
+   hardcoded Indonesian default text inside every [data-i18n] element
+   (kirApplyTranslations() hasn't swapped it to the visitor's actual
+   language yet) and raw, unstyled-size SVG icons (Tailwind's CDN
+   runtime JIT-compiles w-4/h-4-etc. utility CSS asynchronously via a
+   MutationObserver, not synchronously with the parse). On a warm local
+   cache that whole gap closes in a couple of milliseconds and is never
+   noticed; over a real network (fonts, the Tailwind CDN script, and
+   auth.js itself all being fetched fresh, e.g. on GitHub Pages) it's
+   wide enough to see as a flash of the wrong language snapping to the
+   right one, and oversized icons shrinking down.
+   auth.js adds `.kir-ready` to <html> once translations are applied
+   (or, as a fallback for pages with no [data-i18n] content at all,
+   once the `load` event fires) — see kirRevealPage() there. */
+html:not(.kir-ready) body {
+  visibility: hidden;
+}
+
 /* Every page's <body> carries Tailwind's `overflow-x-hidden` utility
    as a horizontal-scroll guard. The problem is `hidden`, specifically:
    giving an element a non-visible overflow-x with no matching
