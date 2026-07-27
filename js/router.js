@@ -211,6 +211,19 @@
 
     const doc = new DOMParser().parseFromString(html, 'text/html');
 
+    // Translate the new page's text WHILE IT'S STILL DETACHED — nothing
+    // in `doc` is connected to the live render tree yet, so nothing in
+    // it has painted yet either. This used to only happen after the
+    // fact, when the new page's own inline scripts re-ran further down
+    // (e.g. via kirInjectSidebar's call to kirApplyTranslations()) —
+    // by which point the swap was already visible (or already
+    // committed as the View Transition's "new" snapshot), so the
+    // Indonesian default text was what got shown, however briefly,
+    // before flipping to the visitor's actual language. Translating
+    // here means the swapped-in content is already correct the very
+    // first instant it's attached.
+    if (typeof kirTranslateElements === 'function') kirTranslateElements(doc);
+
     // We're committed to leaving the current page now, so give it a
     // chance to cancel any rAF loop and remove any window/document-level
     // listener it registered — see the header comment on 'kir:teardown'.
@@ -298,7 +311,7 @@
     const oldSidebarRoot = document.getElementById('sidebar-root');
     const preserveSidebar = !!(oldSidebarRoot && doc.getElementById('sidebar-root'));
 
-    const swapBody = () => {
+    const swapBody = async () => {
       document.title = doc.title;
 
       if (preserveSidebar) oldSidebarRoot.remove();
@@ -359,6 +372,21 @@
         const freshSidebarRoot = document.getElementById('sidebar-root');
         if (freshSidebarRoot) freshSidebarRoot.replaceWith(oldSidebarRoot);
       }
+
+      // Text is already correct (translated above, while `doc` was still
+      // detached) but Tailwind's CDN runtime still needs to notice this
+      // batch of newly-attached markup and compile any utility classes
+      // it hasn't seen before — that happens asynchronously via a
+      // MutationObserver, not synchronously with this attach. One rAF
+      // only guarantees we're past the current paint; the observer's
+      // callback can still land a frame later than that. Awaiting two
+      // reliably lands after it, so icons introduced by the new page
+      // (e.g. gallery.html/program-kerja.html's back-arrow and the
+      // sidebar's close icon) are already correctly sized in the
+      // View Transition's "new" screenshot, instead of that screenshot
+      // capturing them at their raw unstyled size and the crossfade
+      // itself becoming the flash.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     };
 
     // Same-document View Transition for the swap itself, when supported
@@ -413,10 +441,10 @@
         }
         await transition.finished;
       } catch (e) {
-        swapBody();
+        await swapBody();
       }
     } else {
-      swapBody();
+      await swapBody();
     }
 
     // Re-run the new body's scripts in document order. src scripts get

@@ -1850,16 +1850,30 @@ function kirApplyBrandAssets() {
   });
 }
 
-function kirApplyTranslations() {
+// Parametrized so router.js can call this on a detached, freshly-fetched
+// document (before it's ever attached to the live DOM, let alone painted)
+// as well as on the live `document` itself. Translating off-DOM content
+// means a page navigated to via the SPA router already has correct-
+// language text baked in the instant it's attached — no swap visible
+// after the fact, which is what running this only against the live
+// document (as it used to) couldn't avoid: the router's re-run of a
+// page's own inline scripts (which is what used to call this) only
+// happens AFTER the swap is already visible/mid-view-transition.
+function kirTranslateElements(root) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
-  document.querySelectorAll('[data-i18n]').forEach(el => {
+  root.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (I18N[lang][key]) el.textContent = I18N[lang][key];
   });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+  root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (I18N[lang][key]) el.setAttribute('placeholder', I18N[lang][key]);
   });
+  return lang;
+}
+
+function kirApplyTranslations() {
+  const lang = kirTranslateElements(document);
   kirApplyPageTitle(lang);
   kirApplyBrandAssets();
   if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
