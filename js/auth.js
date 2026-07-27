@@ -1872,6 +1872,31 @@ function kirApplyTranslations() {
   // here, so any page with its own locale-dependent rendering can listen
   // and refresh itself.
   window.dispatchEvent(new CustomEvent('kir:lang-changed', { detail: { lang } }));
+
+  kirRevealPage();
+}
+
+// Every page's body is hidden by default (see the `html:not(.kir-ready)
+// body { visibility: hidden }` rule in style.css) so it never paints the
+// hardcoded Indonesian default text, or Tailwind-CDN-unstyled icons at
+// their raw intrinsic size, before this runs. This is the same "apply
+// before paint" idea as applyThemeImmediately() above, just finished
+// here instead, since translating [data-i18n] elements needs them to
+// actually exist in the DOM first, which theme attributes don't.
+//
+// Double rAF, not single: Tailwind's CDN runtime compiles utility CSS
+// for newly-parsed markup asynchronously via a MutationObserver, not
+// synchronously with the parse itself (see router.js's syncOrbit/
+// nav-pill comments for the same underlying fact). One rAF only
+// guarantees we're past the current paint; the Tailwind compile can
+// still land a frame later than that. Two rAFs reliably lands after it,
+// so w-4/h-4-etc. sizing is already generated the first time the page
+// is actually shown, instead of revealing one frame too early and
+// swapping the flash for a same visible pop, just one frame later.
+function kirRevealPage() {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.documentElement.classList.add('kir-ready');
+  }));
 }
 
 /* ----------------------------------------------------------
@@ -1906,6 +1931,21 @@ function kirApplyTranslations() {
   kirApplyPageTitle();
   kirApplyBrandAssets();
 })();
+
+// Safety net for kirRevealPage(): most pages reach it via
+// kirApplyTranslations() (called either directly, inline near the end of
+// <body>, or indirectly through kirInjectSidebar()) — but a page like
+// auth.html has no [data-i18n] content and calls neither, so it would
+// otherwise never get `.kir-ready` and stay hidden behind the CSS rule
+// in style.css forever. `load` fires only after every resource on the
+// page (fonts, the Tailwind CDN script, images, etc.) has finished, so
+// by then it's always safe to reveal regardless of which path got us
+// here. Harmless to also fire on pages that already revealed themselves
+// earlier via kirApplyTranslations() — classList.add() on a class that's
+// already there is a no-op.
+window.addEventListener('load', () => {
+  if (!document.documentElement.classList.contains('kir-ready')) kirRevealPage();
+});
 
 /* ----------------------------------------------------------
    Session
