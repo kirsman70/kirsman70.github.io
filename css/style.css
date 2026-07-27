@@ -809,13 +809,13 @@ html.kir-mobile-nav-open {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.font-display { font-family: 'Space Grotesk', sans-serif; }
+.font-display { font-family: 'Bricolage Grotesque', sans-serif; }
 
 /* Fixed, viewport-clipped layer the glow blobs live in. Pure decoration:
    `position: fixed` + `inset: 0` locks this to the exact viewport box
@@ -994,12 +994,30 @@ body {
 }
 .kir-select-option.disabled:hover { background: transparent; }
 
-/* Multi-select variant — checkbox rows that stay open across picks */
+/* Multi-select variant — checkbox rows that stay open across picks.
+   Unlike the single-select variant above, the row itself never gets
+   a hover/selected background or bold text here — only
+   .kir-select-checkbox is allowed to visibly react (border on hover,
+   filled + checkmark once picked), so these two rules cancel out the
+   single-select `.kir-select-option:hover`/`.selected` styling
+   specifically for `.multi` rows. Both are one class more specific
+   than the rules they're overriding, so this wins regardless of
+   source order. Applies to every kirRefreshMultiSelect() dropdown in
+   the app — there's nothing page-specific about it. */
+.kir-select-option.multi:hover { background: transparent; }
+.kir-select-option.multi.selected {
+  background: transparent; color: var(--text-color); font-weight: 400;
+}
 .kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
 .kir-select-option.multi > span:last-child { min-width: 0; overflow-wrap: break-word; }
+/* display:flex centering (rather than the checkmark's ::after
+   hardcoding its own left/top offsets) keeps the checkmark centered
+   automatically no matter what — box size, border width, etc. all
+   stay in sync without re-deriving magic-number offsets by hand. */
 .kir-select-checkbox {
   width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0;
-  border: 1.5px solid var(--glass-border); position: relative;
+  border: 1.5px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .kir-select-option.multi:hover .kir-select-checkbox { border-color: rgba(var(--accent-rgb), 0.5); }
@@ -1007,7 +1025,7 @@ body {
   background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); transform: scale(1.05);
 }
 .kir-select-option.multi.selected .kir-select-checkbox::after {
-  content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+  content: ''; width: 4px; height: 8px;
   border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
 
@@ -1079,7 +1097,7 @@ body {
 }
 .kir-month-cal-title-group { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; }
 .kir-month-cal-title {
-  font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.15rem;
+  font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 1.15rem;
   text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kir-month-cal-nav { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
@@ -1239,7 +1257,7 @@ body {
 .kir-day-popover.kir-popover-open { opacity: 1; transform: scale(1) translateY(0); }
 
 .kir-day-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
-.kir-day-panel-date { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.95rem; text-transform: capitalize; }
+.kir-day-panel-date { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 0.95rem; text-transform: capitalize; }
 .kir-day-event-row {
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
   padding: 0.85rem 0.95rem; border-radius: 0.75rem;
@@ -1626,6 +1644,145 @@ html[data-disable-branch-color="true"] .badge-sains {
 .modal-overlay.expedition-active #vm-close-btn { display: none; }
 
 /* ==========================================================
+   Material viewer (#cmm-modal) — Google Drive/Docs-style
+   document preview instead of the usual centered dialog card:
+   a slim utility toolbar pinned to the top, and the material
+   itself rendered as a single opaque, A4-proportioned "page"
+   below it. The page is solid (var(--bg-color), not the app's
+   usual translucent glass) so content is always readable
+   regardless of what's behind the modal, and it keeps real A4
+   proportions (210:297) no matter how much or little content it
+   holds — content longer than one page scrolls inside the page
+   itself rather than stretching its shape.
+   Reuses .modal-overlay for the backdrop blur/fade + the
+   existing modal-open/modal-closing lifecycle from
+   kirLocalModalShow/Hide — only .modal-card is swapped out for
+   .cmm-viewer-card, which fills the whole viewport instead of
+   sizing to content. */
+.modal-overlay.cmm-viewer { padding: 0; }
+.cmm-viewer-card {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  /* Transparent on purpose — the overlay's own background/blur
+     (see .modal-overlay above) is what's visible here. Only the
+     toolbar (opaque, for legibility) and the page itself paint
+     over it. */
+  background: transparent;
+  opacity: 0; transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.modal-overlay.cmm-viewer.modal-open .cmm-viewer-card { opacity: 1; transform: scale(1); }
+
+.cmm-viewer-toolbar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--bg-color);
+}
+/* Logo, title, extension chip and duration all sit in one row —
+   title is the only flexible/truncating piece so the ext + duration
+   (and the info button after them) never get pushed off-screen by a
+   long material name. */
+.cmm-viewer-toolbar-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1 1 auto; }
+.cmm-viewer-title { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmm-viewer-duration { flex-shrink: 0; font-size: 0.78rem; color: var(--muted-500); }
+/* Ext as a small badge (e.g. "PDF") rather than plain text — same
+   file-type-chip idea Drive uses next to a document's name. */
+.cmm-viewer-ext {
+  flex-shrink: 0; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--muted-500); background: var(--glass-bg);
+  border: 1px solid var(--glass-border); border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem; text-transform: uppercase;
+}
+.cmm-viewer-toolbar-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+/* Thin separator before Tutup, same idea as Drive splitting its
+   document-utility icons from the trailing close/account cluster. */
+.cmm-viewer-toolbar-actions::before {
+  content: ''; width: 1px; align-self: stretch; margin: 0.2rem 0.2rem 0.2rem 0;
+  background: var(--glass-border);
+}
+
+.cmm-viewer-icon-btn {
+  width: 2.25rem; height: 2.25rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 0.5rem; color: var(--muted-500);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cmm-viewer-icon-btn:hover { background: var(--glass-bg); color: var(--text-color); }
+.cmm-viewer-icon-btn svg { width: 1.15rem; height: 1.15rem; }
+
+/* Mark-as-done, reduced from a labeled pill to a single check glyph —
+   still kept as the one accent-colored action in the toolbar (a plain
+   muted icon would read as just another utility button, like Tutup) so
+   it's still readable at a glance as *the* primary action here. */
+.cmm-viewer-finish-btn {
+  color: #fff; background-image: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%);
+}
+.cmm-viewer-finish-btn:hover { color: #fff; filter: brightness(1.1); }
+
+.cmm-viewer-stage {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 2rem 1rem 3rem;
+}
+
+/* The page itself is a solid, opaque surface — not the app's usual
+   translucent glass — same reasoning Drive/Docs uses for its page:
+   whatever's scrolled behind the toolbar (the blurred backdrop) should
+   never show through the content you're actually reading. It's still
+   themed via var(--bg-color) rather than a literal white sheet, so it
+   follows light/dark mode like the rest of the app.
+   aspect-ratio locks it to real A4 proportions (210:297) so it reads as
+   an actual sheet of paper rather than an arbitrary box that happens to
+   fill the modal — same shape regardless of how much/little the material
+   actually contains. Content longer than one A4-height scrolls *inside*
+   the page itself (overflow-y here, not just on .cmm-viewer-stage), the
+   way a real single-page document viewer behaves — the page's outline
+   never stretches to chase its content. */
+.cmm-viewer-page {
+  width: 100%; max-width: 44rem; aspect-ratio: 210 / 297;
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -4px rgba(0,0,0,0.3);
+  overflow-y: auto; overflow-x: hidden;
+}
+.cmm-viewer-page-inner { padding: 2rem 2.25rem; }
+
+/* Document pages need the iframe to fill the whole page height —
+   there's no separate padded "inner" wrapper for this variant, the
+   iframe IS the page. The embedded preview (PDF/Docs) already renders
+   its own A4-shaped page internally, so this variant drops the A4
+   aspect-ratio lock in favor of a tall, freely-sized frame — locking
+   it too would just crop or letterbox the iframe's own page. */
+.cmm-viewer-page.cmm-page-document { aspect-ratio: auto; min-height: 75vh; display: flex; overflow: hidden; }
+.cmm-viewer-doc-frame { flex: 1 1 auto; width: 100%; border: 0; min-height: 75vh; }
+
+/* Video keeps a plain black letterboxed look instead of the glass
+   tint — a translucent/blurred background would look wrong behind
+   a video. Its own 16:9 ratio (set on .cmm-viewer-video-inner) replaces
+   the base A4 ratio, since a video pretending to be a sheet of paper
+   would look wrong. */
+.cmm-viewer-page.cmm-page-video { aspect-ratio: auto; max-width: 64rem; background: #000; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(255,255,255,0.08); overflow: hidden; }
+.cmm-viewer-video-inner { aspect-ratio: 16 / 9; width: 100%; }
+
+.cmm-viewer-page.cmm-page-empty { display: flex; align-items: center; justify-content: center; }
+
+/* .hidden alone (specificity 0,1,0) loses to the more specific
+   .cmm-viewer-page.cmm-page-* display overrides above (0,2,0), so
+   without this the document/video/empty panes stayed visible even
+   while "hidden" — all three panes rendering stacked side by side
+   at once. This rule needs to out-specify all of them. */
+.cmm-viewer-stage .cmm-viewer-page.hidden { display: none; }
+
+@media (max-width: 640px) {
+  .cmm-viewer-stage { padding: 1rem 0.5rem 2rem; }
+  .cmm-viewer-page-inner { padding: 1.25rem 1.25rem; }
+}
+
+/* ==========================================================
    Public marketing nav — shared by index.html, gallery.html,
    program-kerja.html (guest-facing pages, no sidebar/app-shell).
    ========================================================== */
@@ -1793,7 +1950,7 @@ html[data-disable-branch-color="true"] .badge-sains {
   position: relative;
 }
 .proker-index {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   color: rgb(var(--accent-light-rgb));
@@ -1844,6 +2001,10 @@ html[data-disable-branch-color="true"] .badge-sains {
 .item-thumb-slot img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
+.item-thumb-slot svg {
+  width: 100%; height: 100%; display: block;
+  transform: translateX(7%);
+}
 .item-thumb-slot::after {
   content: '';
   position: absolute; inset: 0;
@@ -1860,6 +2021,37 @@ html[data-theme="light"] .item-thumb-slot::after {
   width: 57.5%;
   min-width: 120px;
   max-width: 250px;
+}
+
+/* Dotted-grid variant — course.html's catalog cards, where the
+   thumbnail is a course_nodes/course_edges SVG snapshot (not a
+   photo), so the empty space around the graph reads as a blank
+   void without it. Same dot pattern as the workspace canvas itself
+   (#chart-viewport in workspace.html), just reused here so a
+   card's preview looks like a miniature of the real thing. */
+.item-thumb-slot-dotted {
+  background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+html[data-theme="light"] .item-thumb-slot-dotted {
+  background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+}
+
+/* Course detail modal — snapshot preview box. Same node-graph SVG as
+   the catalog card's .item-thumb-slot, just laid out full-width/
+   in-flow instead of clipped into a corner, since the modal has room
+   to show it properly. Pairs with .item-thumb-slot-dotted for the
+   same dot-grid backdrop as the catalog cards. */
+.course-modal-thumb {
+  position: relative;
+  width: 100%;
+  height: 9rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.course-modal-thumb svg {
+  width: 100%; height: 100%; display: block;
 }
 
 /* ==========================================================
@@ -1933,14 +2125,45 @@ html[data-theme="light"] .item-thumb-slot::after {
 }
 
 .subject-badge {
-  display: inline-flex; align-items: center; font-size: 0.68rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 600;
   padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid var(--glass-border);
   color: var(--muted-500); background: rgba(128,128,128,0.08);
+  white-space: nowrap; flex-shrink: 0;
 }
 .type-pill {
   display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem;
   color: var(--muted-500);
 }
+
+/* Course like/dislike reactions (course.html, courseReactionHtml()).
+   .reaction-btn is the catalog card's standalone pill; .reaction-btn-plain
+   is the same button stripped of the pill chrome for the modal, where it
+   sits next to the "Ambil Kursus" button instead of anchoring a corner
+   on its own. Icons are sized down and given a fixed line-height (instead
+   of the raw 24x24 stroke SVGs the browser was rendering at native size
+   with default button chrome) so the count sits snug next to its icon
+   instead of trailing off grey to the side. */
+.reaction-btn, .reaction-btn-plain {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.72rem; font-weight: 600; line-height: 1;
+  color: var(--muted-500); background: none; border: none; cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.reaction-btn svg, .reaction-btn-plain svg {
+  width: 14px; height: 14px; flex-shrink: 0;
+}
+.reaction-btn {
+  padding: 0.32rem 0.55rem; border-radius: 999px;
+  border: 1px solid var(--glass-border); background: rgba(128,128,128,0.08);
+}
+.reaction-btn:hover { color: var(--text-color); background: rgba(128,128,128,0.14); }
+.reaction-btn-plain:hover { color: var(--text-color); }
+.reaction-btn:disabled, .reaction-btn-plain:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.reaction-btn.active-like, .reaction-btn-plain.active-like { color: rgb(34, 197, 94); }
+.reaction-btn.active-like { border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.12); }
+.reaction-btn.active-dislike, .reaction-btn-plain.active-dislike { color: rgb(239, 68, 68); }
+.reaction-btn.active-dislike { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.12); }
 
 #vm-submit-btn:disabled {
   background-image: none;
@@ -2026,7 +2249,7 @@ html[data-theme="light"] .item-thumb-slot::after {
   position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
   width: 28px; height: 28px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.7rem;
+  font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 0.7rem;
   border: 2px solid var(--bg-color);
 }
 .podium-crown {
@@ -2037,7 +2260,7 @@ html[data-theme="light"] .item-thumb-slot::after {
 .podium-avatar {
   width: 3.25rem; height: 3.25rem; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 600; font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600; font-family: 'Bricolage Grotesque', sans-serif;
   margin-bottom: 0.65rem; border: 2px solid var(--bg-color); flex-shrink: 0;
 }
 .rank-1 .podium-avatar { width: 4rem; height: 4rem; box-shadow: 0 0 24px -4px rgba(var(--accent-rgb), 0.7); }
@@ -2158,19 +2381,50 @@ html[data-theme="light"] .item-thumb-slot::after {
   border-top: 1px solid var(--glass-border);
 }
 
+/* Course detail modal's main column (course.html) — mirrors the
+   comment column right next to it: .course-modal-body is a flex
+   column stretched to the same height as .comment-panel-inner (both
+   are the sole flex child of their .modal-split-* parent, so the
+   shared row's default align-items:stretch already equalizes their
+   heights — see .modal-card-split above). The description box is the
+   only flexible child, so it's what absorbs/scrolls extra content;
+   the take-button/reactions row is shrink-0 and therefore always
+   lands exactly at the column's bottom edge, level with the comment
+   composer. Scoped to #course-modal rather than touching the shared
+   .modal-split-main/.p-6 rules, since Voyages/Tasks reuse the same
+   split-modal classes without this internal flex structure. */
+#course-modal .modal-split-main {
+  display: flex;
+  overflow: hidden;
+}
+#course-modal .course-modal-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+#course-modal .course-modal-desc-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+#course-modal .course-modal-actions {
+  flex-shrink: 0;
+}
+
 /* ==========================================================
    Comments — shared mini widget on Tasks + Voyages modals
    ========================================================== */
 .comment-list { max-height: 15rem; overflow-y: auto; }
 .comment-item {
+  position: relative;
   display: flex; align-items: flex-start; gap: 0.6rem;
-  padding: 0.6rem 0; border-bottom: 1px solid var(--glass-border);
+  padding: 0.6rem 0;
 }
-.comment-item:last-child { border-bottom: none; }
 .comment-avatar {
   width: 1.75rem; height: 1.75rem; border-radius: 999px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.68rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif; color: #fff;
+  font-size: 0.68rem; font-weight: 600; font-family: 'Bricolage Grotesque', sans-serif; color: #fff;
 }
 .comment-author { font-size: 0.78rem; font-weight: 600; color: var(--text-color); }
 .comment-time { font-size: 0.68rem; color: var(--muted-500); }
@@ -2202,11 +2456,63 @@ html[data-theme="light"] .item-thumb-slot::after {
 .comment-reply-composer { margin-top: 0.6rem; }
 
 .comment-replies {
-  margin-left: 2.35rem; margin-top: 0.15rem;
-  padding-left: 0.75rem; border-left: 1px solid var(--glass-border);
+  position: relative;
+  margin-top: 0.15rem;
+  padding-left: 2.375rem;
 }
-.comment-item-reply { padding: 0.5rem 0; }
+
+.comment-replies .comment-replies {
+  padding-left: 2.2rem;
+}
+
+.comment-thread-group {
+  position: relative;
+}
+
+.comment-item-reply {
+  position: relative;
+  padding: 0.5rem 0;
+}
+
 .comment-item-reply .comment-avatar { width: 1.4rem; height: 1.4rem; font-size: 0.6rem; }
+
+/* Segment 1: The Elbow (from the top of the branch group down to the avatar) */
+.comment-thread-group > .comment-item-reply::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 0;
+  width: 1.5rem;
+  height: 1.2rem;
+  border-left: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* Segment 2: The Trunk (from the elbow down to the bottom of the entire branch) */
+.comment-thread-group:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 1.2rem;
+  bottom: 0;
+  border-left: 1px solid var(--glass-border);
+}
+
+/* Connector from parent avatar down to the first reply */
+.comment-thread-connector {
+  position: absolute;
+  left: 0.875rem;
+  top: 2.35rem;
+  bottom: -0.15rem;
+  border-left: 1px solid var(--glass-border);
+}
+
+/* Connector from reply avatar down to nested replies */
+.comment-item-reply .comment-thread-connector {
+  left: 0.7rem;
+  top: 1.9rem;
+}
 
 .comment-attach-btn {
   display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem;
@@ -2235,7 +2541,7 @@ html[data-theme="light"] .item-thumb-slot::after {
   background: rgba(var(--accent-rgb), 0.08);
 }
 .leaderboard-rank-num {
-  width: 1.75rem; text-align: center; font-family: 'Space Grotesk', sans-serif;
+  width: 1.75rem; text-align: center; font-family: 'Bricolage Grotesque', sans-serif;
   font-weight: 600; color: var(--muted-500); font-size: 0.9rem; flex-shrink: 0;
 }
 .leaderboard-rank-num.rank-badge-1,
@@ -2729,7 +3035,7 @@ html[data-theme="light"] .item-thumb-slot::after {
 .kir-markdown li { margin: 0.25em 0; }
 .kir-markdown li > ul, .kir-markdown li > ol { margin: 0.25em 0; }
 .kir-markdown h1, .kir-markdown h2, .kir-markdown h3, .kir-markdown h4 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Bricolage Grotesque', sans-serif;
   font-weight: 600;
   color: var(--text-color);
   margin: 0.9em 0 0.4em;
@@ -2786,3 +3092,12 @@ html[data-theme="light"] .item-thumb-slot::after {
    MathJax's real stylesheet cascades normally, uncontested. */
 .kir-markdown-clamp,
 .kir-markdown-clamp *:not(mjx-container, mjx-container *) { display: inline; }
+
+/* Create a cutout halo effect around diagram text to prevent line overlap */
+.kir-diagram text {
+  paint-order: stroke fill !important;
+  stroke: var(--bg-color) !important;
+  stroke-width: 6px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
