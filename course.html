@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kursus</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script src="js/admin-shared.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/tailwind-output.css">
+<link rel="stylesheet" href="css/admin-shared.css">
+
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-layer">
+  <div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+  <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+  <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+</div>
+
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 shrink-0 flex items-center justify-center">
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-7 h-7 object-contain" />
+      </div>
+      <span class="font-display font-semibold tracking-wider text-gradient-accent">orbit.io</span>
+    </a>
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <!-- Catalog of enrollable courses — split out from workspace.html
+         (formerly course.html), which used to render this same browse/
+         search/filter grid as the "Ganti Kursus" modal. Here it's the
+         whole page: picking a card enrolls the member
+         (pickCourseFromCatalog -> kirEnrollInCourse) right here — the
+         button just grays out to "Kursus Diambil" — and the actual course
+         graph/progress still lives in workspace.html, opened separately
+         via the sidebar. -->
+    <div class="mb-7">
+      <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="course">Kursus</h1>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="course_catalog_desc">Kursus yang tersedia untuk diikuti anggota ekstrakurikuler.</p>
+    </div>
+
+    <div class="relative mb-4">
+      <input type="text" id="course-catalog-search-input" data-i18n-placeholder="course_catalog_search" placeholder="Cari kursus…" class="glass-input w-full rounded-lg pl-10 pr-9 py-3 text-sm" />
+      <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <button type="button" id="course-catalog-search-input-clear" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Clear search">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+      <div class="w-full sm:w-[10rem] shrink-0">
+        <label class="block text-xs font-medium text-zinc-400 mb-2 tracking-wide" data-i18n="voyages_filter_subject_label">SUBJEK</label>
+        <select id="course-catalog-subject-select" multiple class="hidden">
+          <option value="__all__" selected data-i18n="voyages_filter_all">Semua</option>
+          <option value="math" selected data-i18n="voyages_filter_math">Matematika</option>
+          <option value="physics" selected data-i18n="voyages_filter_physics">Fisika</option>
+          <option value="chemistry" selected data-i18n="voyages_filter_chemistry">Kimia</option>
+          <option value="biology" selected data-i18n="voyages_filter_biology">Biologi</option>
+          <option value="informatika" selected data-i18n="voyages_filter_informatika">Informatika</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 overflow-x-auto">
+        <button onclick="toggleCourseCatalogCabangFilter('robotik')" id="course-catalog-filter-robotik" class="px-3.5 py-2.5 text-sm font-medium rounded-lg badge-robotik transition" data-i18n="robotik">Robotik</button>
+        <button onclick="toggleCourseCatalogCabangFilter('sains')" id="course-catalog-filter-sains" class="px-3.5 py-2.5 text-sm font-medium rounded-lg badge-sains transition" data-i18n="sains">Sains</button>
+      </div>
+    </div>
+
+    <div id="course-catalog-grid" class="grid sm:grid-cols-2 gap-4"><!-- filled by script --></div>
+  </main>
+</div>
+
+<!-- Course detail modal — clicking a catalog card opens this instead of
+     enrolling right away, so members can see what a course is about
+     (and read/leave comments on it) before committing. Same split
+     layout (info left, comments right) as voyages.html's voyage-modal;
+     see .modal-card-split / .modal-split-main / .modal-split-comments
+     in css/style.css, which this reuses as-is. Actually enrolling still
+     goes through pickCourseFromCatalog(), same as the card's own
+     "Ambil Kursus" button. -->
+<div id="course-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeCourseDetailModal()">
+  <div class="modal-card modal-card-split p-0">
+    <div class="modal-split-main">
+      <div class="p-6 course-modal-body">
+        <div class="flex items-start justify-between gap-4 mb-2">
+          <h2 id="cm-title" class="font-display text-lg font-semibold"></h2>
+          <button onclick="closeCourseDetailModal()" class="text-zinc-500 hover:text-zinc-300 p-1 shrink-0 -mt-1 -mr-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap mb-5">
+          <span id="cm-cabang-badge" class="subject-badge"></span>
+          <span id="cm-subject-badge" class="subject-badge hidden"></span>
+        </div>
+
+        <div id="cm-thumb-wrap" class="mb-5 hidden">
+          <div id="cm-thumb" class="course-modal-thumb item-thumb-slot-dotted"></div>
+        </div>
+
+        <!-- Fills whatever's left of the column's height (which always
+             matches the comments column's height, see the split-modal
+             stretch rules in css/style.css) and scrolls internally once
+             the description is too long for that, instead of pushing
+             the actions row below it further down the page. -->
+        <div class="glass rounded-lg p-4 mb-4 course-modal-desc-box">
+          <p id="cm-desc-label" class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5" data-i18n="course_modal_desc">Deskripsi Kursus</p>
+          <p id="cm-description" class="text-sm text-zinc-300 leading-relaxed"></p>
+        </div>
+
+        <!-- Pinned to the bottom of the column, level with the comment
+             composer on the right (both columns share the same
+             stretched height, and both end in a shrink-0 bottom bar
+             like this one — see .comment-panel-inner .comment-composer). -->
+        <div class="flex items-center gap-3 course-modal-actions">
+          <button id="cm-take-btn" onclick="pickCourseFromCatalog(currentCourseModalId)" class="px-5 py-1.5 rounded-lg font-semibold text-xs text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="course_take">Ambil Kursus</button>
+          <div id="cm-reactions" class="flex items-center gap-2"><!-- filled by renderCourseModalReactions --></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-split-comments">
+      <div id="course-comments-root" class="comment-panel-inner"><!-- filled by kirRenderCommentSection --></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ----------------------------------------------------------
+     Course catalog — lists everything in `resources` that has a
+     resource_url (i.e. is actually pickable as a course), same
+     source/filter behavior the "Ganti Kursus" modal used to have
+     in workspace.html. Picking a card enrolls the member and hands
+     off to workspace.html, which loads whatever their most-recently-
+     touched enrollment is.
+     ---------------------------------------------------------- */
+  const KIR_LAST_COURSE_KEY = 'kir_last_course_id';
+
+  let COURSE_CATALOG_RESOURCES = [];
+  // Which courses (keyed by resource_url, same id course_enrollments.course_id
+  // uses — see kirEnrollInCourse) the logged-in member already has an
+  // enrollment row for. Drives the "Ambil Kursus" -> "Kursus Diambil"
+  // grayed-out state on both the card and the modal, so a course that's
+  // already been taken doesn't invite re-enrolling.
+  const COURSE_ENROLLED_IDS = new Set();
+  let COURSE_CATALOG_SEARCH = '';
+  const COURSE_CATALOG_CABANG_FILTERS = new Set(['robotik', 'sains']);
+  // Which course the detail modal is currently showing — read by
+  // cm-take-btn's onclick so "Ambil Kursus" inside the modal enrolls
+  // in whatever's open without needing the id threaded through again.
+  let currentCourseModalId = null;
+
+  /* ---------- Subject tagging + filter ----------
+     Courses reuse the same subject taxonomy voyages.html uses
+     (resources.subject, see migration_course_reactions_and_subject.sql).
+     A course with no subject set yet always matches the filter — see
+     the `!m.subject ||` check in renderCourseCatalogGrid — so nothing
+     already in the catalog silently disappears just because it
+     hasn't been tagged. */
+  const COURSE_SUBJECT_VALUES = ['math', 'physics', 'chemistry', 'biology', 'informatika'];
+  const COURSE_SUBJECT_META = {
+    math:        { i18n: 'voyages_filter_math', icon: '∑' },
+    physics:     { i18n: 'voyages_filter_physics', icon: '⚛' },
+    chemistry:   { i18n: 'voyages_filter_chemistry', icon: '◇' },
+    biology:     { i18n: 'voyages_filter_biology', icon: '◈' },
+    informatika: { i18n: 'voyages_filter_informatika', icon: '⌘' },
+  };
+  let COURSE_CATALOG_SUBJECT_FILTERS = new Set(COURSE_SUBJECT_VALUES);
+
+  function courseSubjectBadgeHtml(subject, lang) {
+    const meta = COURSE_SUBJECT_META[subject];
+    if (!meta) return '';
+    return `<span class="subject-badge">${meta.icon} ${kirEscapeHtml(I18N[lang][meta.i18n])}</span>`;
+  }
+
+  /* ---------- Like / dislike ----------
+     COURSE_REACTIONS is keyed by course id (resources.id, same id
+     used for comments/the detail modal) -> { likes, dislikes, mine }.
+     Populated in one batched RPC call per catalog load
+     (fetchCourseReactions, mirroring fetchCourseSnapshots' batching),
+     and kept in sync locally after every toggle so re-rendering the
+     grid never needs to re-fetch. Both the card and the modal render
+     from — and write back into — this same cache, so liking from
+     either place instantly updates the other. */
+  const COURSE_REACTIONS = {};
+
+  const COURSE_REACTION_ICONS = {
+    like: '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3v11z" /></svg>',
+    dislike: '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zm7-13h3a2 2 0 012 2v7a2 2 0 01-2 2h-3V2z" /></svg>'
+  };
+
+  // plain=true drops the rounded pill chrome (background/border) and just
+  // leaves icon + count, for the modal — where the reactions sit next to
+  // the "Ambil Kursus" button rather than as a standalone control. Catalog
+  // cards keep the pill look (plain=false, the default) since there they're
+  // the only thing anchoring that corner of the card.
+  function courseReactionHtml(courseId, plain) {
+    const r = COURSE_REACTIONS[courseId] || { likes: 0, dislikes: 0, mine: null };
+    const btnClass = plain ? 'reaction-btn-plain' : 'reaction-btn';
+    return `
+      <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+        <button type="button" onclick="handleCourseReactionClick(event, '${courseId}', 'like')" data-course-reaction-btn="${courseId}-like" aria-pressed="${r.mine === 'like'}" class="${btnClass}${r.mine === 'like' ? ' active-like' : ''}">
+          ${COURSE_REACTION_ICONS.like}
+          <span data-course-reaction-count="${courseId}-like">${r.likes}</span>
+        </button>
+        <button type="button" onclick="handleCourseReactionClick(event, '${courseId}', 'dislike')" data-course-reaction-btn="${courseId}-dislike" aria-pressed="${r.mine === 'dislike'}" class="${btnClass}${r.mine === 'dislike' ? ' active-dislike' : ''}">
+          ${COURSE_REACTION_ICONS.dislike}
+          <span data-course-reaction-count="${courseId}-dislike">${r.dislikes}</span>
+        </button>
+      </div>`;
+  }
+
+  // "72% suka · 28% tidak suka" line under the modal's reaction buttons.
+  // Only ever computed from the two counts already in COURSE_REACTIONS,
+  // so it stays in sync with updateCourseReactionButtons() automatically
+  // as long as callers re-render it after every reaction toggle.
+  function courseReactionRatioHtml(courseId, lang) {
+    const r = COURSE_REACTIONS[courseId] || { likes: 0, dislikes: 0, mine: null };
+    const total = r.likes + r.dislikes;
+    if (!total) return lang === 'id' ? 'Belum ada rating' : 'No ratings yet';
+    const likePct = Math.round((r.likes / total) * 100);
+    const dislikePct = 100 - likePct;
+    return `${likePct}% 👍 &nbsp;·&nbsp; ${dislikePct}% 👎`;
+  }
+
+  // Batched like fetchCourseSnapshots(): one RPC call for every course
+  // in the catalog instead of one per card. A course just shows 0/0
+  // (and no active state) if this fails, rather than breaking the
+  // catalog entirely.
+  async function fetchCourseReactions() {
+    const courseIds = COURSE_CATALOG_RESOURCES.map(r => r.id);
+    if (!courseIds.length) return;
+    const { data, error } = await supabaseClient.rpc('get_course_reaction_summary', { p_course_ids: courseIds });
+    if (error) { console.error('Error fetching course reactions:', error); return; }
+    (data || []).forEach(row => {
+      COURSE_REACTIONS[row.course_id] = { likes: row.likes || 0, dislikes: row.dislikes || 0, mine: row.my_reaction || null };
+    });
+  }
+
+  // Toggles the logged-in member's own like/dislike on a course via
+  // toggle_course_reaction() (see migration) and repaints every
+  // matching button on the page — the card AND the modal both carry
+  // data-course-reaction-btn="<id>-<kind>", so a like cast from the
+  // modal is reflected on its card underneath immediately, and vice
+  // versa, without a full grid re-render.
+  async function handleCourseReactionClick(event, courseId, reaction) {
+    if (event) event.stopPropagation();
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData?.user) return;
+
+    const btns = document.querySelectorAll(`[data-course-reaction-btn="${courseId}-like"], [data-course-reaction-btn="${courseId}-dislike"]`);
+    btns.forEach(b => b.disabled = true);
+
+    const { data, error } = await supabaseClient.rpc('toggle_course_reaction', {
+      p_course_id: courseId, p_reaction: reaction
+    });
+
+    if (error) {
+      console.error('Error toggling course reaction:', error);
+      btns.forEach(b => b.disabled = false);
+      return;
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+    COURSE_REACTIONS[courseId] = {
+      likes: result?.likes || 0,
+      dislikes: result?.dislikes || 0,
+      mine: result?.my_reaction || null
+    };
+    updateCourseReactionButtons(courseId);
+  }
+
+  function updateCourseReactionButtons(courseId) {
+    const r = COURSE_REACTIONS[courseId] || { likes: 0, dislikes: 0, mine: null };
+    ['like', 'dislike'].forEach(kind => {
+      document.querySelectorAll(`[data-course-reaction-btn="${courseId}-${kind}"]`).forEach(btn => {
+        btn.classList.toggle('active-' + kind, r.mine === kind);
+        btn.setAttribute('aria-pressed', String(r.mine === kind));
+        btn.disabled = false;
+      });
+      document.querySelectorAll(`[data-course-reaction-count="${courseId}-${kind}"]`).forEach(el => {
+        el.textContent = kind === 'like' ? r.likes : r.dislikes;
+      });
+    });
+    if (currentCourseModalId === courseId) renderCourseModalReactionRatio(courseId);
+  }
+
+  function renderCourseModalReactions(id) {
+    const container = document.getElementById('cm-reactions');
+    if (container) container.innerHTML = courseReactionHtml(id, true);
+    renderCourseModalReactionRatio(id);
+  }
+
+  function renderCourseModalReactionRatio(id) {
+    const el = document.getElementById('cm-reactions-ratio');
+    if (!el) return;
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    el.innerHTML = courseReactionRatioHtml(id, lang);
+  }
+
+  /* ---------- Node-graph snapshot thumbnails ----------
+     Courses don't have an uploaded cover image, so each catalog
+     card's diagonal-cut thumbnail (.item-thumb-slot, style.css) is
+     instead a tiny, textless render of that course's own node graph:
+     same shapes/branches/layout workspace.html actually draws when
+     you open the course (see courseNodeColor/computeCourseLayout
+     there), just shrunk down and always shown "finished" — full
+     shading, no lock overlays, since this is what it'll look like once
+     you've done it, not where you currently are.
+     Rendered as plain neutral gray (courseSnapshotAccentShade forces
+     saturation to 0) rather than the viewer's live --accent-rgb, so
+     the catalog reads the same regardless of cabang — lightness alone
+     (still varying per node type/sweep, same recipe as before) is what
+     tells node types apart here. Populated once per catalog load into
+     COURSE_SNAPSHOTS, keyed by course id (== resource.resource_url). */
+  const COURSE_SNAPSHOTS = {};
+
+  function courseSnapshotAccentRgb() {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb') || '';
+    const parts = raw.split(',').map(n => parseInt(n.trim(), 10));
+    if (parts.length === 3 && parts.every(n => Number.isFinite(n))) return { r: parts[0], g: parts[1], b: parts[2] };
+    return { r: 139, g: 92, b: 246 }; // fallback: violet, matches data-cabang="both"
+  }
+  function courseSnapshotRgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4;
+      }
+      h *= 60;
+    }
+    return { h, s: s * 100, l: l * 100 };
+  }
+  function courseSnapshotHslToHex(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(100, s)) / 100;
+    l = Math.max(0, Math.min(100, l)) / 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = v => Math.max(0, Math.min(255, Math.round(v * 255))).toString(16).padStart(2, '0');
+    return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+  }
+  // Same hue-offset/lightness recipe as COURSE_NODE_TYPES in
+  // workspace.html, so a node type reads as the same color there and here.
+  function courseSnapshotAccentShade(hueOffset, lightness, satOverride) {
+    const { r, g, b } = courseSnapshotAccentRgb();
+    const accent = courseSnapshotRgbToHsl(r, g, b);
+    // Previously followed the live --accent-rgb (branch color). Forced
+    // to 0 here so these preview thumbnails render as plain neutral
+    // gray — still distinguishable by lightness per node type/sweep —
+    // regardless of the viewer's cabang.
+    const sat = 0;
+    // Callers still pass their original 38–84 lightness values (tuned
+    // for a saturated accent color); remapped into a muted 15–50 band
+    // here so the grayscale result reads as quiet gray, not bright
+    // near-white shapes, while keeping the same relative gradation
+    // between node types/sweeps.
+    const mutedLightness = 15 + (lightness / 100) * 35;
+    return courseSnapshotHslToHex(accent.h + hueOffset, sat, mutedLightness);
+  }
+  function courseSnapshotHexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const int = parseInt(clean, 16);
+    return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
+  }
+  function courseSnapshotLerp(hexA, hexB, t) {
+    const a = courseSnapshotHexToRgb(hexA), b = courseSnapshotHexToRgb(hexB);
+    const toHex = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+    return '#' + toHex(a.r + (b.r - a.r) * t) + toHex(a.g + (b.g - a.g) * t) + toHex(a.b + (b.b - a.b) * t);
+  }
+
+  const COURSE_SNAPSHOT_TYPE_BASE = {
+    module: () => courseSnapshotAccentShade(-10, 62),
+    course: () => courseSnapshotAccentShade(0, 68),
+    default: () => courseSnapshotAccentShade(0, 58, 12)
+  };
+  // material/voyage_group/flag sweep pale -> deep across however many
+  // of that type the course has — exactly like courseNodeColor() does
+  // in workspace.html.
+  const COURSE_SNAPSHOT_SWEEPS = {
+    material: [() => courseSnapshotAccentShade(7, 84), () => courseSnapshotAccentShade(7, 38)],
+    voyage_group: [() => courseSnapshotAccentShade(15, 82), () => courseSnapshotAccentShade(15, 30)],
+    flag: [() => courseSnapshotAccentShade(-15, 82), () => courseSnapshotAccentShade(-15, 32)]
+  };
+  function courseSnapshotNodeColor(node, sameTypeNodes) {
+    const sweep = COURSE_SNAPSHOT_SWEEPS[node.type];
+    if (sweep) {
+      const idx = sameTypeNodes.indexOf(node);
+      const t = sameTypeNodes.length > 1 ? idx / Math.max(sameTypeNodes.length - 1, 4) : 0;
+      return courseSnapshotLerp(sweep[0](), sweep[1](), t);
+    }
+    return (COURSE_SNAPSHOT_TYPE_BASE[node.type] || COURSE_SNAPSHOT_TYPE_BASE.default)();
+  }
+
+  // Roughly the same width/height *ratios* as COURSE_NODE_WIDTHS /
+  // COURSE_NODE_EST_HEIGHT in workspace.html (course widest, module a
+  // slim chip, everything else a squarer card) — just scaled way down
+  // since this is a decorative thumbnail, not a real layout. Material/
+  // voyage_group/flag used to all fall through to the same "default"
+  // box, which is why materials and voyages rendered identically sized
+  // even though workspace.html gives voyage_group a noticeably wider
+  // card (270) than material/flag (240 each) — they now get their own
+  // entries, in that same ratio, instead of sharing one.
+  const COURSE_SNAPSHOT_SHAPE = {
+    course: { w: 46, h: 22 },
+    module: { w: 34, h: 10 },
+    material: { w: 27, h: 25 },
+    voyage_group: { w: 30, h: 25 },
+    flag: { w: 27, h: 25 },
+    default: { w: 27, h: 25 }
+  };
+  function courseSnapshotShape(type) {
+    return COURSE_SNAPSHOT_SHAPE[type] || COURSE_SNAPSHOT_SHAPE.default;
+  }
+
+  const COURSE_SNAPSHOT_UNIT_X = 30;
+  const COURSE_SNAPSHOT_UNIT_Y = 34;
+
+  // Simplified version of computeCourseLayout() in workspace.html:
+  // same idea (longest-path depth per main-chain node, branch nodes
+  // hang off their anchor instead of getting a row of their own),
+  // just without the sibling-grouping niceties — plenty for a
+  // thumbnail nobody's meant to read node-by-node.
+  function courseSnapshotLayout(nodes, edges) {
+    const mainEdges = edges.filter(e => !e.branch);
+    const branchEdges = edges.filter(e => e.branch);
+    const branchNodeIds = new Set(branchEdges.map(e => e.to));
+
+    const depths = {};
+    nodes.forEach(n => { if (!branchNodeIds.has(n.id)) depths[n.id] = 0; });
+    let changed = true, iterations = 0;
+    while (changed && iterations < nodes.length) {
+      changed = false;
+      mainEdges.forEach(e => {
+        if (depths[e.to] === undefined || depths[e.from] === undefined) return;
+        if (depths[e.to] < depths[e.from] + 1) { depths[e.to] = depths[e.from] + 1; changed = true; }
+      });
+      iterations++;
+    }
+
+    const layers = [];
+    Object.keys(depths).forEach(id => {
+      const d = depths[id];
+      (layers[d] = layers[d] || []).push(id);
+    });
+
+    const positions = {};
+    layers.forEach((layer, d) => {
+      layer.forEach((id, i) => { positions[id] = { x: i - (layer.length - 1) / 2, y: d }; });
+    });
+
+    // Branch nodes hang just off their anchor, to whichever side the
+    // edge says — averaged if more than one branch converges into it.
+    const branchAnchors = {};
+    branchEdges.forEach(e => {
+      const anchor = positions[e.from];
+      if (!anchor) return;
+      (branchAnchors[e.to] = branchAnchors[e.to] || []).push({ anchor, side: e.branch });
+    });
+    Object.keys(branchAnchors).forEach(id => {
+      const list = branchAnchors[id];
+      const avgX = list.reduce((sum, a) => sum + a.anchor.x, 0) / list.length;
+      const maxY = Math.max(...list.map(a => a.anchor.y));
+      const side = list[0].side === 'left' ? -1 : 1;
+      positions[id] = { x: avgX + side * 0.85, y: maxY + 0.6 };
+    });
+
+    return positions;
+  }
+
+  // Small per-node-type "signature" details, echoing the real card
+  // treatments in workspace.html (course-node-header, .course-module-chip,
+  // .course-material-foldcorner, the CTA pill, the flag notch) instead of
+  // a single flat-colored rect — see courseNodeCardHtml() there for the
+  // full-size versions these are shrunk-down nods to.
+  let COURSE_SNAPSHOT_CLIP_ID = 0;
+  // Registers a clipPath matching a node's own rounded-rect silhouette
+  // (rx = the same corner radius the node's base <rect> uses) and
+  // returns its id. Wrapping a decoration in <g clip-path="url(#id)">
+  // guarantees it can never render outside that node's shape — used
+  // below for the module's number chip and the material's fold-corner/
+  // spine, which previously had no clip at all and so could poke past
+  // the rounded/capsule corner they're tucked into.
+  function courseSnapshotClipId(x, y, shape, rx, defsArr) {
+    const f = v => v.toFixed(1);
+    const id = 'csClip' + (COURSE_SNAPSHOT_CLIP_ID++);
+    defsArr.push(`<clipPath id="${id}"><rect x="${f(x)}" y="${f(y)}" width="${f(shape.w)}" height="${f(shape.h)}" rx="${f(rx)}"/></clipPath>`);
+    return id;
+  }
+  function courseSnapshotNodeMarkup(type, cx, cy, shape, color, defsArr) {
+    const x = cx - shape.w / 2, y = cy - shape.h / 2;
+    const light = courseSnapshotLerp(color, '#ffffff', 0.4);
+    const dark = courseSnapshotLerp(color, '#000000', 0.45);
+    const f = v => v.toFixed(1);
+    // Same recipe as the real .course-node-inner shell in workspace.html:
+    // a translucent tinted fill (not a flat opaque one) plus a thin
+    // var(--glass-border) edge, so these thumbnails read as the same kind
+    // of glass card as the actual node graph, and follow light/dark theme
+    // automatically since --glass-border is a live CSS custom property.
+    const bodyOpacity = 0.62;
+    const borderStyle = 'stroke:var(--glass-border)';
+
+    // Course — hub node: rounded card with a lighter "header cap" strip,
+    // a small circular icon-badge dot, and a thin progress-bar hint.
+    if (type === 'course') {
+      const headerH = Math.max(shape.h * 0.42, 6);
+      return `
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="7" fill="${color}" fill-opacity="${bodyOpacity}"/>
+        <path d="M${f(x)} ${f(y + 7)} v0 a7,7 0 0 1 7,-7 h${f(shape.w - 14)} a7,7 0 0 1 7,7 v${f(headerH - 7)} h-${shape.w} Z" fill="${light}" fill-opacity="0.55"/>
+        <circle cx="${f(x + 8)}" cy="${f(y + headerH / 2)}" r="3" fill="${dark}" fill-opacity="0.55"/>
+        <rect x="${f(x + 6)}" y="${f(y + shape.h - 5)}" width="${f(shape.w - 12)}" height="2" rx="1" fill="${dark}" fill-opacity="0.4"/>
+        <rect x="${f(x + 6)}" y="${f(y + shape.h - 5)}" width="${f((shape.w - 12) * 0.6)}" height="2" rx="1" fill="${light}"/>
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="7" fill="none" style="${borderStyle}" stroke-width="0.8"/>`;
+    }
+    // Module — dashed pill outline (a divider, not content) with a
+    // filled "number chip" that IS the pill's left end (same height
+    // and corner radius as the pill itself, flush against its left/
+    // top/bottom edges) rather than a smaller square floating inside
+    // it with a gap all around.
+    if (type === 'module') {
+      const chipW = shape.h;
+      const rx = shape.h / 2;
+      return `
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="${f(rx)}" fill="${color}" fill-opacity="0.14" stroke="${color}" stroke-width="1.3" stroke-dasharray="2.6 2.2"/>
+        <path d="M${f(x + chipW)} ${f(y)} H${f(x + rx)} A${f(rx)} ${f(rx)} 0 0 0 ${f(x + rx)} ${f(y + shape.h)} H${f(x + chipW)} Z" fill="${color}" fill-opacity="${bodyOpacity}" stroke="${color}" stroke-width="1.3"/>
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="${f(rx)}" fill="none" style="${borderStyle}" stroke-width="0.7"/>`;
+    }
+    // Material — a "page" motif: colored spine along the left edge plus
+    // a folded-corner triangle top-right.
+    if (type === 'material') {
+      const spineW = 2.6, fold = shape.w * 0.32;
+      const clipId = courseSnapshotClipId(x, y, shape, 5, defsArr);
+      return `
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="5" fill="${color}" fill-opacity="${bodyOpacity}"/>
+        <g clip-path="url(#${clipId})">
+          <path d="M${f(x)} ${f(y)} h${f(spineW)} v${shape.h} h-${f(spineW)} a5,5 0 0 1 -5,-5 v-${f(shape.h - 10)} a5,5 0 0 1 5,-5 Z" fill="${dark}" fill-opacity="0.8"/>
+          <polygon points="${f(x + shape.w - fold)},${f(y)} ${f(x + shape.w)},${f(y)} ${f(x + shape.w)},${f(y + fold)}" fill="${light}" fill-opacity="0.55"/>
+        </g>
+        <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="5" fill="none" style="${borderStyle}" stroke-width="0.8"/>`;
+    }
+    // Flag — final exam: same footer/CTA idea as voyage, but clipped with
+    // a torn-pennant notch cut from the bottom-right corner.
+    if (type === 'flag') {
+      const notch = Math.min(shape.w, shape.h) * 0.34;
+      const id = 'csClip' + (COURSE_SNAPSHOT_CLIP_ID++);
+      const pts = `${f(x)},${f(y)} ${f(x + shape.w)},${f(y)} ${f(x + shape.w)},${f(y + shape.h - notch)} ${f(x + shape.w - notch)},${f(y + shape.h)} ${f(x)},${f(y + shape.h)}`;
+      defsArr.push(`<clipPath id="${id}"><polygon points="${pts}"/></clipPath>`);
+      const ctaW = shape.w * 0.5, ctaH = Math.max(shape.h * 0.24, 3.4);
+      return `
+        <g clip-path="url(#${id})">
+          <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" fill="${color}" fill-opacity="${bodyOpacity}"/>
+          <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="3" fill="${light}" fill-opacity="0.55"/>
+        </g>
+        <polygon points="${pts}" fill="none" style="${borderStyle}" stroke-width="0.8"/>
+        <rect x="${f(cx - ctaW / 2)}" y="${f(y + shape.h - ctaH - 2.5)}" width="${f(ctaW)}" height="${f(ctaH)}" rx="${f(ctaH / 2)}" fill="${light}"/>`;
+    }
+    // Voyage group (default) — header strip + a small CTA-pill hint near
+    // the bottom, standing in for the real "Mulai Voyage" button.
+    const headerH = Math.max(shape.h * 0.26, 4);
+    const ctaW = shape.w * 0.5, ctaH = Math.max(shape.h * 0.24, 3.4);
+    return `
+      <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="6" fill="${color}" fill-opacity="${bodyOpacity}"/>
+      <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${f(headerH)}" rx="6" fill="${dark}" fill-opacity="0.32"/>
+      <rect x="${f(cx - ctaW / 2)}" y="${f(y + shape.h - ctaH - 2.5)}" width="${f(ctaW)}" height="${f(ctaH)}" rx="${f(ctaH / 2)}" fill="${light}"/>
+      <rect x="${f(x)}" y="${f(y)}" width="${shape.w}" height="${shape.h}" rx="6" fill="none" style="${borderStyle}" stroke-width="0.8"/>`;
+  }
+
+  function courseSnapshotSvg(nodes, edges) {
+    if (!nodes.length) return '';
+    const positions = courseSnapshotLayout(nodes, edges);
+
+    const materials = nodes.filter(n => n.type === 'material');
+    const voyages = nodes.filter(n => n.type === 'voyage_group');
+    const flags = nodes.filter(n => n.type === 'flag');
+    const sameTypeList = n => n.type === 'material' ? materials : n.type === 'voyage_group' ? voyages : n.type === 'flag' ? flags : [n];
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const nodeBoxes = {};
+    nodes.forEach(n => {
+      const p = positions[n.id];
+      if (!p) return;
+      const shape = courseSnapshotShape(n.type);
+      const px = p.x * COURSE_SNAPSHOT_UNIT_X, py = p.y * COURSE_SNAPSHOT_UNIT_Y;
+      minX = Math.min(minX, px - shape.w / 2); maxX = Math.max(maxX, px + shape.w / 2);
+      minY = Math.min(minY, py - shape.h / 2); maxY = Math.max(maxY, py + shape.h / 2);
+      nodeBoxes[n.id] = { cx: px, cy: py, halfW: shape.w / 2, halfH: shape.h / 2 };
+    });
+    if (!Number.isFinite(minX)) return '';
+
+    const pad = 14;
+    const vbX = minX - pad, vbY = minY - pad, vbW = (maxX - minX) + pad * 2, vbH = (maxY - minY) + pad * 2;
+    const lineColor = courseSnapshotAccentShade(0, 55, 18);
+
+    // Pull each endpoint back from the node's center to just outside its
+    // bounding box (plus a small gap), so the connector stops at the
+    // node's edge instead of running straight through it like a skewer —
+    // especially visible now that node fills are translucent.
+    function courseSnapshotTrimToBox(x1, y1, x2, y2, halfW, halfH, gap) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const tx = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
+      const ty = dy !== 0 ? halfH / Math.abs(dy) : Infinity;
+      const dist = Math.hypot(dx, dy);
+      const gapT = dist !== 0 ? gap / dist : 0;
+      const t = Math.min(Math.min(tx, ty) + gapT, 0.5);
+      return { x: x1 + dx * t, y: y1 + dy * t };
+    }
+
+    let edgesSvg = '';
+    edges.forEach(e => {
+      const fromBox = nodeBoxes[e.from], toBox = nodeBoxes[e.to];
+      if (!fromBox || !toBox) return;
+      const start = courseSnapshotTrimToBox(fromBox.cx, fromBox.cy, toBox.cx, toBox.cy, fromBox.halfW, fromBox.halfH, 1.5);
+      const end = courseSnapshotTrimToBox(toBox.cx, toBox.cy, fromBox.cx, fromBox.cy, toBox.halfW, toBox.halfH, 1.5);
+      edgesSvg += `<line x1="${start.x.toFixed(1)}" y1="${start.y.toFixed(1)}" x2="${end.x.toFixed(1)}" y2="${end.y.toFixed(1)}" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" opacity="${e.branch ? 0.45 : 0.65}"${e.branch ? ' stroke-dasharray="3 3"' : ''}/>`;
+    });
+
+    const defsArr = [];
+    let nodesSvg = '';
+    nodes.forEach(n => {
+      const p = positions[n.id];
+      if (!p) return;
+      const shape = courseSnapshotShape(n.type);
+      const cx = p.x * COURSE_SNAPSHOT_UNIT_X, cy = p.y * COURSE_SNAPSHOT_UNIT_Y;
+      const color = courseSnapshotNodeColor(n, sameTypeList(n));
+      nodesSvg += courseSnapshotNodeMarkup(n.type, cx, cy, shape, color, defsArr);
+    });
+    const defsSvg = defsArr.length ? `<defs>${defsArr.join('')}</defs>` : '';
+
+    return `<svg viewBox="${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${defsSvg}${edgesSvg}${nodesSvg}</svg>`;
+  }
+
+  async function fetchCourseCatalog() {
+    const grid = document.getElementById('course-catalog-grid');
+    grid.innerHTML = `<p class="col-span-full text-center text-zinc-500 text-sm py-8">Memuat kursus…</p>`;
+
+    const { data, error } = await supabaseClient
+      .from('resources')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching resources:', error);
+      grid.innerHTML = `<p class="col-span-full text-center text-zinc-500 text-sm py-8">Gagal memuat kursus.</p>`;
+      return;
+    }
+
+    // Only resources that actually point at a course (resource_url)
+    // are pickable here — anything else is a plain link/material with
+    // nothing for workspace.html to load.
+    COURSE_CATALOG_RESOURCES = (data || []).filter(r => r.resource_url);
+    await Promise.all([fetchCourseSnapshots(), fetchCourseReactions(), fetchCourseEnrollments()]);
+    renderCourseCatalogGrid();
+  }
+
+  // One query for every course the member has already enrolled in,
+  // keyed by course_id (== resource_url), so the catalog can render
+  // the "taken" state without a round-trip per card.
+  async function fetchCourseEnrollments() {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return;
+    const { data, error } = await supabaseClient
+      .from('course_enrollments')
+      .select('course_id')
+      .eq('user_id', uid);
+    if (error) { console.error('Error fetching course enrollments:', error); return; }
+    (data || []).forEach(row => COURSE_ENROLLED_IDS.add(row.course_id));
+  }
+
+  // Builds a node-graph snapshot thumbnail for every course in the
+  // catalog — one batched query for all courses' nodes/edges instead
+  // of one per card. Populates COURSE_SNAPSHOTS; a course just goes
+  // without a thumbnail if this fails, rather than breaking the
+  // catalog entirely.
+  async function fetchCourseSnapshots() {
+    const courseIds = Array.from(new Set(COURSE_CATALOG_RESOURCES.map(r => r.resource_url)));
+    if (!courseIds.length) return;
+
+    const [{ data: allNodes, error: errNodes }, { data: allEdges, error: errEdges }] = await Promise.all([
+      supabaseClient.from('course_nodes').select('id, course_id, node_type').in('course_id', courseIds),
+      supabaseClient.from('course_edges').select('course_id, from_node, to_node, branch_side').in('course_id', courseIds)
+    ]);
+    if (errNodes) console.error('Error fetching course_nodes for snapshots:', errNodes);
+    if (errEdges) console.error('Error fetching course_edges for snapshots:', errEdges);
+
+    courseIds.forEach(courseId => {
+      // Same shape fetchCourseData() in workspace.html builds:
+      // the course itself is the hub node, everything else hangs off it.
+      const nodes = [{ id: courseId, type: 'course' }]
+        .concat((allNodes || []).filter(n => n.course_id === courseId).map(n => ({ id: n.id, type: n.node_type })));
+      const edges = (allEdges || [])
+        .filter(e => e.course_id === courseId)
+        .map(e => ({ from: e.from_node, to: e.to_node, branch: e.branch_side }));
+      COURSE_SNAPSHOTS[courseId] = courseSnapshotSvg(nodes, edges);
+    });
+  }
+
+  window.addEventListener('kir:lang-changed', renderCourseCatalogGrid);
+
+  // Renders the card's action button as either the clickable "Ambil
+  // Kursus" gradient button, or — if the member already has an
+  // enrollment row for this course (COURSE_ENROLLED_IDS, keyed by
+  // resource_url) — a disabled, grayed-out "Kursus Diambil" button.
+  function courseTakeButtonHtml(m, lang) {
+    if (COURSE_ENROLLED_IDS.has(m.resource_url)) {
+      return `<button type="button" disabled data-course-catalog-btn="${m.id}" class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-500 text-xs font-semibold shrink-0 cursor-not-allowed" data-i18n="course_taken">${kirEscapeHtml(I18N[lang].course_taken)}</button>`;
+    }
+    return `<button onclick="event.stopPropagation(); pickCourseFromCatalog('${m.id}')" data-course-catalog-btn="${m.id}" class="px-4 py-2 rounded-lg bg-accent-gradient text-white text-xs font-semibold shadow-glow-sm hover:brightness-110 transition shrink-0">${kirEscapeHtml(I18N[lang].course_take)}</button>`;
+  }
+
+  // Same taken/not-taken split as courseTakeButtonHtml() above, sized
+  // for the modal's action row instead of the card. Rendered via
+  // outerHTML (like markCourseTaken() already does for the card) so
+  // the modal button picks up the exact same grayed-out "Kursus
+  // Diambil" look as the card, rather than just dimming the gradient
+  // button's opacity.
+  function courseModalTakeButtonHtml(m, lang) {
+    if (COURSE_ENROLLED_IDS.has(m.resource_url)) {
+      return `<button type="button" id="cm-take-btn" disabled class="px-5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-500 text-xs font-semibold text-center cursor-not-allowed" data-i18n="course_taken">${kirEscapeHtml(I18N[lang].course_taken)}</button>`;
+    }
+    return `<button type="button" id="cm-take-btn" onclick="pickCourseFromCatalog(currentCourseModalId)" class="px-5 py-1.5 rounded-lg font-semibold text-xs text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" data-i18n="course_take">${kirEscapeHtml(I18N[lang].course_take)}</button>`;
+  }
+
+  function renderCourseCatalogGrid() {
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const filtered = COURSE_CATALOG_RESOURCES.filter(m => {
+      const matchesCabang = COURSE_CATALOG_CABANG_FILTERS.has(m.cabang) || (m.cabang === 'both' && COURSE_CATALOG_CABANG_FILTERS.size > 0);
+      const matchesSubject = !m.subject || COURSE_CATALOG_SUBJECT_FILTERS.has(m.subject);
+      const matchesSearch = COURSE_CATALOG_SEARCH === '' ||
+        m.title.toLowerCase().includes(COURSE_CATALOG_SEARCH.toLowerCase()) ||
+        (m.description || '').toLowerCase().includes(COURSE_CATALOG_SEARCH.toLowerCase());
+      return matchesCabang && matchesSubject && matchesSearch;
+    });
+
+    const grid = document.getElementById('course-catalog-grid');
+    grid.innerHTML = filtered.length ? filtered.map(m => `
+      <div onclick="openCourseDetailModal('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCourseDetailModal('${m.id}');}" tabindex="0" role="button" class="glass rounded-2xl p-5 cursor-pointer hover:bg-white/5 transition relative overflow-hidden h-full flex flex-col">
+        ${COURSE_SNAPSHOTS[m.resource_url] ? `<div class="item-thumb-slot item-thumb-slot-dotted">${COURSE_SNAPSHOTS[m.resource_url]}</div>` : ''}
+        <div class="relative z-10 flex flex-col flex-1">
+          ${m.subject ? `<div class="flex items-center gap-2 flex-wrap mb-2">${courseSubjectBadgeHtml(m.subject, lang)}</div>` : ''}
+          <h3 class="font-medium text-base text-zinc-100 mb-1.5">${kirEscapeHtml(m.title)}</h3>
+          <p class="text-zinc-400 text-xs mb-4 line-clamp-2">${kirEscapeHtml(m.description || '')}</p>
+          <div class="flex items-center gap-3 mt-auto">
+            ${courseTakeButtonHtml(m, lang)}
+            ${courseReactionHtml(m.id, true)}
+          </div>
+        </div>
+      </div>`).join('') : `
+      <div class="col-span-full text-center py-14">
+        <p class="text-zinc-300 font-medium mb-1" data-i18n="course_catalog_empty">Belum ada kursus di sini!</p>
+        <p class="text-zinc-500 text-sm" data-i18n="course_catalog_empty_desc">Pengurus belum mengunggah kursus. Mohon bersabar, ya!</p>
+      </div>`;
+  }
+
+  const COURSE_SUBJECT_ALL_VALUE = '__all__';
+
+  // The "Semua"/All row (COURSE_SUBJECT_ALL_VALUE) isn't a real subject —
+  // it's a shortcut that drives every other option in the same select.
+  // Two cases land here, both via the same native 'change' event
+  // kirRefreshMultiSelect's option click already fires:
+  //  - the All row itself was just clicked -> its .selected no longer
+  //    matches "are all subjects currently selected", so push that new
+  //    state onto every real subject option;
+  //  - a specific subject was toggled instead -> leave the others alone,
+  //    and just update All's own checked state to reflect whether that
+  //    toggle happened to leave everything selected (or not).
+  // Either way COURSE_CATALOG_SUBJECT_FILTERS is rebuilt from the real
+  // subject options only, so '__all__' itself never leaks into it.
+  function handleCourseSubjectFilterChange() {
+    const select = document.getElementById('course-catalog-subject-select');
+    const options = Array.from(select.options);
+    const allOption = options.find(o => o.value === COURSE_SUBJECT_ALL_VALUE);
+    const subjectOptions = options.filter(o => o.value !== COURSE_SUBJECT_ALL_VALUE);
+    const allSubjectsSelected = subjectOptions.every(o => o.selected);
+
+    if (allOption && allOption.selected !== allSubjectsSelected) {
+      subjectOptions.forEach(o => { o.selected = allOption.selected; });
+    } else if (allOption) {
+      allOption.selected = allSubjectsSelected;
+    }
+
+    COURSE_CATALOG_SUBJECT_FILTERS = new Set(subjectOptions.filter(o => o.selected).map(o => o.value));
+    renderCourseCatalogGrid();
+  }
+
+  function toggleCourseCatalogCabangFilter(cabang) {
+    if (COURSE_CATALOG_CABANG_FILTERS.has(cabang)) {
+      COURSE_CATALOG_CABANG_FILTERS.delete(cabang);
+    } else {
+      COURSE_CATALOG_CABANG_FILTERS.add(cabang);
+    }
+    ['robotik', 'sains'].forEach(c => {
+      const btn = document.getElementById(`course-catalog-filter-${c}`);
+      if (btn) btn.classList.toggle('opacity-50', !COURSE_CATALOG_CABANG_FILTERS.has(c));
+    });
+    renderCourseCatalogGrid();
+  }
+
+  document.getElementById('course-catalog-search-input')?.addEventListener('input', (e) => {
+    COURSE_CATALOG_SEARCH = e.target.value;
+    renderCourseCatalogGrid();
+  });
+
+  // 'robotik'/'sains' reuse the same badge-* colors as the catalog's
+  // filter chips; 'both' has no dedicated color (nothing else needs
+  // one), so it falls back to the neutral .subject-badge look.
+  function courseModalCabangBadgeClass(cabang) {
+    if (cabang === 'robotik') return 'subject-badge badge-robotik';
+    if (cabang === 'sains') return 'subject-badge badge-sains';
+    return 'subject-badge';
+  }
+
+  // Opens the course detail modal — a preview (title, cabang, node-graph
+  // snapshot, description) plus a comments panel, so a member can see
+  // what a course is about and read/leave comments before enrolling.
+  // Enrolling itself still only happens via the modal's "Ambil Kursus"
+  // button (pickCourseFromCatalog), same as the card's own button.
+  function openCourseDetailModal(id) {
+    const m = COURSE_CATALOG_RESOURCES.find(x => x.id === id);
+    if (!m) return;
+    currentCourseModalId = id;
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+
+    document.getElementById('cm-title').textContent = m.title;
+    document.getElementById('cm-description').textContent = m.description || '';
+
+    const badge = document.getElementById('cm-cabang-badge');
+    badge.textContent = kirCabangLabel(m.cabang);
+    badge.className = courseModalCabangBadgeClass(m.cabang);
+
+    const subjectBadge = document.getElementById('cm-subject-badge');
+    const subjectMeta = COURSE_SUBJECT_META[m.subject];
+    subjectBadge.classList.toggle('hidden', !subjectMeta);
+    if (subjectMeta) subjectBadge.textContent = `${subjectMeta.icon} ${I18N[lang][subjectMeta.i18n]}`;
+
+    renderCourseModalReactions(id);
+
+    const thumbWrap = document.getElementById('cm-thumb-wrap');
+    const snapshot = COURSE_SNAPSHOTS[m.resource_url];
+    thumbWrap.classList.toggle('hidden', !snapshot);
+    document.getElementById('cm-thumb').innerHTML = snapshot || '';
+
+    const takeBtn = document.getElementById('cm-take-btn');
+    if (takeBtn) takeBtn.outerHTML = courseModalTakeButtonHtml(m, lang);
+
+    kirModalShow(document.getElementById('course-modal'));
+    kirRenderCommentSection('course-comments-root', 'course', id);
+    kirApplyTranslations();
+  }
+
+  function closeCourseDetailModal() {
+    kirModalHide(document.getElementById('course-modal'));
+  }
+
+  // Enrolls the member in the picked course (creating the
+  // course_enrollments row the first time, or just marking it as most
+  // recently taken if they've started it before — never touches saved
+  // progress). Stays on the catalog: the card/modal button just flips
+  // to a disabled, grayed-out "Kursus Diambil" once enrollment succeeds,
+  // rather than redirecting to workspace.html — members open the course
+  // itself from the sidebar/workspace nav whenever they're ready.
+  async function pickCourseFromCatalog(id) {
+    const m = COURSE_CATALOG_RESOURCES.find(x => x.id === id);
+    if (!m || !m.resource_url) return;
+    if (COURSE_ENROLLED_IDS.has(m.resource_url)) return; // already taken
+
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const btn = document.querySelector(`[data-course-catalog-btn="${id}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; btn.style.opacity = '0.6'; }
+    const modalBtn = document.getElementById('cm-take-btn');
+    if (modalBtn && currentCourseModalId === id) { modalBtn.disabled = true; modalBtn.textContent = 'Memuat…'; modalBtn.style.opacity = '0.6'; }
+
+    localStorage.setItem(KIR_LAST_COURSE_KEY, m.resource_url);
+    await kirEnrollInCourse(m.resource_url);
+
+    COURSE_ENROLLED_IDS.add(m.resource_url);
+    markCourseTaken(id, lang);
+  }
+
+  // Flips the card button and (if open on this course) the modal button
+  // over to the disabled "Kursus Diambil" state, right after enrolling.
+  function markCourseTaken(id, lang) {
+    lang = lang || localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const m = COURSE_CATALOG_RESOURCES.find(x => x.id === id);
+    const cardBtn = document.querySelector(`[data-course-catalog-btn="${id}"]`);
+    if (cardBtn && m) cardBtn.outerHTML = courseTakeButtonHtml(m, lang);
+
+    const modalBtn = document.getElementById('cm-take-btn');
+    if (modalBtn && m && currentCourseModalId === id) modalBtn.outerHTML = courseModalTakeButtonHtml(m, lang);
+  }
+
+  // Creates a course_enrollments row for (member, course) the first
+  // time they take it; if they already have one (re-taking a course
+  // they started before), this only bumps updated_at so it becomes
+  // their most-recently-taken course again — it never resets their
+  // saved progress (current_node_id / completed_node_ids), which
+  // workspace.html owns from here on.
+  async function kirEnrollInCourse(courseId) {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return;
+
+    const { data: existing, error: errExisting } = await supabaseClient
+      .from('course_enrollments')
+      .select('id')
+      .eq('user_id', uid)
+      .eq('course_id', courseId)
+      .limit(1);
+
+    if (errExisting) { console.error('Error checking course enrollment:', errExisting); return; }
+
+    if (existing && existing.length) {
+      const { error: errTouch } = await supabaseClient
+        .from('course_enrollments')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id);
+      if (errTouch) console.error('Error updating course enrollment:', errTouch);
+    } else {
+      const { error: errInsert } = await supabaseClient
+        .from('course_enrollments')
+        .insert({ user_id: uid, course_id: courseId });
+      if (errInsert) console.error('Error enrolling in course:', errInsert);
+    }
+  }
+
+  document.getElementById('course-catalog-subject-select').addEventListener('change', handleCourseSubjectFilterChange);
+  kirRefreshMultiSelect('course-catalog-subject-select');
+
+  kirInjectSidebar('course');
+  kirApplyTranslations();
+  fetchCourseCatalog();
+
+  // Search bar UX: the "×" clear button, plus letting someone start
+  // typing anywhere on the page and have it land in the search box
+  // without clicking into it first.
+  (function () {
+    const input = document.getElementById('course-catalog-search-input');
+    const clearBtn = document.getElementById('course-catalog-search-input-clear');
+    if (!input || !clearBtn) return;
+
+    function updateClearBtn() {
+      clearBtn.classList.toggle('hidden', input.value.length === 0);
+    }
+    updateClearBtn();
+    input.addEventListener('input', updateClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+
+    function onKeydown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('keydown', onKeydown);
+    }, { once: true });
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beranda</title>
+
+<!-- Auth guard: runs before the page paints, sends logged-out
+     visitors to auth.html. Must load before the rest of <head>. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script>kirRequireAuth();</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/tailwind-output.css">
+
+<style>
+  /* Enhance widget visuals with elevated gradients and inset shadows */
+  .widget-inner {
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 4px 24px -4px rgba(0,0,0,0.2) !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+</style>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-layer">
+  <div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+  <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+  <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+</div>
+
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 shrink-0 flex items-center justify-center">
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-7 h-7 object-contain" />
+      </div>
+      <span class="font-display font-semibold tracking-wider text-gradient-accent">orbit.io</span>
+    </a>
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+  <script>
+    // Inject the sidebar immediately, before the (larger)
+    // dashboard-widgets.js script below has to finish downloading
+    // and parsing. Otherwise the sidebar's appearance gets delayed
+    // behind that file specifically on this page, making the pop-in
+    // more noticeable here than on other pages.
+    kirInjectSidebar('dashboard');
+  </script>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-6xl w-full mx-auto">
+    <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
+      <div>
+        <h1 data-kir="greeting" class="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Selamat datang!</h1>
+        <p class="text-zinc-500 text-sm mt-1" data-i18n="dashboard_sub">Berikut yang terjadi di Orbit minggu ini.</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="undo-btn" onclick="undoLayout()" class="hidden p-2.5 rounded-lg glass text-zinc-400 hover:text-zinc-200 transition" title="Undo (Ctrl+Z)" disabled>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+        </button>
+        <button id="redo-btn" onclick="redoLayout()" class="hidden p-2.5 rounded-lg glass text-zinc-400 hover:text-zinc-200 transition" title="Redo (Ctrl+Y)" disabled>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+        </button>
+        <button id="add-widget-btn" onclick="openAddWidgetModal()" class="hidden items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass hover:bg-white/10 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="hidden sm:inline" data-i18n="dash_add_widget">Tambah Widget</span>
+        </button>
+        <button id="edit-dashboard-btn" onclick="toggleDashboardEdit()" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass hover:bg-white/10 transition">
+          <svg id="edit-dashboard-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" />
+          </svg>
+          <span id="edit-dashboard-label" data-i18n="dash_edit">Edit</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="widget-grid" class="widget-grid mb-3 pb-8" ondragover="handleGridDragOver(event)" ondrop="handleGridDrop(event)"><!-- filled by script below --></div>
+
+    <div id="edit-mode-footer" class="hidden items-center justify-between gap-3 flex-wrap mb-8 text-xs">
+      <p class="text-zinc-500" data-i18n="dash_edit_hint">Seret widget untuk memindahkan, tekan ikon ukuran untuk mengubah besarnya.</p>
+      <button onclick="resetDashboardLayout()" class="text-zinc-500 hover:text-accent-300 underline transition" data-i18n="dash_reset">Kembalikan ke tampilan awal</button>
+    </div>
+  </main>
+</div>
+
+<!-- Add widget modal -->
+<div id="add-widget-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeAddWidgetModal()">
+  <div class="modal-card p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="font-display text-lg font-semibold" data-i18n="dash_add_widget">Tambah Widget</h2>
+        <p class="text-zinc-500 text-xs mt-1" data-i18n="dash_add_widget_desc">Pilih widget untuk ditambahkan ke dasbor kamu.</p>
+      </div>
+      <button onclick="closeAddWidgetModal()" class="text-zinc-500 hover:text-zinc-300 shrink-0 p-1">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div id="add-widget-list" class="grid sm:grid-cols-2 gap-3"><!-- filled by script below --></div>
+  </div>
+</div>
+
+<script src="js/dashboard-widgets.js"></script>
+<script>
+
+/* ----------------------------------------------------------
+   Boot
+   ---------------------------------------------------------- */
+updateCellSize();
+renderWidgetGrid();
+window.addEventListener('resize', () => requestAnimationFrame(updateCellSize));
+window.matchMedia('(min-width: 640px)').addEventListener('change', () => { updateCellSize(); renderWidgetGrid(); });
+fetchDashboardWidgetsData();
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>

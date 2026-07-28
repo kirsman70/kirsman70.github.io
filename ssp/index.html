@@ -1,0 +1,64 @@
+<!--Made with love by Darryl Valentino Sepfa Ramadhan-->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KIR SMAN 70 Jakarta</title>
+  <link rel="stylesheet" href="ui_ux.css" />
+</head>
+<body>
+
+<div class="bgimg" id="bg">
+
+  <!-- Top-left: Logo -->
+  <div class="topleft">
+    <img
+      src="https://avatars.githubusercontent.com/u/224996646?s=200&v=4"
+      alt="Logo KIR SMAN 70"
+      class="logo"
+    />
+  </div>
+
+  <!-- Top-left: Label -->
+  <div class="topleft2">
+    <p>KIR SMAN 70 JAKARTA</p>
+  </div>
+
+  <!-- Center: Main Content -->
+  <div class="middle">
+    <h1>Seventy Space Program</h1>
+    <p class="subtitle">Sedang memuat...</p>
+    <hr />
+
+    <!-- Redirect Card -->
+    <div class="redirect-card">
+      <p class="redirect-label">↗ Mengalihkan ke</p>
+      <p class="redirect-dest" id="dest-url"></p>
+
+      <div class="progress-track">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <p class="countdown-text">
+        Redirect dalam <span id="countdown">5</span> detik…
+      </p>
+
+      <br />
+      <button class="cancel-link" id="cancel-btn">
+        Batalkan redirect
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom-left: copyright -->
+  <div class="bottomleft">
+    © KIR SMAN 70 Jakarta
+  </div>
+
+</div>
+
+<!-- Animasi (Web Animations API) -->
+<script src="animations.js"></script>
+</body>
+</html>

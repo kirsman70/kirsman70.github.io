@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "./css/style.css" layer(components);
+@import "./css/admin-shared.css" layer(components);
+
+@theme {
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}

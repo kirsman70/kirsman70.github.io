@@ -1,0 +1,129 @@
+/* World Snake Day easter egg (see js/schedule-snake.js). Kept in its own
+   file rather than folded into style.css since it's a one-page novelty
+   feature, not a shared design-system piece. */
+
+/* Reduced motion: the button that starts the game is hidden outright
+   (see the reduce-motion check around the snake-icon button in
+   schedule.html) and start() in schedule-snake.js refuses to start as a
+   second, defense-in-depth guard — same double-coverage pattern the rest
+   of the site uses for reduced motion. This is the CSS backstop for the
+   one case those two can't prevent: the toggle gets flipped mid-run, with
+   the highlight cells already on screen. Same two sources as everywhere
+   else on the site (site-level toggle via the html[data-reduce-motion]
+   attribute, OS-level via the media query below) — either one strips the
+   green/red tint back down to a plain, unstyled calendar cell instead of
+   leaving it sitting there highlighted. */
+html[data-reduce-motion="true"] .kir-month-cal-day.kir-snake-cell-body,
+html[data-reduce-motion="true"] .kir-month-cal-day.kir-snake-cell-head,
+html[data-reduce-motion="true"] .kir-month-cal-day.kir-snake-cell-apple {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+html[data-reduce-motion="true"] .kir-month-cal-day.kir-snake-cell-body .kir-month-cal-day-num,
+html[data-reduce-motion="true"] .kir-month-cal-day.kir-snake-cell-head .kir-month-cal-day-num {
+  color: inherit !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kir-month-cal-day.kir-snake-cell-body,
+  .kir-month-cal-day.kir-snake-cell-head,
+  .kir-month-cal-day.kir-snake-cell-apple {
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+  .kir-month-cal-day.kir-snake-cell-body .kir-month-cal-day-num,
+  .kir-month-cal-day.kir-snake-cell-head .kir-month-cal-day-num {
+    color: inherit !important;
+  }
+}
+
+/* Chevrons + Today button while the mode is running: visibly dead, not
+   just functionally blocked (the actual click-blocking lives in the
+   scheduleCalShiftMonth/scheduleCalGoToday guards in schedule.html). */
+.kir-month-cal-nav-btn.kir-cal-locked,
+.kir-month-cal-today-btn.kir-cal-locked {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* The snake's body: a plain fill with no border, distinct from the
+   calendar's own selection fill (.kir-cal-selected) so the two states
+   never get visually confused with each other.
+
+   !important is doing real work here, not just being defensive: cells that
+   already carry a day-specific tint (events, holidays, etc.) apply their own
+   background/border via a selector like
+   ".kir-month-cal-day.kir-cal-has-events:not(.kir-cal-selected)", which — the
+   :not() clause counts toward specificity — actually out-specifies a plain
+   two-class selector like ".kir-month-cal-day.kir-snake-cell-body". Without
+   !important the snake would visibly vanish every time it passed over a day
+   that has an event on it. */
+.kir-month-cal-day.kir-snake-cell-body {
+  background: rgba(74, 222, 128, 0.30) !important;
+  border-color: transparent !important;
+}
+.kir-month-cal-day.kir-snake-cell-head {
+  background: rgba(74, 222, 128, 0.55) !important;
+  border-color: transparent !important;
+}
+.kir-month-cal-day.kir-snake-cell-body .kir-month-cal-day-num,
+.kir-month-cal-day.kir-snake-cell-head .kir-month-cal-day-num {
+  color: #fff !important;
+}
+
+/* The apple: an outline only, no fill — the inverse of the snake's body,
+   and deliberately not reusing .kir-cal-ring-active's color so it reads as
+   "food" rather than "selected". Same specificity issue as above, so this
+   also needs !important to survive landing on an event/holiday/special day. */
+.kir-month-cal-day.kir-snake-cell-apple {
+  border: 2px solid rgb(248 113 113) !important;
+}
+
+/* High score box (see endGame in schedule-snake.js): sits on the day to the
+   left of "Try again?" on the death screen. Same box treatment as the two
+   choice cells below — no click/keydown handlers are attached to it, it's
+   just sharing their look. */
+.kir-month-cal-day.kir-snake-hiscore .kir-month-cal-day-num {
+  position: absolute;
+  inset: 0.2rem;
+  width: auto;
+  height: auto;
+  border-radius: 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+  padding: 0.15rem;
+  background: rgba(var(--accent-rgb), 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  color: var(--text-color);
+}
+
+/* Death screen: "Try again?" / "Exit" need more room than the little
+   circular day-number pill normally offers, so they take over the whole
+   cell instead. */
+.kir-month-cal-day.kir-snake-choice {
+  cursor: pointer;
+}
+.kir-month-cal-day.kir-snake-choice .kir-month-cal-day-num {
+  position: absolute;
+  inset: 0.2rem;
+  width: auto;
+  height: auto;
+  border-radius: 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+  padding: 0.15rem;
+  background: rgba(var(--accent-rgb), 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  color: var(--text-color);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.kir-month-cal-day.kir-snake-choice:hover .kir-month-cal-day-num {
+  background: rgba(var(--accent-rgb), 0.28);
+  border-color: rgba(var(--accent-rgb), 0.6);
+}

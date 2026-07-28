@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Panel</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script>
+  (async () => {
+    await kirRequireAuth();
+    if (!kirIsAdmin()) {
+      window.location.href = 'dashboard.html';
+    }
+  })();
+</script>
+<script src="js/admin-shared.js"></script>
+<script src="js/wysiwyg-editor.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/tailwind-output.css">
+<link rel="stylesheet" href="css/admin-shared.css">
+
+<!-- MathJax for rendering LaTeX (same config as voyages.html — the
+     WYSIWYG math chips built by wysiwyg-editor.js rely on this being
+     present, or kirRichTypesetAll() silently no-ops and formulas are
+     left showing as raw \(...\) text instead of rendered output) -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<!-- MathLive: powers the live, caret-inside-the-formula editing view
+     in wysiwyg-editor.js's math chips (MathJax above is only used for
+     the *static*, non-editing chip render and the read-only voyage
+     display elsewhere on the site — it has no live editing surface). -->
+<script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+
+<style>
+  /* Applications-panel-only styling. Everything else reuses the
+     site's shared .glass / .modal-card / admin-shared.css look. */
+  .apply-status-badge {
+    font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px;
+    letter-spacing: 0.02em; white-space: nowrap;
+  }
+  .apply-status-pending { background: rgba(128,128,128,0.14); color: var(--muted-500); border: 1px solid var(--glass-border); }
+  .apply-status-approved { background: rgba(var(--accent-rgb), 0.15); color: rgb(var(--accent-light-rgb)); border: 1px solid rgba(var(--accent-rgb), 0.35); }
+
+  .apply-row {
+    display: flex; align-items: center; gap: 1rem; padding: 1rem 1.1rem;
+    cursor: pointer; transition: background 0.15s ease;
+  }
+  .apply-row:hover { background: rgba(128,128,128,0.06); }
+  .apply-row + .apply-row { border-top: 1px solid var(--glass-border); }
+
+  .apply-avatar {
+    width: 2.5rem; height: 2.5rem; border-radius: 999px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 0.95rem;
+  }
+
+  .apply-chip {
+    display: inline-block; font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+    background: rgba(128,128,128,0.14); border: 1px solid var(--glass-border); color: var(--text-color);
+    margin: 0.15rem 0.3rem 0.15rem 0;
+  }
+
+  /* ----------------------------------------------------------
+     Applicant detail modal, consisting of a banner header (avatar/name/email/
+     status), a scrollable sectioned body, and a sticky action footer.
+     Reuses .modal-card/.modal-overlay from style.css but, unlike
+     the plain `<div class="modal-card">` this used to be, gives
+     its own children real padding instead of relying on a bare
+     .modal-card having any (it doesn't).
+     ---------------------------------------------------------- */
+  .apply-modal-header {
+    position: relative;
+    padding: 1.75rem 3rem 1.5rem 1.5rem;
+    background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.14), rgba(var(--accent-rgb), 0) 75%);
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .apply-modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    color: var(--muted-500); padding: 0.4rem; border-radius: 0.5rem;
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .apply-modal-close:hover { color: var(--text-color); background: rgba(128,128,128,0.12); }
+
+  .apply-modal-avatar {
+    width: 3.25rem; height: 3.25rem; border-radius: 999px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 1.2rem;
+    box-shadow: 0 0 20px -2px rgba(var(--accent-rgb), 0.5);
+  }
+
+  .apply-modal-body {
+    padding: 1.5rem; max-height: 55vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1.4rem;
+  }
+
+  .apply-section-label {
+    display: block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted-600); margin-bottom: 0.6rem;
+  }
+
+  .apply-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+  .apply-field-grid.single-col { grid-template-columns: 1fr; }
+  @media (max-width: 480px) { .apply-field-grid { grid-template-columns: 1fr; } }
+
+  .apply-field {
+    background: rgba(128, 128, 128, 0.05); border: 1px solid var(--glass-border);
+    border-radius: 0.65rem; padding: 0.65rem 0.85rem;
+  }
+  .apply-field-label {
+    display: block; font-size: 0.66rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--muted-600); margin-bottom: 0.25rem;
+  }
+  .apply-field-value { font-size: 0.85rem; color: var(--text-color); line-height: 1.5; white-space: pre-wrap; }
+  .apply-field-value.is-empty { color: var(--muted-600); font-style: italic; }
+
+  .apply-modal-meta {
+    font-size: 0.72rem; color: var(--muted-600); padding: 0 1.5rem 1rem 1.5rem; margin-top: -0.6rem;
+  }
+
+  .apply-modal-footer {
+    display: flex; gap: 0.65rem; padding: 1.1rem 1.5rem;
+    border-top: 1px solid var(--glass-border);
+  }
+</style>
+</head>
+
+<body class="min-h-screen antialiased relative overflow-x-hidden">
+
+<div class="glow-layer">
+  <div class="glow-blob w-[500px] h-[500px] bg-accent-25 -top-40 -left-40"></div>
+  <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
+  <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
+</div>
+
+<div class="relative z-10 min-h-screen lg:flex kir-app-shell">
+
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-8 h-8 shrink-0 flex items-center justify-center">
+        <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-7 h-7 object-contain" />
+      </div>
+      <span class="font-display font-semibold tracking-wider text-gradient-accent">orbit.io</span>
+    </a>
+    <button onclick="kirToggleMobileSidebar()" class="text-zinc-300 p-2 -mr-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="sidebar-root"></div>
+
+  <main class="flex-1 min-w-0 px-4 sm:px-8 py-8 max-w-4xl w-full mx-auto">
+    <div class="mb-7 animate-stagger-in" style="animation-delay: 0ms">
+      <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n="admin_title">Admin Panel</h1>
+      <p class="text-zinc-500 text-sm mt-1" data-i18n="admin_desc">Tinjau dan kelola pendaftaran anggota baru.</p>
+    </div>
+
+    <!-- Status tabs -->
+    <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2 animate-stagger-in" style="animation-delay: 45ms">
+      <button onclick="setApplyFilter('pending')" id="apply-filter-pending" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition">
+        <span data-i18n="apply_filter_pending">Menunggu</span> <span id="apply-count-pending" class="opacity-80"></span>
+      </button>
+      <button onclick="setApplyFilter('approved')" id="apply-filter-approved" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50">
+        <span data-i18n="apply_filter_approved">Disetujui</span> <span id="apply-count-approved" class="opacity-80"></span>
+      </button>
+      <button onclick="setApplyFilter('all')" id="apply-filter-all" class="px-4 py-2 rounded-lg text-sm font-medium bg-accent-15 text-accent-300 border border-accent-30 transition opacity-50">
+        <span data-i18n="apply_filter_all">Semua</span>
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="relative mb-5 animate-stagger-in" style="animation-delay: 70ms">
+      <input type="text" id="apply-search-input" data-i18n-placeholder="admin_search_placeholder" placeholder="Cari nama, email, atau kelas…" class="glass-input w-full rounded-lg pl-10 pr-9 py-3 text-sm" />
+      <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <button type="button" id="apply-search-input-clear" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Clear search">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+
+    <div id="apply-list" class="glass rounded-xl overflow-hidden animate-stagger-in" style="animation-delay: 90ms"><!-- filled by script below --></div>
+  </main>
+</div>
+
+<!-- Applicant detail modal -->
+<div id="apply-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeApplyModal()">
+  <div class="modal-card p-0">
+
+    <div class="apply-modal-header">
+      <button onclick="closeApplyModal()" class="apply-modal-close">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+      <div class="flex items-center gap-3.5">
+        <div id="apply-modal-avatar" class="apply-modal-avatar bg-accent-gradient text-white"></div>
+        <div class="min-w-0">
+          <h2 id="apply-modal-name" class="font-display text-lg font-semibold truncate"></h2>
+          <p id="apply-modal-email" class="text-xs text-zinc-500 truncate mb-1.5"></p>
+          <span id="apply-modal-status" class="apply-status-badge"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="apply-modal-fields" class="apply-modal-body"><!-- filled by script below --></div>
+    <p id="apply-modal-registered-at" class="apply-modal-meta"></p>
+
+    <div class="apply-modal-footer">
+      <button id="apply-modal-primary-btn" type="button" class="flex-1 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
+      </button>
+      <button id="apply-modal-secondary-btn" type="button" class="rounded-lg px-4 py-2.5 font-semibold text-sm text-zinc-300 bg-white/5 hover:bg-white/10 transition">
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let APPLICANTS = [];
+  let applyFilter = 'pending';
+  let applySearch = '';
+  let currentApplicantId = null;
+
+  async function fetchApplicants() {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching applicants:', error);
+      return;
+    }
+
+    APPLICANTS = data || [];
+    updateApplyCounts();
+    renderApplicants();
+  }
+
+  function updateApplyCounts() {
+    const pending = APPLICANTS.filter(a => a.status !== 'approved').length;
+    const approved = APPLICANTS.filter(a => a.status === 'approved').length;
+    document.getElementById('apply-count-pending').textContent = pending ? `(${pending})` : '';
+    document.getElementById('apply-count-approved').textContent = approved ? `(${approved})` : '';
+  }
+
+  function setApplyFilter(filter) {
+    applyFilter = filter;
+    ['pending', 'approved', 'all'].forEach(f => {
+      const btn = document.getElementById(`apply-filter-${f}`);
+      if (!btn) return;
+      btn.classList.toggle('opacity-50', f !== filter);
+    });
+    renderApplicants();
+  }
+
+  document.getElementById('apply-search-input').addEventListener('input', (e) => {
+    applySearch = e.target.value.trim().toLowerCase();
+    renderApplicants();
+  });
+
+  function applicantMatchesFilter(a) {
+    if (applyFilter === 'pending') return a.status !== 'approved';
+    if (applyFilter === 'approved') return a.status === 'approved';
+    return true;
+  }
+
+  function applicantMatchesSearch(a) {
+    if (!applySearch) return true;
+    const haystack = [a.name, a.email, a.kelas, a.cabang].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(applySearch);
+  }
+
+  function timeAgoId(dateStr) {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const d = new Date(dateStr);
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return I18N[lang].time_just_now;
+    if (mins < 60) return I18N[lang].time_minutes_ago.replace('{n}', mins);
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return I18N[lang].time_hours_ago.replace('{n}', hours);
+    const days = Math.floor(hours / 24);
+    if (days < 30) return I18N[lang].time_days_ago.replace('{n}', days);
+    return new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  }
+
+  function renderApplicants() {
+    const list = document.getElementById('apply-list');
+    const filtered = APPLICANTS.filter(a => applicantMatchesFilter(a) && applicantMatchesSearch(a));
+
+    if (!filtered.length) {
+      const lang = localStorage.getItem('kir_lang') || 'id';
+      const emptyLabel = applyFilter === 'pending'
+        ? I18N[lang].admin_empty_pending
+        : applyFilter === 'approved'
+          ? I18N[lang].admin_empty_approved
+          : I18N[lang].admin_empty_none_match;
+      list.innerHTML = `
+        <div class="p-8 text-center flex flex-col items-center justify-center">
+          <svg class="w-10 h-10 text-zinc-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+          <p class="text-zinc-400 text-sm">${emptyLabel}</p>
+        </div>`;
+      return;
+    }
+
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    list.innerHTML = filtered.map(a => {
+      const isApproved = a.status === 'approved';
+      const initial = (a.name || '?').charAt(0).toUpperCase();
+      const avatarStyle = a.avatar_url ? ` style="background-image:url('${a.avatar_url}');background-size:cover;background-position:center;"` : '';
+      return `
+        <div class="apply-row" onclick="openApplyModal('${a.id}')">
+          <div class="apply-avatar ${isApproved ? 'bg-white/10 text-zinc-300' : 'bg-accent-gradient text-white'}"${avatarStyle}>${a.avatar_url ? '' : initial}</div>
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-sm text-zinc-100 truncate">${kirEscapeHtml(a.name || I18N[lang].apply_no_name)}</p>
+            <p class="text-xs text-zinc-500 truncate">${kirEscapeHtml(a.email || '')}${a.kelas ? ' · ' + kirEscapeHtml(a.kelas) : ''}</p>
+          </div>
+          <div class="hidden sm:block text-xs text-zinc-500 shrink-0">${timeAgoId(a.created_at)}</div>
+          <span class="apply-status-badge ${isApproved ? 'apply-status-approved' : 'apply-status-pending'} shrink-0">${isApproved ? I18N[lang].apply_status_approved : I18N[lang].apply_status_pending}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function applyField(label, value) {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const valueHtml = value
+      ? `<p class="apply-field-value">${kirEscapeHtml(value)}</p>`
+      : `<p class="apply-field-value is-empty">${I18N[lang].field_not_filled}</p>`;
+    return `<div class="apply-field"><span class="apply-field-label">${kirEscapeHtml(label)}</span>${valueHtml}</div>`;
+  }
+
+  function applyChipsField(items) {
+    const list = Array.isArray(items) ? items.filter(Boolean) : [];
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    return list.length
+      ? `<div class="apply-field"><div class="flex flex-wrap">${list.map(v => `<span class="apply-chip">${kirEscapeHtml(v)}</span>`).join('')}</div></div>`
+      : `<div class="apply-field"><p class="apply-field-value is-empty">${I18N[lang].field_value_none}</p></div>`;
+  }
+
+  function applySection(label, innerHtml) {
+    return `<div><span class="apply-section-label">${kirEscapeHtml(label)}</span>${innerHtml}</div>`;
+  }
+
+  function openApplyModal(id) {
+    const a = APPLICANTS.find(x => x.id === id);
+    if (!a) return;
+    currentApplicantId = id;
+    const isApproved = a.status === 'approved';
+    const lang = localStorage.getItem('kir_lang') || 'id';
+
+    document.getElementById('apply-modal-avatar').textContent = a.avatar_url ? '' : (a.name || '?').charAt(0).toUpperCase();
+    document.getElementById('apply-modal-avatar').className = `apply-modal-avatar ${isApproved ? 'bg-white/10 text-zinc-300' : 'bg-accent-gradient text-white'}`;
+    document.getElementById('apply-modal-avatar').style.backgroundImage = a.avatar_url ? `url('${a.avatar_url}')` : '';
+    document.getElementById('apply-modal-avatar').style.backgroundSize = a.avatar_url ? 'cover' : '';
+    document.getElementById('apply-modal-avatar').style.backgroundPosition = a.avatar_url ? 'center' : '';
+    document.getElementById('apply-modal-name').textContent = a.name || I18N[lang].apply_no_name;
+    document.getElementById('apply-modal-email').textContent = a.email || '';
+    document.getElementById('apply-modal-status').textContent = isApproved ? I18N[lang].apply_status_approved : I18N[lang].apply_status_pending_full;
+    document.getElementById('apply-modal-status').className = `apply-status-badge ${isApproved ? 'apply-status-approved' : 'apply-status-pending'}`;
+
+    document.getElementById('apply-modal-fields').innerHTML = [
+      applySection(I18N[lang].apply_section_kelas_cabang, `<div class="apply-field-grid">${applyField(I18N[lang].apply_field_cabang, kirCabangLabel(a.cabang))}${applyField(I18N[lang].apply_field_kelas, a.kelas)}</div>`),
+      applySection(I18N[lang].apply_section_latar_belakang, `<div class="apply-field-grid">${applyField(I18N[lang].apply_field_ekskul_lain, a.ekskul_lain)}${applyField(I18N[lang].apply_field_smp_asal, a.latar_belakang_smp)}</div>`),
+      applySection(I18N[lang].apply_section_prestasi, `<div class="apply-field-grid single-col">${applyField(I18N[lang].apply_field_prestasi, a.prestasi)}</div>`),
+      applySection(I18N[lang].apply_section_minat_lomba, applyChipsField(a.minat_lomba)),
+    ].join('');
+
+    document.getElementById('apply-modal-registered-at').textContent =
+      `${I18N[lang].apply_registered_at} ${new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(a.created_at))}`;
+
+    const primaryBtn = document.getElementById('apply-modal-primary-btn');
+    const secondaryBtn = document.getElementById('apply-modal-secondary-btn');
+
+    if (isApproved) {
+      primaryBtn.classList.add('hidden');
+      secondaryBtn.classList.remove('hidden');
+      secondaryBtn.className = 'flex-1 rounded-lg py-2.5 font-semibold text-sm text-white transition';
+      secondaryBtn.style.background = '#dc3f5c';
+      secondaryBtn.textContent = I18N[lang].apply_revoke_btn;
+      secondaryBtn.onclick = () => confirmSetApplicantStatus(a, 'pending');
+    } else {
+      primaryBtn.classList.remove('hidden');
+      primaryBtn.textContent = I18N[lang].apply_approve_btn;
+      primaryBtn.onclick = () => confirmSetApplicantStatus(a, 'approved');
+      secondaryBtn.classList.remove('hidden');
+      secondaryBtn.className = 'rounded-lg px-4 py-2.5 font-semibold text-sm text-zinc-300 bg-white/5 hover:bg-white/10 transition';
+      secondaryBtn.style.background = '';
+      secondaryBtn.textContent = I18N[lang].admin_close;
+      secondaryBtn.onclick = closeApplyModal;
+    }
+
+    kirModalShow(document.getElementById('apply-modal'));
+  }
+
+  function closeApplyModal() {
+    kirModalHide(document.getElementById('apply-modal'), () => {
+      currentApplicantId = null;
+    });
+  }
+
+  function confirmSetApplicantStatus(applicant, status) {
+    const isApprove = status === 'approved';
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const name = applicant.name || I18N[lang].apply_no_name;
+    kirConfirmDialog({
+      title: isApprove ? I18N[lang].apply_confirm_approve_title : I18N[lang].apply_confirm_revoke_title,
+      message: (isApprove ? I18N[lang].apply_confirm_approve_msg : I18N[lang].apply_confirm_revoke_msg).replace('{name}', name),
+      confirmLabel: isApprove ? I18N[lang].apply_confirm_approve_label : I18N[lang].apply_confirm_revoke_label,
+      danger: !isApprove,
+      successMessage: isApprove ? I18N[lang].apply_toast_approved : I18N[lang].apply_toast_revoked,
+      onConfirm: async () => {
+        const result = await kirAdminUpdate('profiles', applicant.id, { status });
+        if (!result.success) throw new Error(result.error);
+        closeApplyModal();
+        await fetchApplicants();
+        if (typeof kirRefreshAdminPingBadge === 'function') kirRefreshAdminPingBadge();
+      }
+    });
+  }
+
+  kirInjectSidebar('admin');
+  fetchApplicants();
+</script>
+<script>
+  // Search bar UX: the "×" clear button, plus letting someone start
+  // typing anywhere on the page and have it land in the search box
+  // without clicking into it first. Self-contained per page — see
+  // router.js's note on why a document-level keydown listener needs
+  // its own explicit kir:teardown cleanup here.
+  (function () {
+    const input = document.getElementById('apply-search-input');
+    const clearBtn = document.getElementById('apply-search-input-clear');
+    if (!input || !clearBtn) return;
+
+    function updateClearBtn() {
+      clearBtn.classList.toggle('hidden', input.value.length === 0);
+    }
+    updateClearBtn();
+    input.addEventListener('input', updateClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+
+    function onKeydown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+      input.focus();
+    }
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('kir:teardown', () => {
+      document.removeEventListener('keydown', onKeydown);
+    }, { once: true });
+  })();
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>

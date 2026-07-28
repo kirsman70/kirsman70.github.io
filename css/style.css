@@ -1,0 +1,3156 @@
+/* ==========================================================
+   KIR (Karya Ilmiah Remaja) - shared design system
+   Used by every page. Keep this file the single source of
+   truth for the glass/glow look so pages stay consistent.
+
+   THEME SYSTEM
+   --------------------------------------------------------
+   Two independent things are controlled by attributes on
+   <html>, both set by js/theme.js before the page paints:
+
+   1. data-cabang="robotik" | "sains" | "both"
+      Sets the --accent-* CSS variables (red / blue / purple).
+      This is the user's extracurricular branch, chosen at register and
+      editable later on the Settings page.
+
+   2. data-theme="dark" | "light"
+      Sets background/text/glass variables. Dark is default.
+
+   3. data-reduce-motion="true" | "false"
+      User-controlled toggle (Settings → Tampilan, below Mode
+      terang). When "true", every animation/transition on the
+      site is switched off — see the rule right after :root
+      below. Off by default; independent of the OS-level
+      prefers-reduced-motion media query further down this file.
+
+   Every "accent" utility class below (bg-accent, text-accent-300,
+   shadow-glow, etc.) reads from these variables instead of a
+   fixed hex, so the whole site re-colors itself automatically —
+   no per-page CSS needed.
+   ========================================================== */
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-color);
+  /* Reserve the vertical scrollbar's gutter permanently, whether or
+     not a scrollbar is actually showing. Otherwise, the instant a
+     modal locks scroll (overflow:hidden below) the scrollbar
+     disappears and hands its width back to the viewport, nudging
+     everything right — flow content AND position:fixed elements like
+     the Ekspedisi/create/Impor JSON FABs, since their containing
+     block is the real (scrollbar-excluding) viewport. Reserving the
+     gutter up front means that width was never "given back" in the
+     first place, so nothing moves when the scrollbar toggles off. */
+  scrollbar-gutter: stable;
+}
+
+
+/* Paired with kirRevealPage()/`.kir-ready` in auth.js. Without this,
+   the browser paints <body> the instant it's parsed — showing the
+   hardcoded Indonesian default text inside every [data-i18n] element
+   (kirApplyTranslations() hasn't swapped it to the visitor's actual
+   language yet) and raw, unstyled-size SVG icons (Tailwind's CDN
+   runtime JIT-compiles w-4/h-4-etc. utility CSS asynchronously via a
+   MutationObserver, not synchronously with the parse). On a warm local
+   cache that whole gap closes in a couple of milliseconds and is never
+   noticed; over a real network (fonts, the Tailwind CDN script, and
+   auth.js itself all being fetched fresh, e.g. on GitHub Pages) it's
+   wide enough to see as a flash of the wrong language snapping to the
+   right one, and oversized icons shrinking down.
+   auth.js adds `.kir-ready` to <html> once translations are applied
+   (or, as a fallback for pages with no [data-i18n] content at all,
+   once the `load` event fires) — see kirRevealPage() there. */
+html:not(.kir-ready) body {
+  visibility: hidden;
+}
+
+/* SPA navigation - hide main content during swap to prevent flash */
+html.kir-router-loading main {
+  visibility: hidden;
+}
+
+/* Every page's <body> carries Tailwind's `overflow-x-hidden` utility
+   as a horizontal-scroll guard. The problem is `hidden`, specifically:
+   giving an element a non-visible overflow-x with no matching
+   overflow-y forces the used value of overflow-y to `auto` too — so
+   `overflow-x: hidden` on <body> silently turns <body> into its own
+   scroll container, distinct from the real document/viewport scroller.
+   #sidebar's `position: sticky` (the default left/right bar, and the
+   top/bottom taskbar rules further down this file) sticks relative to
+   its nearest scrolling ancestor — which this now-a-scroll-container
+   <body> intercepts. Since <body> itself never actually scrolls (it
+   just grows to fit its content), sticky positioning relative to it
+   never recomputes, so the taskbar silently stops sticking and just
+   scrolls away with the page instead.
+   `overflow: clip` is the fix, not just relocating `hidden`: unlike
+   `hidden`/`scroll`/`auto`, `clip` was specifically designed to NOT
+   force the other axis to change and to NOT establish a scroll
+   container at all — there's no scrollport, no scrolling API, nothing
+   for a descendant's sticky positioning to mistake for its scrolling
+   ancestor. It still visually clips horizontal overflow exactly like
+   `hidden` did; it just can't break sticky the way `hidden` can. */
+body.overflow-x-hidden {
+  overflow-x: clip;
+}
+
+/* Locked while any modal (or Ekspedisi's fullscreen focus mode) is
+   open, so the page behind can't scroll and reveal its native
+   scrollbar — that scrollbar sits in the browser's UI layer, on top
+   of even a fullscreen fixed overlay, so without this it shows up as
+   a stray bar down the right edge.
+
+   `position: fixed` (not just overflow:hidden) is what actually keeps
+   the page from jumping to the top when this engages — a bare
+   overflow:hidden resets body's scrollTop to 0, which was yanking
+   everything, including sticky elements like the sidebar, up with it.
+   js/admin-shared.js sets `top` to the negative of the current scroll
+   offset before adding this class, and restores the real scroll
+   position via window.scrollTo when it's removed. */
+html.kir-scroll-locked {
+  overflow: hidden !important;
+}
+html.kir-scroll-locked body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: hidden !important;
+}
+
+/* #sidebar is lg:sticky lg:top-0 so it stays visible while the main
+   column scrolls. It's also capped to lg:h-screen (exactly the
+   viewport height, never taller) so it can never detach and travel
+   with the page the way an over-tall sticky element normally would —
+   see .sidebar-nav-scroll further down this file, which is the part
+   of #sidebar that actually grows past the available space and
+   absorbs that overflow with its own internal (scrollbar-less)
+   scroll, while the profile footer pinned via .mt-auto stays put at
+   the bottom of the bar at all times. Sticky can't
+   be trusted once .kir-scroll-locked engages: it recomputes against a
+   scroll offset that's now frozen/fake instead of real. So
+   __kirFreezeSidebar() in admin-shared.js swaps it to position:fixed
+   at the exact top/left/width/height it already had the instant
+   before the lock — wherever that was, stuck at top or partway
+   scrolled — instead of assuming it was at the top. #sidebar-root
+   gets a matching inline width so pulling the sidebar out of flex
+   flow doesn't collapse the space it was holding, which is what was
+   shifting <main> left. Transitions are suspended while frozen so
+   snapping in those (already-matching) inline dimensions doesn't
+   itself animate. */
+.kir-sidebar-frozen {
+  transition: none !important;
+}
+
+/* Smooth cross-document navigation between pages (Chrome/Edge; other
+   browsers just ignore this and fall back to the normal hard navigation). */
+@view-transition {
+  navigation: auto;
+}
+
+/* Every ::view-transition-group(name) has its OWN size/position morph
+   animation, separate from the opacity crossfade on the ::old(name)/
+   ::new(name) images inside it — the group animates width/height/
+   transform from the old element's box to the new element's box, and
+   the two screenshots (object-fit: cover by default) get stretched to
+   fill whatever size the group currently is at each frame.
+   For the unnamed root group specifically, "the old element's box" and
+   "the new element's box" are the two whole pages — and pages here
+   vary a lot in content height — so across a normal navigation the
+   root group is continuously resizing for the full transition
+   duration, and both full-page screenshots are being rescaled to
+   chase it the entire time. Body text mostly hides that; small crisp
+   raster content doesn't — the brand logo above all is what was
+   showing that rescaling as visible blur on every navigation.
+   Crushing ONLY the root group's own animation removes the resize:
+   the box snaps straight to its final size and the old/new images
+   just cross-fade in place, already at 1:1 scale — their own opacity
+   animation lives separately on ::view-transition-old(root)/::view-
+   transition-new(root) and is untouched by this. Duration-crush
+   rather than `animation: none`, same reasoning as the reduced-motion
+   rule further down: killing the shorthand strips fill-mode too, so
+   the box would snap to its DEFAULT computed size instead of landing
+   on the new page's actual final size. */
+::view-transition-group(root) {
+  animation-duration: 0.001ms !important;
+  animation-delay: -1ms !important;
+}
+
+:root {
+  /* Live height of the taskbar when it's docked to the top or bottom of
+     the screen (data-sidebar-pos="top"/"bottom"), kept in sync by
+     kirWatchTaskbarClearance() in js/auth.js. Since the taskbar is
+     `position: fixed` in that layout (see the media query further down
+     this file), it no longer reserves space in .kir-app-shell's flex
+     flow — <main>'s padding and any fixed-position bottom UI (admin
+     FABs in css/admin-shared.css, the admin toast) add these on top of
+     their normal offset so nothing renders underneath the taskbar. 0px
+     the rest of the time (taskbar elsewhere, or below the lg breakpoint
+     where the top/bottom taskbar layout doesn't apply at all). */
+  --kir-top-taskbar-h: 0px;
+  --kir-bottom-taskbar-h: 0px;
+
+  /* Default Orbit Accent (Premium Neutral) — true grayscale, no blue
+     tint, and lighter overall so it reads as an extension of the
+     white/light-grey logo instead of a colored (blue-ish) accent. */
+  --accent-rgb: 212, 212, 216;
+  --accent-2-rgb: 82, 82, 91;
+  --accent-light-rgb: 244, 244, 245;
+  --accent-lighter-rgb: 250, 250, 250;
+
+  /* Dark theme (default) */
+  --bg-color: #09090b;
+  --text-color: #f4f4f5;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-input-bg: rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --glow-opacity: 1;
+  --muted-500: #71717a;
+  --muted-600: #52525b;
+  --thumb-bg: #ffffff;
+}
+
+/* User-controlled "disable all animations" toggle (Settings page).
+   Kept separate from the OS-level prefers-reduced-motion query below
+   so it always reflects the in-app toggle regardless of system
+   settings. !important is needed since it has to beat both utility
+   classes and any inline styles JS sets during an in-flight
+   animation (e.g. the leaderboard's FLIP reorder transforms). */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: -1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-reduce-motion="true"] .reveal { opacity: 1 !important; transform: none !important; }
+html[data-reduce-motion="true"] #orbit-traveler { display: none !important; }
+html[data-reduce-motion="true"] .pulse { animation: none !important; }
+
+/* The universal `*` selector above can't reach these — view-transition
+   pseudo-elements render on the document root, not as real descendants
+   of <html>. Named groups (kir-sidebar, kir-nav-pill — see .nav-active-
+   pill and #sidebar) get their own morph animation between old/new
+   position & size on every same-document transition, since
+   js/router.js now always runs one (needed so the Tailwind CDN's async
+   class reconciliation stays masked behind the snapshot crossfade —
+   see the comment on the startViewTransition call in router.js).
+   ViewTransition.skipTransition() is supposed to cut that morph short,
+   but named-group animations don't reliably honor it, so this CSS
+   backstop is still required for reduced motion to actually be motion-
+   free (the pill was still visibly gliding without it).
+   IMPORTANT: override animation-duration/delay here, NOT `animation:
+   none`. Killing the whole shorthand strips fill-mode too — with no
+   fill-mode, the old and new snapshots can both fall back to their
+   default full-opacity state and sit stacked on top of each other
+   under `mix-blend-mode: plus-lighter` (the built-in crossfade
+   compositing), which washes out lighter/whiter instead of cleanly
+   showing just the new state. Crushing the duration instead keeps the
+   animation running (so fill-mode still applies and it lands exactly
+   on its intended end frame) while making it visually instant — same
+   technique as the universal `*` rule above, just extended to the one
+   place that selector can't reach. */
+html[data-reduce-motion="true"]::view-transition-group(*),
+html[data-reduce-motion="true"]::view-transition-old(*),
+html[data-reduce-motion="true"]::view-transition-new(*) {
+  animation-duration: 0.001ms !important;
+  animation-delay: -1ms !important;
+}
+
+html[data-cabang="robotik"] {
+  --accent-rgb: 224, 70, 95; /* #e0465f */
+  --accent-2-rgb: 190, 18, 60;
+  --accent-light-rgb: 251, 113, 133;
+  --accent-lighter-rgb: 255, 228, 230;
+}
+
+html[data-cabang="sains"] {
+  --accent-rgb: 6, 182, 212; /* Cyan/Blue blend */
+  --accent-2-rgb: 2, 132, 199;
+  --accent-light-rgb: 103, 232, 249;
+  --accent-lighter-rgb: 207, 250, 254;
+}
+
+html[data-cabang="both"] {
+  --accent-rgb: 139, 92, 246;
+  --accent-2-rgb: 109, 40, 217;
+  --accent-light-rgb: 196, 181, 253;
+  --accent-lighter-rgb: 221, 214, 254;
+}
+
+/* User toggle: "Nonaktifkan Warna Cabang" (Settings → Tampilan &
+   Bahasa, js/auth.js kirSetDisableBranchColor()). When on, every
+   accent-* utility above falls back to a neutral grayscale instead
+   of the red/blue/purple cabang tint — same idea as the Orbit
+   Accent default a logged-out visitor sees, just forced on while
+   logged in too.
+   Single-attribute selector, same specificity as the data-cabang
+   rules above, so it MUST stay below them in the file to win the
+   cascade tie — don't reorder this block above data-cabang. */
+html[data-disable-branch-color="true"] {
+  --accent-rgb: 212, 212, 216;
+  --accent-2-rgb: 82, 82, 91;
+  --accent-light-rgb: 244, 244, 245;
+  --accent-lighter-rgb: 250, 250, 250;
+}
+
+/* Light mode's background is white, so the dark theme's light-grey
+   "neutral" above would nearly disappear against it — swap to a
+   near-black neutral instead. Two attributes here (vs. one on the
+   rule above) gives this higher specificity on purpose, so it wins
+   regardless of source order once both data-theme="light" and
+   data-disable-branch-color="true" are set. */
+html[data-theme="light"][data-disable-branch-color="true"] {
+  --accent-rgb: 15, 23, 42;
+  --accent-2-rgb: 30, 41, 59;
+  --accent-light-rgb: 51, 65, 85;
+  --accent-lighter-rgb: 71, 85, 105;
+}
+
+html[data-theme="light"] {
+  --bg-color: #f4f4f5;
+  --text-color: #0f172a;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-input-bg: rgba(15, 23, 42, 0.05);
+  --scrollbar-thumb: rgba(15, 23, 42, 0.2);
+  --glow-opacity: 1;
+  --muted-500: #64748b;
+  --muted-600: #94a3b8;
+  --thumb-bg: #0f172a;
+}
+
+html[data-theme="light"] .glow-blob {
+  mix-blend-mode: multiply;
+  filter: blur(80px);
+}
+
+/* Enforce high-contrast dark text over low-contrast elements in light mode */
+html[data-theme="light"] .text-zinc-100 { color: #0f172a !important; }
+html[data-theme="light"] .text-zinc-200 { color: #1e293b !important; }
+html[data-theme="light"] .text-zinc-300 { color: #334155 !important; }
+html[data-theme="light"] .text-zinc-400 { color: #475569 !important; }
+html[data-theme="light"] .text-zinc-500 { color: #64748b !important; }
+html[data-theme="light"] .text-zinc-600 { color: #475569 !important; }
+
+/* Force white text inside the active navigation wash for high legibility */
+html[data-theme="light"] .nav-link.active {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] .nav-link.active svg {
+  color: #ffffff !important;
+}
+html[data-theme="light"] .nav-active-pill {
+  background: rgb(var(--accent-rgb)) !important;
+  border-color: rgb(var(--accent-rgb)) !important;
+}
+
+/* Sidebar collapse structural override mechanics */
+#sidebar {
+  white-space: nowrap;
+  transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
+  z-index: 40;
+  width: 16rem;
+  min-width: 16rem;
+  view-transition-name: kir-sidebar;
+  contain: layout;
+}
+
+/* The scrollable middle of the taskbar — everything between the logo
+   and the profile footer (.mt-auto). #sidebar itself is capped to
+   lg:h-screen, so once the Menu/Voyage/Akun nav groups it wraps don't
+   fit that fixed height, this is what overflows and scrolls — not
+   #sidebar as a whole — which is exactly what keeps the profile
+   footer glued to the bottom of the bar regardless of scroll
+   position. flex-1/min-h-0 (set inline via Tailwind utilities in the
+   markup) are what let it actually shrink to the remaining space
+   instead of pushing #sidebar taller than its cap.
+   Scrollbar is intentionally hidden on all three engines (Firefox,
+   IE/old Edge, WebKit/Blink) — the region still scrolls via wheel,
+   trackpad, touch, or keyboard, it just never shows a visible track,
+   and naturally does nothing at all when there's nothing to scroll. */
+.sidebar-nav-scroll {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Once the nav list itself hits the top/bottom of its own scroll
+     range, stop the scroll gesture there instead of letting the
+     browser hand the rest of the gesture off to the page underneath
+     (the default "scroll chaining" behavior) — mousewheel/trackpad/
+     touch scrolling over the taskbar should only ever move the
+     taskbar's own list, never the page behind it. */
+  overscroll-behavior: contain;
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Edge fade — hints that there's more to scroll to without resorting
+   to a visible scrollbar. Toggled by kirUpdateNavScrollFade() in
+   js/auth.js, which reads the container's real scroll position/size,
+   so the fade on a given edge only ever appears when there's
+   genuinely more content past it — a list that fits entirely within
+   the taskbar never gets faded on either edge. .kir-fade-start is the
+   edge content scrolls away FROM (top in the normal vertical bar,
+   left in the horizontal top/bottom taskbar); .kir-fade-end is the
+   edge it scrolls TOWARD. Both can be active at once, in which case
+   the two gradients below combine into a fade on both edges with the
+   middle left fully opaque. */
+.sidebar-nav-scroll.kir-fade-start {
+  mask-image: linear-gradient(to bottom, transparent, black 20px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px);
+}
+.sidebar-nav-scroll.kir-fade-end {
+  mask-image: linear-gradient(to top, transparent, black 20px);
+  -webkit-mask-image: linear-gradient(to top, transparent, black 20px);
+}
+.sidebar-nav-scroll.kir-fade-start.kir-fade-end {
+  mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+}
+
+#sidebar.sidebar-collapsed {
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-header-text,
+#sidebar.sidebar-collapsed .nav-label,
+#sidebar.sidebar-collapsed p.uppercase,
+#sidebar.sidebar-collapsed .min-w-0 {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease;
+}
+
+#sidebar .sidebar-header-text, 
+#sidebar .nav-label, 
+#sidebar p.uppercase, 
+#sidebar .min-w-0 {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease 0.1s, width 0.3s ease, margin 0.3s ease, padding 0.3s ease, font-size 0.3s ease, line-height 0.3s ease;
+}
+
+.collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+#sidebar.sidebar-collapsed .collapse-icon {
+  transform: rotate(180deg);
+}
+
+.rubber-bounce {
+  transition: transform 0.35s cubic-bezier(0.4, 2.8, 0.3, 1) !important;
+}
+
+#sidebar > a:first-of-type,
+#sidebar > a[href="index.html"],
+#sidebar .nav-link,
+#sidebar .mt-auto > div,
+#sidebar .mt-auto > a,
+#sidebar button[onclick="kirLogout()"] {
+  transition: padding 0.3s ease, gap 0.3s ease, width 0.3s ease;
+}
+
+#sidebar > a[href="index.html"],
+#sidebar .mt-auto > div {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  gap: 0.625rem;
+}
+
+#sidebar .nav-link,
+#sidebar button[onclick="kirLogout()"] {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  gap: 0.75rem;
+}
+
+#sidebar.sidebar-collapsed > a:first-of-type,
+#sidebar.sidebar-collapsed > a[href="index.html"],
+#sidebar.sidebar-collapsed .mt-auto > div {
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+  gap: 0 !important;
+  width: 100% !important;
+}
+
+#sidebar.sidebar-collapsed .nav-link,
+#sidebar.sidebar-collapsed .mt-auto > a,
+#sidebar.sidebar-collapsed button[onclick="kirLogout()"] {
+  /* 1rem (not the old 1.125rem) is what actually leaves the icon's
+     own 1.25rem box flush inside .nav-link's content box once its
+     `border: 1px solid transparent` (always-on, 1px each side, see
+     .nav-link below) is accounted for:
+       collapsed nav content width (54px, itself already reduced by
+       #sidebar's own 0.5rem padding + border) minus .nav-link's own
+       2px border minus 2 * 1rem padding = 20px = exactly the 1.25rem
+       collapsed icon. The old 1.125rem number left the icon 4px too
+       big for its box, so flexbox's default flex-start alignment
+       pushed the overflow entirely to the right.
+  */
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  gap: 0 !important;
+  width: 100% !important;
+  /* Center by construction instead of relying on the padding numbers
+     above happening to net out to zero. That arithmetic is fragile —
+     any future change to the sidebar's border, padding, or icon size
+     silently reintroduces the drift. justify-content: center
+     guarantees centering regardless. Scoped to collapsed mode only:
+     expanded mode still left-aligns the icon+label pair. */
+  justify-content: center !important;
+}
+
+#sidebar.sidebar-collapsed > a:first-of-type > div:first-child,
+#sidebar.sidebar-collapsed [data-kir="avatar-wrapper"] {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  font-size: 0.875rem !important;
+}
+
+#sidebar.sidebar-collapsed .nav-link svg,
+#sidebar.sidebar-collapsed button[onclick="kirLogout()"] svg {
+  margin: 0 !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+/* ==========================================================
+   Mobile nav drawer (below the lg breakpoint)
+   --------------------------------------------------------
+   #sidebar is `hidden lg:flex` — on mobile the hamburger button in
+   each page's top bar calls kirToggleMobileSidebar() (js/auth.js),
+   which removes `hidden` and adds `kir-sidebar-open`. Without the
+   rules below that would just drop the (very tall) desktop sidebar
+   into normal block flow above <main>, pushing the whole page down
+   instead of floating over it — which is exactly what this fixes:
+   under 1024px, an un-hidden #sidebar is pulled out of flow and
+   pinned to the viewport as a slide-in panel, with a dedicated
+   backdrop behind it and the page underneath locked from scrolling.
+   ========================================================== */
+@media (max-width: 1023.98px) {
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 17rem;
+    max-width: 82vw;
+    z-index: 60;
+    display: flex !important;
+    flex-direction: column;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 8px 0 32px -8px rgba(0, 0, 0, 0.5);
+  }
+  #sidebar.kir-sidebar-open {
+    transform: translateX(0);
+  }
+  /* Collapse is a desktop-only affordance (there's no room to save on
+     a 17rem overlay panel) — hide its toggle so it can't get stuck in
+     a collapsed state that the mobile drawer has no way to expand
+     back out of. */
+  #sidebar-collapse-btn {
+    display: none;
+  }
+}
+
+.kir-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 55;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* The mobile top bar (logo + hamburger) is a sibling of #sidebar-root
+   inside .kir-app-shell, same as .kir-sidebar-backdrop, but it only
+   carries Tailwind's z-20 — well under the backdrop's z-index: 55.
+   So the instant the drawer opens, the backdrop paints over the top
+   bar too: it visually dims and, because pointer-events flips to
+   auto while `.visible`, swallows clicks meant for the hamburger/logo
+   before they ever reach it. #sidebar itself (z-index: 60) is fine;
+   this is only about that top bar. Bumping it above the backdrop
+   (but below the drawer, which should still slide over it) fixes
+   both. !important matches the rest of this file's convention for
+   beating Tailwind CDN utility classes injected at runtime. */
+.kir-app-shell > .sticky.z-20 {
+  z-index: 56 !important;
+}
+.kir-sidebar-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Lock the page behind the open drawer so a touch-scroll on the
+   backdrop can't drag the content underneath. */
+html.kir-mobile-nav-open {
+  overflow: hidden;
+}
+
+/* ==========================================================
+   Taskbar (sidebar) position — Settings → Appearance & Language.
+   `data-sidebar-pos="left"` is the default and needs nothing
+   extra: it's the exact layout the rules above already produce.
+   The other three are opt-in overrides, scoped to the same lg:
+   breakpoint the sidebar itself only ever renders at (#sidebar is
+   `hidden lg:flex` — below that a separate mobile top bar with a
+   hamburger dropdown takes over, untouched by this setting).
+
+   .kir-app-shell is the flex row (`<div class="... lg:flex">`)
+   that holds #sidebar-root and <main> on every app page.
+   ========================================================== */
+@media (min-width: 1024px) {
+
+  /* ---- right: mirror the default left-hand bar ---- */
+  html[data-sidebar-pos="right"] .kir-app-shell {
+    flex-direction: row-reverse;
+  }
+  html[data-sidebar-pos="right"] #sidebar {
+    border-left: 1px solid var(--glass-border);
+    border-right: 0;
+  }
+  html[data-sidebar-pos="right"] #sidebar-collapse-btn {
+    right: auto;
+    left: -0.75rem;
+  }
+  html[data-sidebar-pos="right"] .collapse-icon { transform: rotate(180deg); }
+  html[data-sidebar-pos="right"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(0deg); }
+
+  /* ---- top / bottom: fold the vertical bar into a horizontal one ---- */
+  html[data-sidebar-pos="top"] .kir-app-shell,
+  html[data-sidebar-pos="bottom"] .kir-app-shell {
+    flex-direction: column;
+  }
+  html[data-sidebar-pos="bottom"] .kir-app-shell {
+    flex-direction: column-reverse;
+  }
+
+  html[data-sidebar-pos="top"] #sidebar,
+  html[data-sidebar-pos="bottom"] #sidebar {
+    /* `position: fixed`, not `sticky`. A horizontal top/bottom taskbar
+       is always shorter than the viewport, so there's none of the
+       "scroll past it, let it detach and travel with the page" nuance
+       that makes `sticky` the right tool for the tall left/right bar
+       further up this file — a taskbar just needs to always be pinned
+       to a viewport edge, full stop, which is exactly what `fixed` is
+       for. It also sidesteps `sticky`'s biggest footgun entirely:
+       sticky positioning is computed relative to the nearest ancestor
+       that establishes a scroll container, and that lookup can get
+       hijacked by all sorts of ancestor styling (overflow, contain,
+       transforms, third-party CSS injected by the Tailwind CDN runtime
+       at unpredictable times, etc.) — `fixed` has no such ancestor
+       dependency; it's relative to the viewport, always, unconditionally.
+       Taking #sidebar out of flow like this does mean <main> needs
+       explicit padding to compensate for the space #sidebar no longer
+       reserves in .kir-app-shell's flex layout — see the
+       `html[data-sidebar-pos="top"/"bottom"] main` rules below, fed by
+       the same --kir-top-taskbar-h / --kir-bottom-taskbar-h variables
+       js/auth.js already measures live. */
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    flex-direction: row !important;
+    align-items: center;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto;
+    min-height: 0;
+    padding: 0.55rem 1.1rem !important;
+    gap: 0;
+    /* Overflow now lives on .sidebar-nav-scroll (below), not here —
+       see that rule for why. */
+    overflow: visible;
+    transition: padding 0.25s ease;
+  }
+
+  /* In the horizontal layout, .sidebar-nav-scroll (the Menu/Voyage/
+     Akun nav groups) becomes the row that can actually run out of
+     space and needs to scroll — sideways this time, not vertically —
+     while the logo before it and the profile chip after it
+     (margin-left: auto, outside this element entirely) stay fixed in
+     place at their end of the bar and never move. min-width: 0 is
+     required for a flex item to shrink below its content's natural
+     width and actually engage overflow-x instead of just forcing
+     #sidebar wider than the viewport. */
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll {
+    flex-direction: row !important;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* Fade runs along whichever axis actually scrolls here: horizontal,
+     not vertical — same start/end logic as the vertical bar, just
+     rotated 90°. Higher specificity than the base .kir-fade-start/
+     .kir-fade-end rules above, so this wins whenever the taskbar is
+     docked top/bottom. */
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-start,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-start {
+    mask-image: linear-gradient(to right, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20px);
+  }
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-end,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-end {
+    mask-image: linear-gradient(to left, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to left, transparent, black 20px);
+  }
+  html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-start.kir-fade-end,
+  html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-start.kir-fade-end {
+    mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+  }
+  /* Collapsed = icon-only taskbar strip, noticeably slimmer than the
+     already-compact expanded bar above */
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed {
+    padding: 0.35rem 0.85rem !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar {
+    top: 0 !important; bottom: auto !important;
+    border-bottom: 1px solid var(--glass-border);
+    border-left: 0; border-top: 0;
+  }
+  html[data-sidebar-pos="bottom"] #sidebar {
+    top: auto !important; bottom: 0 !important;
+    border-top: 1px solid var(--glass-border);
+    border-left: 0; border-bottom: 0;
+  }
+
+  /* #sidebar no longer reserves space in .kir-app-shell's flex flow once
+     it's `position: fixed` (see above), so <main> renders straight
+     through where the taskbar visually sits unless compensated here.
+     --kir-top-taskbar-h / --kir-bottom-taskbar-h are the taskbar's live
+     rendered height, kept in sync by kirWatchTaskbarClearance in
+     js/auth.js (0px whenever that position/breakpoint isn't active, so
+     these rules are harmless no-ops the rest of the time). */
+  html[data-sidebar-pos="top"] main {
+    padding-top: calc(2rem + var(--kir-top-taskbar-h, 0px));
+  }
+  html[data-sidebar-pos="bottom"] main {
+    padding-bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px));
+  }
+
+  /* Collapse trigger stays available in top/bottom mode too — same
+     Windows-taskbar-style "show icons only" behavior as left/right,
+     just relocated from the protruding edge tab (which only makes
+     sense on a vertical bar) to an ordinary inline button at the
+     far end of the row, past the account chip. */
+  html[data-sidebar-pos="top"] #sidebar-collapse-btn,
+  html[data-sidebar-pos="bottom"] #sidebar-collapse-btn {
+    position: static;
+    order: 99;
+    margin-left: 0.75rem;
+    top: auto; right: auto; left: auto; bottom: auto;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] .collapse-icon { transform: rotate(90deg); }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(-90deg); }
+  html[data-sidebar-pos="bottom"] .collapse-icon { transform: rotate(-90deg); }
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(90deg); }
+
+  /* Logo: sits flush left, no bottom margin needed in a horizontal bar.
+     Collapsed down to just the mark (no wordmark) once icon-only, same
+     idea as the label-hiding below. */
+  html[data-sidebar-pos="top"] #sidebar > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar > a:first-of-type {
+    margin-bottom: 0 !important;
+    margin-right: 1.5rem;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed > a:first-of-type {
+    margin-right: 0.85rem;
+  }
+
+  /* Nav groups become inline pill-rows instead of stacked lists;
+     the little uppercase "Menu"/"Voyage"/"Akun" group labels don't
+     fit a slim horizontal bar so they're dropped, and a divider
+     line stands in for the visual grouping they used to provide. */
+  html[data-sidebar-pos="top"] #sidebar nav,
+  html[data-sidebar-pos="bottom"] #sidebar nav {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.2rem !important;
+    margin-top: 0 !important;
+    flex-shrink: 0;
+  }
+  html[data-sidebar-pos="top"] #sidebar nav > p.uppercase,
+  html[data-sidebar-pos="bottom"] #sidebar nav > p.uppercase {
+    display: none;
+  }
+  html[data-sidebar-pos="top"] #sidebar nav + nav,
+  html[data-sidebar-pos="bottom"] #sidebar nav + nav {
+    margin-left: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 1px solid var(--glass-border);
+  }
+
+  /* Nav links themselves: trim the default vertical-bar padding down
+     to something a slim horizontal strip can actually hold */
+  html[data-sidebar-pos="top"] #sidebar .nav-link,
+  html[data-sidebar-pos="bottom"] #sidebar .nav-link {
+    padding: 0.45rem 0.65rem !important;
+    gap: 0.5rem !important;
+  }
+
+  /* ---- collapsed (icon-only) state, top/bottom ---- */
+  /* The generic #sidebar.sidebar-collapsed rules elsewhere in this
+     file already hide .nav-label/.sidebar-header-text/.min-w-0 and
+     assume a vertical bar (width: 100% !important on every row,
+     justify-content: center). Those width/centering assumptions are
+     wrong for a horizontal strip, so they're reset back to natural
+     sizing here — higher specificity (html[...] + #sidebar.sidebar-
+     collapsed) wins over the generic versions further up the file. */
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .nav-link,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > a,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed button[onclick="kirLogout()"],
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .nav-link,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > a,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed button[onclick="kirLogout()"] {
+    width: auto !important;
+    padding: 0.4rem !important;
+    gap: 0 !important;
+    justify-content: center !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > div,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed > a:first-of-type,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > div {
+    width: auto !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .nav-link svg,
+  html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .nav-link svg {
+    margin: 0 !important;
+  }
+
+  /* Account footer (avatar/name) rides at the far end of the bar
+     instead of pinned to the bottom of a column */
+  html[data-sidebar-pos="top"] #sidebar > div.mt-auto,
+  html[data-sidebar-pos="bottom"] #sidebar > div.mt-auto {
+    margin-top: 0 !important;
+    margin-left: auto;
+    padding-top: 0 !important;
+    padding-left: 0.85rem;
+    border-top: 0 !important;
+    border-left: 1px solid var(--glass-border);
+    flex-shrink: 0;
+  }
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+
+/* Fixed, viewport-clipped layer the glow blobs live in. Pure decoration:
+   `position: fixed` + `inset: 0` locks this to the exact viewport box
+   regardless of how tall/wide the rest of the page ends up, and
+   `overflow: hidden` means nothing inside it — no matter how far a
+   blob's blur/negative-offset pushes it — can ever register as part
+   of the page's scrollable width or height. Previously the blobs were
+   plain `position: absolute` children of <body>, relying on body's own
+   overflow-x:clip to contain them; that's a *paint* clip, not a layout
+   one, so their boxes could still count toward the document's
+   scrollable overflow and quietly widen the page. Giving them their
+   own out-of-flow, self-clipping layer removes that possibility
+   entirely — they're now guaranteed to be background-only, never
+   layout-affecting, on any device. */
+.glow-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ambient glow blobs — the site's signature visual motif */
+.glow-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--glow-opacity);
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-input {
+  background: var(--glass-input-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  color: var(--text-color);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+  background: var(--glass-input-bg);
+}
+.glass-input::placeholder { color: var(--muted-600); }
+.glass-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* iOS Safari auto-zooms the page in on focus for any text input/select
+   under 16px, which is disorienting on ordinary scrolling pages and
+   actively breaks the fixed-height, non-scrolling layouts (auth.html,
+   the dashboard modals) since the browser's own zoom fights the page's
+   own sizing the moment a field is tapped. The inputs are `text-sm`
+   (14px) everywhere for visual consistency with the rest of the UI, so
+   bump only the mobile, only-while-focused size back up to 16px rather
+   than changing how they look normally or on desktop. */
+@media (max-width: 640px) {
+  .glass-input:focus, select.glass-input:focus { font-size: 16px; }
+}
+
+/* ==========================================================
+   Custom dropdown — replaces native <select> appearance
+   ========================================================== */
+.kir-select { position: relative; }
+.kir-select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  width: 100%; text-align: left; cursor: pointer;
+  border-radius: 0.5rem; padding: 0.625rem 0.875rem; font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+/* Default ("glass-input") look. Scoped with :not() rather than layered on
+   top of .kir-select-pill below so that when a caller opts into the pill
+   variant, background/border/color simply aren't set by this rule at
+   all — leaving the caller's own utility classes (passed in via
+   data-trigger-class on the source <select>, see kirRefreshCustomSelect
+   in js/auth.js) completely free to color the trigger without having to
+   out-specificity anything here, regardless of CSS load order. */
+.kir-select-trigger:not(.kir-select-pill) {
+  background: var(--glass-input-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px); color: var(--text-color);
+}
+.kir-select-trigger:not(.kir-select-pill):hover { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-select-trigger:not(.kir-select-pill).open {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+.kir-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.kir-select-trigger.placeholder .kir-select-trigger-label { color: var(--muted-600); }
+.kir-select-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kir-select-chevron {
+  width: 1rem; height: 1rem; flex-shrink: 0; color: var(--muted-500);
+  transition: transform 0.15s ease;
+}
+.kir-select-trigger.open .kir-select-chevron { transform: rotate(180deg); }
+
+/* Compact colored-pill variant - e.g. the per-task status dropdown on
+   tasks.html, which needs to keep looking like the small rounded status
+   badge it always has, just with the site's real dropdown panel behind
+   it instead of the browser's native one. A caller opts in by adding
+   "kir-select-pill" (plus whatever bg-* / text-* / border-* classes give it
+   its color) to data-trigger-class - kirRefreshCustomSelect mirrors that
+   one token onto the WRAPPER too (not just the trigger button), which is
+   what this first rule is for: without it the wrapper stays a normal
+   block box that stretches to fill whatever layout slot it's sitting in
+   (see the plain .kir-select rule below, used everywhere else on the
+   site), and the trigger inside would visually balloon out to match even
+   though the trigger's own width is `auto`. */
+.kir-select.kir-select-pill { display: inline-block; width: auto; }
+.kir-select-trigger.kir-select-pill {
+  display: inline-flex; width: auto; gap: 0.3rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.8rem; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 500;
+}
+.kir-select-trigger.kir-select-pill:hover { filter: brightness(1.12); }
+.kir-select-trigger.kir-select-pill .kir-select-chevron {
+  width: 0.7rem; height: 0.7rem; opacity: 0.75; color: currentColor;
+}
+
+
+/* min-width is set inline per-open (see kirPositionSelectPanel in
+   js/auth.js) to match the trigger's own current width in real viewport
+   pixels — position: fixed means a CSS percentage here can't resolve
+   against the wrapper the way it could when this was position: absolute.
+   width: max-content lets it grow WIDER than the trigger to fit its
+   longest option instead of wrapping/clipping (the trigger itself can be
+   as narrow as 7rem — see e.g. Voyages' SUBJEK filter — while an option
+   like "Informatika" needs more room than that). max-width plus normal
+   white-space keeps it from running off-screen or off a single line if
+   an option is ever genuinely long: it wraps instead of overflowing.
+   No max-height/overflow-y here on purpose — panels grow to fit every
+   option instead of scrolling. kirPositionSelectPanel (auth.js) flips
+   the panel above the trigger, and/or shifts it left, whenever growing
+   would push it past the viewport edge.
+
+   position: fixed (rather than absolute, relative to the wrapper) is
+   deliberate: an absolutely-positioned panel is clipped by ANY ancestor
+   with overflow:hidden — a task card, a modal's scrollable body, etc. —
+   which used to cut the panel off after a sliver of its first option.
+   Fixed positioning is relative to the viewport instead, so it always
+   renders in full regardless of what it's nested inside. The trade-off
+   is that a fixed element doesn't track the page scrolling underneath it
+   the way an absolute one would, so open panels are closed on scroll
+   (see the window 'scroll' listener further down this file) rather than
+   left visually detached from their trigger. z-index is set above every
+   modal-overlay z-index on the site (highest is 80, the admin toast) so
+   a dropdown opened from inside a modal still renders on top of it. */
+.kir-select-panel {
+  position: fixed; z-index: 100;
+  width: max-content; max-width: min(24rem, calc(100vw - 2rem));
+  background: var(--bg-color); border: 1px solid var(--glass-border);
+  border-radius: 0.65rem; padding: 0.35rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  white-space: normal;
+}
+.kir-select-option {
+  padding: 0.5rem 0.7rem; border-radius: 0.45rem; font-size: 0.85rem;
+  color: var(--text-color); cursor: pointer; transition: background-color 0.12s ease;
+}
+.kir-select-option:hover { background: rgba(128,128,128,0.12); }
+.kir-select-option.selected {
+  background: rgba(var(--accent-rgb), 0.14); color: rgb(var(--accent-light-rgb)); font-weight: 600;
+}
+/* Visible-but-unselectable option (e.g. "Kompetitif (Coding)" when
+   Subjek isn't Informatika) — shown grayed out rather than removed
+   from the list, so it's clear the choice exists but isn't valid
+   right now. See disabledIf in admin-shared.js. */
+.kir-select-option.disabled {
+  color: var(--muted-600); cursor: not-allowed; pointer-events: none;
+}
+.kir-select-option.disabled:hover { background: transparent; }
+
+/* Multi-select variant — checkbox rows that stay open across picks.
+   Unlike the single-select variant above, the row itself never gets
+   a hover/selected background or bold text here — only
+   .kir-select-checkbox is allowed to visibly react (border on hover,
+   filled + checkmark once picked), so these two rules cancel out the
+   single-select `.kir-select-option:hover`/`.selected` styling
+   specifically for `.multi` rows. Both are one class more specific
+   than the rules they're overriding, so this wins regardless of
+   source order. Applies to every kirRefreshMultiSelect() dropdown in
+   the app — there's nothing page-specific about it. */
+.kir-select-option.multi:hover { background: transparent; }
+.kir-select-option.multi.selected {
+  background: transparent; color: var(--text-color); font-weight: 400;
+}
+.kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
+.kir-select-option.multi > span:last-child { min-width: 0; overflow-wrap: break-word; }
+/* display:flex centering (rather than the checkmark's ::after
+   hardcoding its own left/top offsets) keeps the checkmark centered
+   automatically no matter what — box size, border width, etc. all
+   stay in sync without re-deriving magic-number offsets by hand. */
+.kir-select-checkbox {
+  width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0;
+  border: 1.5px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.kir-select-option.multi:hover .kir-select-checkbox { border-color: rgba(var(--accent-rgb), 0.5); }
+.kir-select-option.multi.selected .kir-select-checkbox {
+  background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); transform: scale(1.05);
+}
+.kir-select-option.multi.selected .kir-select-checkbox::after {
+  content: ''; width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+.nav-link {
+  position: relative;
+  z-index: 1;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  opacity: 0.75;
+}
+.nav-link.active {
+  /* background/border/glow now live on the traveling .nav-active-pill
+     behind the links, so the highlight can slide between items
+     instead of teleporting. This just keeps the label at full opacity. */
+  color: var(--text-color);
+  opacity: 1;
+}
+.nav-link:not(.active):hover {
+  background: rgba(128, 128, 128, 0.08);
+  opacity: 1;
+}
+
+/* Traveling active-nav highlight — one shared pill, absolutely
+   positioned behind whichever .nav-link is active, moved into place
+   by JS (kirPositionNavPill in auth.js). Also carries a
+   view-transition-name so it glides smoothly across full page loads,
+   not just in-page changes. */
+.nav-active-pill {
+  position: absolute;
+  left: 0;
+  border-radius: 0.5rem;
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 0 24px -8px rgba(var(--accent-rgb), 0.5);
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  contain: layout;
+  view-transition-name: kir-nav-pill;
+  transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1), left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+
+.timeline-line {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.6), rgba(var(--accent-rgb), 0));
+}
+
+/* ==========================================================
+   Schedule page — full month calendar (schedule.html)
+   --------------------------------------------------------
+   Only ever one month visible at a time: a header with
+   prev/next/"today" controls, a 7-col weekday grid, then a
+   day panel below listing whatever's on the selected date.
+   Kept as its own "kir-month-cal-*" namespace (rather than
+   reusing .kir-cal-* from the small inline date-picker in
+   admin-shared.css) since this is a much bigger, page-level
+   surface with its own hover/selection/today/has-events states
+   that would otherwise collide with the picker's compact ones.
+   ========================================================== */
+.kir-month-cal-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+.kir-month-cal-title-group { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; }
+.kir-month-cal-title {
+  font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 1.15rem;
+  text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kir-month-cal-nav { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+.kir-month-cal-nav-btn {
+  width: 2.1rem; height: 2.1rem; border-radius: 0.6rem; display: flex; align-items: center;
+  justify-content: center; color: var(--muted-500); cursor: pointer;
+  background: var(--glass-input-bg); border: 1px solid var(--glass-border);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.kir-month-cal-nav-btn:hover { color: var(--text-color); border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-month-cal-nav-btn svg { width: 1.05rem; height: 1.05rem; }
+.kir-month-cal-today-btn {
+  font-size: 0.78rem; font-weight: 600; padding: 0.45rem 0.85rem; border-radius: 0.6rem;
+  color: rgb(var(--accent-light-rgb)); background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.3); cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.kir-month-cal-today-btn:hover { background: rgba(var(--accent-rgb), 0.2); }
+
+.kir-month-cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.kir-month-cal-weekday {
+  text-align: center; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em;
+  text-transform: uppercase; color: var(--muted-500); padding-bottom: 0.5rem;
+}
+.kir-month-cal-day {
+  position: relative; aspect-ratio: 1; min-height: 3rem;
+  border-radius: 0.7rem; border: 1px solid transparent;
+  background: rgba(128,128,128,0.05);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 0.4rem 0.25rem 0.5rem; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.kir-month-cal-day:hover { background: rgba(128,128,128,0.12); }
+.kir-month-cal-day.kir-cal-outside { opacity: 0.35; }
+.kir-month-cal-day.kir-cal-empty { visibility: hidden; cursor: default; }
+.kir-month-cal-day-num {
+  font-size: 0.82rem; font-weight: 500; line-height: 1;
+  width: 1.6rem; height: 1.6rem; display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; transition: background 0.15s ease, color 0.15s ease;
+}
+.kir-month-cal-day.kir-cal-today .kir-month-cal-day-num {
+  border: 1px solid rgba(var(--accent-rgb), 0.6); font-weight: 700;
+}
+.kir-month-cal-day.kir-cal-selected { background: rgba(var(--accent-rgb), 0.14); }
+.kir-month-cal-day.kir-cal-selected .kir-month-cal-day-num { background: rgb(var(--accent-rgb)); color: #fff; }
+/* The ring (border only) is intentionally separate from .kir-cal-selected's
+   fill: it snaps on/off instantly with the click (bound directly to
+   scheduleSelectedKey, not the lagged visual/fill state below), while the
+   fill is what the traveling pulse "chases" toward, arriving after. */
+.kir-month-cal-day.kir-cal-ring-active { border-color: rgba(var(--accent-rgb), 0.45); }
+.kir-month-cal-day.kir-cal-has-events:not(.kir-cal-selected) {
+  background: rgba(var(--accent-rgb), 0.08); border-color: rgba(var(--accent-rgb), 0.22);
+}
+.kir-month-cal-day.kir-cal-has-next { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5) inset; }
+
+/* Indonesian public holidays ("tanggal merah") and collective leave days
+   ("cuti bersama"), pulled in from a public calendar API (see
+   scheduleFetchHolidays in schedule.html) and merged in alongside the
+   club's own events. Only the day number gets tinted red, not the whole
+   cell background, so it composes cleanly with the selection/ring/pulse
+   states instead of fighting them for the background layer. National
+   holidays get a solid tint; collective leave days (softer, bridge-day
+   time off) get the same color at reduced opacity so the two read as
+   related but distinct at a glance. The selected/today states win when
+   they overlap a holiday, so the number stays legible against their fill. */
+.kir-month-cal-day.kir-cal-holiday .kir-month-cal-day-num { color: rgb(248 113 113); }
+.kir-month-cal-day.kir-cal-holiday-leave .kir-month-cal-day-num { color: rgb(248 113 113); opacity: 0.7; }
+.kir-month-cal-day.kir-cal-holiday.kir-cal-selected .kir-month-cal-day-num,
+.kir-month-cal-day.kir-cal-holiday-leave.kir-cal-selected .kir-month-cal-day-num { color: #fff; opacity: 1; }
+
+/* Hardcoded fun/special days (e.g. World Snake Day, July 16) — same tint
+   pattern as the holiday styling above, just green instead of red, and
+   matched by month+day only so it recurs every year regardless of the
+   grid's actual year. See SCHEDULE_SPECIAL_DAYS in schedule.html. */
+.kir-month-cal-day.kir-cal-special .kir-month-cal-day-num { color: rgb(74 222 128); }
+.kir-month-cal-day.kir-cal-special.kir-cal-selected .kir-month-cal-day-num { color: #fff; }
+
+/* Select/deselect animations — plain `transition` doesn't work here because
+   the calendar grid is fully rebuilt via innerHTML on every click, so each
+   cell is a brand-new element with no "before" state to transition from.
+   @keyframes animations play on newly-inserted elements regardless, so they
+   animate correctly even across a full re-render. These classes are added
+   for exactly one render (see scheduleAnimateSelectKey/DeselectKey in
+   schedule.html) and never removed afterward, but since the animation only
+   plays once, that's harmless. Plain color fades only — no scale/motion. */
+@keyframes kir-cal-select-fade {
+  0% { background: rgba(128,128,128,0.05); }
+  100% { background: rgba(var(--accent-rgb), 0.14); }
+}
+@keyframes kir-cal-select-num-fade {
+  0% { background: rgba(128,128,128,0); color: inherit; }
+  100% { background: rgb(var(--accent-rgb)); color: #fff; }
+}
+.kir-month-cal-day.kir-cal-select-anim { animation: kir-cal-select-fade 0.3s ease; }
+.kir-month-cal-day.kir-cal-select-anim .kir-month-cal-day-num { animation: kir-cal-select-num-fade 0.3s ease; }
+
+@keyframes kir-cal-deselect-fade {
+  0% { background: rgba(var(--accent-rgb), 0.14); }
+  100% { background: rgba(128,128,128,0.05); }
+}
+@keyframes kir-cal-deselect-num-fade {
+  0% { background: rgb(var(--accent-rgb)); color: #fff; }
+  100% { background: rgba(128,128,128,0); color: inherit; }
+}
+.kir-month-cal-day.kir-cal-deselect-anim { animation: kir-cal-deselect-fade 0.3s ease; }
+.kir-month-cal-day.kir-cal-deselect-anim .kir-month-cal-day-num { animation: kir-cal-deselect-num-fade 0.3s ease; }
+
+/* Traveling highlight — a brief pulse stepped through intermediate cells
+   between the old and new selection (see scheduleRunTravelAnimation in
+   schedule.html). This class is toggled on/off on the same persistent DOM
+   node via classList (not a fresh render), so the existing plain
+   `transition` on .kir-month-cal-day handles the fade in and back out. */
+.kir-month-cal-day.kir-cal-travel-pulse { background: rgba(var(--accent-rgb), 0.2); border-color: transparent; }
+
+.kir-month-cal-dots { display: flex; align-items: center; gap: 3px; margin-top: 0.3rem; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+.kir-month-cal-dot { width: 5px; height: 5px; border-radius: 999px; background: rgb(var(--accent-rgb)); flex-shrink: 0; }
+.kir-month-cal-dot.kir-cal-dot-next { background: rgb(var(--accent-light-rgb)); box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.7); }
+.kir-month-cal-day-count {
+  font-size: 0.62rem; font-weight: 600; color: rgb(var(--accent-light-rgb)); margin-top: 0.15rem;
+}
+
+@media (max-width: 640px) {
+  .kir-month-cal-day { min-height: 2.5rem; padding: 0.3rem 0.15rem 0.35rem; border-radius: 0.55rem; }
+  .kir-month-cal-day-num { width: 1.4rem; height: 1.4rem; font-size: 0.75rem; }
+  .kir-month-cal-title { font-size: 1rem; }
+}
+
+/* Day panel — list of the selected date's events, under the grid */
+/* Day detail popover on the schedule calendar — a floating panel
+   positioned via JS (schedulePositionDayPopover in schedule.html),
+   so it needs position:fixed the same way .kir-select-panel does.
+   z-index matches .kir-select-panel so it still renders above a
+   modal if one happens to be open behind it. */
+.kir-day-popover {
+  position: fixed; z-index: 100;
+  width: 20rem; max-width: calc(100vw - 2rem);
+  max-height: min(24rem, calc(100vh - 2rem));
+  overflow-y: auto;
+  /* Glassmorphism, matching the .glass utility used elsewhere on the
+     site (translucent glass-bg + blur), rather than a flat, opaque
+     var(--bg-color) panel — the popover floats over the calendar grid,
+     so it should read as glass sitting on top of it, not a solid slab
+     that happens to match the page background. */
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 0.85rem; padding: 1rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  opacity: 0;
+  transform: scale(0.97) translateY(6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.kir-day-popover.kir-popover-open { opacity: 1; transform: scale(1) translateY(0); }
+
+.kir-day-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+.kir-day-panel-date { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 0.95rem; text-transform: capitalize; }
+.kir-day-event-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.85rem 0.95rem; border-radius: 0.75rem;
+  background: rgba(128,128,128,0.05); border: 1px solid var(--glass-border);
+  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.kir-day-event-row:hover { background: rgba(128,128,128,0.1); }
+.kir-day-event-row + .kir-day-event-row { margin-top: 0.55rem; }
+.kir-day-event-row.kir-cal-is-next { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-day-event-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted-600); flex-shrink: 0; }
+.kir-day-event-row.kir-cal-is-next .kir-day-event-dot { background: rgb(var(--accent-rgb)); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6); }
+
+/* ==========================================================
+   Difficulty range slider — gradient fill + smooth drag motion
+   ========================================================== */
+.diff-track-fill {
+  background: linear-gradient(90deg, rgba(var(--accent-2-rgb), 0.85), rgb(var(--accent-rgb)) 55%, rgba(var(--accent-light-rgb), 0.9));
+  transition: left 0.16s cubic-bezier(.2,.8,.2,1), right 0.16s cubic-bezier(.2,.8,.2,1);
+}
+input[type="range"].kir-range::-webkit-slider-thumb { 
+  background: var(--thumb-bg);
+  box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease; 
+}
+input[type="range"].kir-range:active::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.18); }
+input[type="range"].kir-range:hover::-webkit-slider-thumb { transform: scale(1.08); }
+
+input[type="range"].kir-range::-moz-range-thumb { 
+  background: var(--thumb-bg);
+  box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease; 
+}
+input[type="range"].kir-range:active::-moz-range-thumb { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.18); }
+
+/* Snap-position ticks — fade out to hint "precise dragging is
+   available" whenever Alt is held, on every slider on the page (not
+   just the one under the cursor), since Alt applies to whichever one
+   you click next.
+   .kir-range-precise is also toggled directly by __kirRangeApplyDrag
+   in admin-shared.js for the duration of an actual Alt-drag, as a
+   belt-and-suspenders fallback for the body class below. */
+.kir-range-ticks { transition: opacity 0.18s ease; }
+.kir-range-wrap.kir-range-precise .kir-range-ticks,
+body.kir-alt-held .kir-range-ticks {
+  opacity: 0.15;
+}
+
+.diff-inline-input {
+  width: 5.5rem; text-align: right; font-size: 0.8rem; font-weight: 600;
+  color: rgb(var(--accent-light-rgb)); background: var(--glass-input-bg);
+  border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 0.4rem;
+  padding: 0.15rem 0.5rem;
+}
+.diff-inline-input:focus {
+  outline: none; border-color: rgba(var(--accent-rgb), 0.7);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0); }
+}
+.pulse { animation: pulse-dot 2.2s infinite; }
+
+/* Admin sidebar "ping" — small red unread-style count badge on the
+   Admin Panel link's icon, echoing the Discord unread-ping look, so
+   admins can spot pending member approvals from any page. */
+.nav-ping-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-color);
+}
+@keyframes nav-ping-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 0 0 2px var(--bg-color); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0), 0 0 0 2px var(--bg-color); }
+}
+.nav-ping-badge:not(.hidden) { animation: nav-ping-pulse 2s infinite; }
+
+@keyframes star-burst {
+  0% { 
+    translate: -50% -50%; 
+    scale: 0.3; 
+    opacity: 1; 
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  30% { 
+    translate: calc(-50% + var(--tx)) calc(-50% + var(--ty)); 
+    scale: 1.3; 
+    opacity: 1; 
+    animation-timing-function: ease-in;
+  }
+  100% { 
+    translate: calc(-50% + var(--tx) * 1.5) calc(-50% + 45px); 
+    scale: 0.5; 
+    opacity: 0; 
+  }
+}
+
+@keyframes star-spin {
+  0% { rotate: 0deg; }
+  100% { rotate: var(--rot-end); }
+}
+
+.diff-star-particle {
+  position: absolute;
+  pointer-events: none !important;
+  animation: star-burst 1.2s forwards, star-spin 1.2s linear forwards;
+  color: rgb(var(--accent-light-rgb));
+  z-index: 10;
+}
+
+.diff-star-particle * {
+  pointer-events: none !important;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); }
+  40%, 60% { transform: translateX(3px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+@keyframes flame-wave-flow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-12px); }
+}
+.flame-wave {
+  animation: flame-wave-flow 1.5s linear infinite;
+}
+.flame-fill-group {
+  transition: transform 0.5s ease;
+}
+
+/* prevents a flash of protected content before auth.js can redirect */
+.auth-gate-hidden { display: none !important; }
+
+/* ==========================================================
+   Accent utility classes — these replace Tailwind's old
+   bg-accent/*, text-accent-*, border-accent/* classes so the
+   whole palette can move between red / blue / purple and
+   dark / light via the CSS variables above.
+   ========================================================== */
+.bg-accent { background-color: rgb(var(--accent-rgb)); }
+.bg-accent-gradient { background-image: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%); }
+.bg-accent-10 { background-color: rgba(var(--accent-rgb), 0.10); }
+.bg-accent-15 { background-color: rgba(var(--accent-rgb), 0.15); }
+.bg-accent-20 { background-color: rgba(var(--accent-rgb), 0.20); }
+.bg-accent-25 { background-color: rgba(var(--accent-rgb), 0.25); }
+
+.border-accent-20 { border-color: rgba(var(--accent-rgb), 0.20); }
+.border-accent-30 { border-color: rgba(var(--accent-rgb), 0.30); }
+.border-accent-40 { border-color: rgba(var(--accent-rgb), 0.40); }
+
+.text-accent-200 { color: rgb(var(--accent-lighter-rgb)); }
+.text-accent-300 { color: rgb(var(--accent-light-rgb)); }
+
+.to-accent-300 { --tw-gradient-to: rgb(var(--accent-light-rgb)); }
+
+.shadow-glow { box-shadow: 0 0 40px -5px rgba(var(--accent-rgb), 0.45); }
+.shadow-glow-sm { box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.35); }
+
+.hero-gradient {
+  background-image: linear-gradient(to right, #ffffff, rgb(var(--accent-light-rgb)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-light-rgb)), #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .text-gradient-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-2-rgb)), #0f172a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .hero-gradient {
+  background-image: linear-gradient(to right, #0f172a, rgb(var(--accent-2-rgb)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Cabang badges — small pills used on the Members page, user
+   chip, and Settings, always showing their OWN fixed color
+   regardless of the active theme, so you can tell branches
+   apart even when your own accent is purple ("both"). */
+.badge-robotik { background: rgba(224, 70, 95, 0.15); color: #ee8fa0; border: 1px solid rgba(224, 70, 95, 0.35); }
+.badge-sains   { background: rgba(56, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(56, 130, 246, 0.35); }
+
+html[data-disable-branch-color="true"] .badge-robotik,
+html[data-disable-branch-color="true"] .badge-sains {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: rgb(var(--accent-light-rgb));
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.accent-theme {
+  accent-color: rgb(var(--accent-rgb));
+}
+
+/* Settings: toggle switch */
+.toggle-track {
+  width: 44px; height: 24px; border-radius: 999px;
+  background: rgba(128,128,128,0.25);
+  position: relative; transition: background 0.2s ease; cursor: pointer; flex-shrink: 0;
+}
+.toggle-track.on { background: rgb(var(--accent-rgb)); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: 999px; background: #fff; transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-track.on .toggle-thumb { transform: translateX(20px); }
+
+/* Settings: taskbar (sidebar) position picker — four little mock
+   "device screens" showing where the bar will sit, rather than a
+   plain radio list, so the choice is legible at a glance. */
+.pos-option {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  padding: 0.6rem 0.4rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.pos-option:hover { background: rgba(128,128,128,0.12); transform: translateY(-1px); }
+.pos-option.active {
+  border-color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.pos-option-label {
+  font-size: 0.6875rem; font-weight: 500; color: var(--muted-500);
+}
+.pos-option.active .pos-option-label { color: var(--text-color); }
+
+.pos-option-preview {
+  width: 100%; aspect-ratio: 4 / 3;
+  border-radius: 0.4rem;
+  background: rgba(128,128,128,0.15);
+  border: 1px solid var(--glass-border);
+  display: flex; overflow: hidden;
+}
+.pos-option.active .pos-option-preview { border-color: rgba(var(--accent-rgb), 0.5); }
+.pos-option-preview .pos-bar { background: rgb(var(--accent-rgb)); flex-shrink: 0; }
+.pos-option-preview .pos-page { flex: 1; background: rgba(128,128,128,0.1); margin: 3px; border-radius: 2px; }
+
+/* Locked state — below the lg breakpoint the taskbar position setting
+   has no effect (see the @media (min-width: 1024px) block further
+   down), so the picker is shown disabled instead of pretending it's
+   still a live control. Kept visible rather than hidden so people can
+   still see their current choice and understand why it's greyed out. */
+.pos-option.pos-option-locked {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.pos-option.pos-option-locked:hover {
+  background: var(--glass-input-bg);
+  transform: none;
+}
+
+.pos-preview-left, .pos-preview-right { flex-direction: row; }
+.pos-preview-left .pos-bar, .pos-preview-right .pos-bar { width: 28%; height: 100%; }
+
+.pos-preview-top, .pos-preview-bottom { flex-direction: column; }
+.pos-preview-top .pos-bar, .pos-preview-bottom .pos-bar { height: 28%; width: 100%; }
+
+/* Cabang picker chip (register + settings) */
+.cabang-chip {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  border-radius: 0.75rem;
+  padding: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.cabang-chip.selected {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+}
+
+/* Custom checkbox "card" — same glass-box + accent-fill language as
+   .cabang-chip and the kir-select checkbox mark, for any place a
+   plain native checkbox needs to look like the rest of the design
+   system instead of the browser default (e.g. the "Tertarik dengan
+   lomba" picks on the register form). The real <input type="checkbox">
+   stays in the DOM (visually hidden via sr-only) so existing code that
+   reads/queries it keeps working untouched — this is pure CSS restyling,
+   using :has() to react to its checked state, no JS required. */
+.kir-check-card {
+  display: flex; align-items: center; gap: 0.6rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-input-bg);
+  border-radius: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.kir-check-card:hover { border-color: rgba(var(--accent-rgb), 0.4); }
+.kir-check-card:has(input:checked) {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+}
+.kir-check-card:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+
+.kir-check-box {
+  width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0;
+  border: 1.5px solid var(--glass-border); position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.kir-check-card:has(input:checked) .kir-check-box {
+  background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); transform: scale(1.05);
+}
+.kir-check-card:has(input:checked) .kir-check-box::after {
+  content: ''; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.kir-check-card-label { font-size: 0.85rem; color: var(--text-color); }
+.kir-check-card:has(input:disabled) { cursor: default; opacity: 0.5; }
+
+/* Modal overlay (task detail window) */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px); z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.modal-overlay.modal-open { opacity: 1; }
+.modal-overlay.modal-closing { pointer-events: none; }
+.modal-card {
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  max-width: 28rem; width: 100%; max-height: 88vh; overflow-y: auto; overflow-x: hidden;
+  border-radius: 1rem;
+  opacity: 0;
+  transform: scale(0.97) translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.modal-overlay.modal-open .modal-card { opacity: 1; transform: scale(1) translateY(0); }
+
+/* Expedition (Voyages focus mode) — opaque black backdrop, no blur
+   (nothing behind it to soften), and the comments pane hidden so the
+   only thing on screen is the question itself. The backdrop fades to
+   black first; the question card is held back with a transition-delay
+   so it only starts fading in once the black is most of the way in,
+   instead of both appearing at once. There's also no "X" close
+   button in this mode — "Keluar Ekspedisi" is the only way out. */
+.modal-overlay.expedition-active {
+  background: #000;
+  backdrop-filter: none;
+  transition: opacity 0.35s ease;
+}
+.modal-overlay.expedition-active .modal-card {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition-delay: 0.2s;
+}
+.modal-overlay.expedition-active .modal-split-comments { display: none; }
+.modal-overlay.expedition-active #vm-close-btn { display: none; }
+
+/* ==========================================================
+   Material viewer (#cmm-modal) — Google Drive/Docs-style
+   document preview instead of the usual centered dialog card:
+   a slim utility toolbar pinned to the top, and the material
+   itself rendered as a single opaque, A4-proportioned "page"
+   below it. The page is solid (var(--bg-color), not the app's
+   usual translucent glass) so content is always readable
+   regardless of what's behind the modal, and it keeps real A4
+   proportions (210:297) no matter how much or little content it
+   holds — content longer than one page scrolls inside the page
+   itself rather than stretching its shape.
+   Reuses .modal-overlay for the backdrop blur/fade + the
+   existing modal-open/modal-closing lifecycle from
+   kirLocalModalShow/Hide — only .modal-card is swapped out for
+   .cmm-viewer-card, which fills the whole viewport instead of
+   sizing to content. */
+.modal-overlay.cmm-viewer { padding: 0; }
+.cmm-viewer-card {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  /* Transparent on purpose — the overlay's own background/blur
+     (see .modal-overlay above) is what's visible here. Only the
+     toolbar (opaque, for legibility) and the page itself paint
+     over it. */
+  background: transparent;
+  opacity: 0; transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.modal-overlay.cmm-viewer.modal-open .cmm-viewer-card { opacity: 1; transform: scale(1); }
+
+.cmm-viewer-toolbar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--bg-color);
+}
+/* Logo, title, extension chip and duration all sit in one row —
+   title is the only flexible/truncating piece so the ext + duration
+   (and the info button after them) never get pushed off-screen by a
+   long material name. */
+.cmm-viewer-toolbar-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1 1 auto; }
+.cmm-viewer-title { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmm-viewer-duration { flex-shrink: 0; font-size: 0.78rem; color: var(--muted-500); }
+/* Ext as a small badge (e.g. "PDF") rather than plain text — same
+   file-type-chip idea Drive uses next to a document's name. */
+.cmm-viewer-ext {
+  flex-shrink: 0; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--muted-500); background: var(--glass-bg);
+  border: 1px solid var(--glass-border); border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem; text-transform: uppercase;
+}
+.cmm-viewer-toolbar-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+/* Thin separator before Tutup, same idea as Drive splitting its
+   document-utility icons from the trailing close/account cluster. */
+.cmm-viewer-toolbar-actions::before {
+  content: ''; width: 1px; align-self: stretch; margin: 0.2rem 0.2rem 0.2rem 0;
+  background: var(--glass-border);
+}
+
+.cmm-viewer-icon-btn {
+  width: 2.25rem; height: 2.25rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 0.5rem; color: var(--muted-500);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cmm-viewer-icon-btn:hover { background: var(--glass-bg); color: var(--text-color); }
+.cmm-viewer-icon-btn svg { width: 1.15rem; height: 1.15rem; }
+
+/* Mark-as-done, reduced from a labeled pill to a single check glyph —
+   still kept as the one accent-colored action in the toolbar (a plain
+   muted icon would read as just another utility button, like Tutup) so
+   it's still readable at a glance as *the* primary action here. */
+.cmm-viewer-finish-btn {
+  color: #fff; background-image: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%);
+}
+.cmm-viewer-finish-btn:hover { color: #fff; filter: brightness(1.1); }
+
+.cmm-viewer-stage {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 2rem 1rem 3rem;
+}
+
+/* The page itself is a solid, opaque surface — not the app's usual
+   translucent glass — same reasoning Drive/Docs uses for its page:
+   whatever's scrolled behind the toolbar (the blurred backdrop) should
+   never show through the content you're actually reading. It's still
+   themed via var(--bg-color) rather than a literal white sheet, so it
+   follows light/dark mode like the rest of the app.
+   aspect-ratio locks it to real A4 proportions (210:297) so it reads as
+   an actual sheet of paper rather than an arbitrary box that happens to
+   fill the modal — same shape regardless of how much/little the material
+   actually contains. Content longer than one A4-height scrolls *inside*
+   the page itself (overflow-y here, not just on .cmm-viewer-stage), the
+   way a real single-page document viewer behaves — the page's outline
+   never stretches to chase its content. */
+.cmm-viewer-page {
+  width: 100%; max-width: 44rem; aspect-ratio: 210 / 297;
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -4px rgba(0,0,0,0.3);
+  overflow-y: auto; overflow-x: hidden;
+}
+.cmm-viewer-page-inner { padding: 2rem 2.25rem; }
+
+/* Document pages need the iframe to fill the whole page height —
+   there's no separate padded "inner" wrapper for this variant, the
+   iframe IS the page. The embedded preview (PDF/Docs) already renders
+   its own A4-shaped page internally, so this variant drops the A4
+   aspect-ratio lock in favor of a tall, freely-sized frame — locking
+   it too would just crop or letterbox the iframe's own page. */
+.cmm-viewer-page.cmm-page-document { aspect-ratio: auto; min-height: 75vh; display: flex; overflow: hidden; }
+.cmm-viewer-doc-frame { flex: 1 1 auto; width: 100%; border: 0; min-height: 75vh; }
+
+/* Video keeps a plain black letterboxed look instead of the glass
+   tint — a translucent/blurred background would look wrong behind
+   a video. Its own 16:9 ratio (set on .cmm-viewer-video-inner) replaces
+   the base A4 ratio, since a video pretending to be a sheet of paper
+   would look wrong. */
+.cmm-viewer-page.cmm-page-video { aspect-ratio: auto; max-width: 64rem; background: #000; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(255,255,255,0.08); overflow: hidden; }
+.cmm-viewer-video-inner { aspect-ratio: 16 / 9; width: 100%; }
+
+.cmm-viewer-page.cmm-page-empty { display: flex; align-items: center; justify-content: center; }
+
+/* .hidden alone (specificity 0,1,0) loses to the more specific
+   .cmm-viewer-page.cmm-page-* display overrides above (0,2,0), so
+   without this the document/video/empty panes stayed visible even
+   while "hidden" — all three panes rendering stacked side by side
+   at once. This rule needs to out-specify all of them. */
+.cmm-viewer-stage .cmm-viewer-page.hidden { display: none; }
+
+@media (max-width: 640px) {
+  .cmm-viewer-stage { padding: 1rem 0.5rem 2rem; }
+  .cmm-viewer-page-inner { padding: 1.25rem 1.25rem; }
+}
+
+/* ==========================================================
+   Public marketing nav — shared by index.html, gallery.html,
+   program-kerja.html (guest-facing pages, no sidebar/app-shell).
+   ========================================================== */
+.public-nav-link {
+  color: var(--text-color);
+  opacity: 0.65;
+  transition: opacity 0.15s ease;
+  font-size: 0.875rem;
+}
+.public-nav-link:hover { opacity: 1; }
+.public-nav-link.active { opacity: 1; color: rgb(var(--accent-light-rgb)); }
+
+/* ==========================================================
+   Gallery — Finder-esque folder browser
+   ========================================================== */
+.finder-window {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.finder-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(128,128,128,0.04);
+}
+.finder-dot { width: 11px; height: 11px; border-radius: 999px; background: rgba(var(--accent-rgb), 0.4); }
+.finder-dot:nth-child(2) { background: rgba(var(--accent-rgb), 0.25); }
+.finder-dot:nth-child(3) { background: rgba(var(--accent-rgb), 0.15); }
+.finder-pathbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.8rem;
+}
+.finder-crumb {
+  color: var(--muted-500);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.finder-crumb:hover { background: rgba(128,128,128,0.1); color: var(--text-color); }
+.finder-crumb.current { color: var(--text-color); font-weight: 600; cursor: default; }
+.finder-crumb.current:hover { background: none; }
+.finder-sep { color: var(--muted-600); font-size: 0.7rem; }
+
+.finder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 0.5rem;
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .finder-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+}
+
+.finder-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0.4rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-align: center;
+}
+.finder-tile:hover { background: rgba(128,128,128,0.08); border-color: var(--glass-border); }
+.finder-tile:active { transform: scale(0.98); }
+.finder-tile-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.85;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 100%;
+}
+.finder-tile-sub { font-size: 0.65rem; color: var(--muted-500); }
+
+.folder-icon {
+  width: 52px; height: 42px;
+  filter: drop-shadow(0 4px 10px rgba(var(--accent-rgb), 0.25));
+}
+.folder-icon-up { opacity: 0.55; }
+
+.photo-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.photo-thumb svg { width: 22px; height: 22px; opacity: 0.85; color: #fff; }
+
+.lightbox-photo {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-photo svg { width: 40px; height: 40px; color: rgba(255,255,255,0.9); }
+
+.finder-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted-500);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================
+   Program Kerja — scroll-reveal + orbit rail
+   ========================================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.in-view { opacity: 1; transform: translateY(0); }
+.reveal-delay-1.in-view { transition-delay: 0.08s; }
+.reveal-delay-2.in-view { transition-delay: 0.16s; }
+.reveal-delay-3.in-view { transition-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  #orbit-traveler { display: none !important; }
+}
+
+.orbit-rail-wrap {
+  position: relative;
+}
+.orbit-rail-svg {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  height: 100%;
+  width: 40px;
+  overflow: visible;
+}
+#orbit-traveler {
+  offset-rotate: 0deg;
+  will-change: offset-distance;
+  background: radial-gradient(circle at 30% 30%, rgb(var(--accent-light-rgb)), rgb(var(--accent-rgb)));
+  box-shadow: 0 0 20px -4px rgba(var(--accent-rgb), 0.7), inset -2px -2px 6px rgba(0,0,0,0.3);
+}
+
+.proker-card {
+  position: relative;
+}
+.proker-index {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: rgb(var(--accent-light-rgb));
+  opacity: 0.8;
+}
+.proker-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: rgb(var(--accent-light-rgb));
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+}
+
+/* Avatar upload ring */
+.avatar-upload {
+  position: relative; width: 5.5rem; height: 5.5rem; border-radius: 999px;
+  cursor: pointer; overflow: hidden;
+}
+.avatar-upload .avatar-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s ease; color: #fff; font-size: 11px; text-align: center;
+}
+.avatar-upload:hover .avatar-overlay { opacity: 1; }
+
+/* ==========================================================
+   Item thumbnails — diagonal-cut cover image used on Tasks,
+   Jadwal, and Materi cards/buttons when an item has an image.
+   Parent (the card/button) needs `relative overflow-hidden`;
+   text content inside needs `relative z-10` to paint above it.
+   ========================================================== */
+.item-thumb-slot {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 46%;
+  min-width: 96px;
+  max-width: 200px;
+  overflow: hidden;
+  clip-path: polygon(32% 0, 100% 0, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(32% 0, 100% 0, 100% 100%, 0% 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+.item-thumb-slot img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.item-thumb-slot svg {
+  width: 100%; height: 100%; display: block;
+  transform: translateX(7%);
+}
+.item-thumb-slot::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, rgba(9, 9, 11, 0.92) 0%, rgba(9, 9, 11, 0.4) 40%, rgba(9, 9, 11, 0) 78%);
+}
+html[data-theme="light"] .item-thumb-slot::after {
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0) 78%);
+}
+
+/* 25% wider thumbnail — Tasks (Tugas) + Jadwal cards only.
+   Same slot, just scaled up (46% -> 57.5%, and the min/max
+   bounds scaled with it). */
+.item-thumb-slot-wide {
+  width: 57.5%;
+  min-width: 120px;
+  max-width: 250px;
+}
+
+/* Dotted-grid variant — course.html's catalog cards, where the
+   thumbnail is a course_nodes/course_edges SVG snapshot (not a
+   photo), so the empty space around the graph reads as a blank
+   void without it. Same dot pattern as the workspace canvas itself
+   (#chart-viewport in workspace.html), just reused here so a
+   card's preview looks like a miniature of the real thing. */
+.item-thumb-slot-dotted {
+  background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+html[data-theme="light"] .item-thumb-slot-dotted {
+  background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+}
+
+/* Course detail modal — snapshot preview box. Same node-graph SVG as
+   the catalog card's .item-thumb-slot, just laid out full-width/
+   in-flow instead of clipped into a corner, since the modal has room
+   to show it properly. Pairs with .item-thumb-slot-dotted for the
+   same dot-grid backdrop as the catalog cards. */
+.course-modal-thumb {
+  position: relative;
+  width: 100%;
+  height: 9rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.course-modal-thumb svg {
+  width: 100%; height: 100%; display: block;
+}
+
+/* ==========================================================
+   Voyages — practice question cards + difficulty badges
+   ========================================================== */
+.voyage-card {
+  transition: transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+  animation: voyage-card-in 0.42s cubic-bezier(.2,.8,.2,1) both;
+}
+.voyage-card:hover { transform: translateY(-2px); }
+.voyage-card.completed { opacity: 0.72; }
+
+/* Soal text shouldn't be trivially selectable/copyable (e.g. into an
+   AI chat) — applies to the voyage cards on the list page and to the
+   question/options/essay side of the modal. The comments panel
+   (.modal-split-comments) is intentionally excluded, as are actual
+   form controls (inputs/textareas/selects), which need normal
+   selection/typing behavior to remain usable. This is a deterrent,
+   not a real security boundary — page source, screenshots, etc. still
+   work — but it stops casual copy-paste. */
+.voyage-card,
+.modal-split-main {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}
+.voyage-card input, .voyage-card textarea, .voyage-card select, .voyage-card .cm-editor, .voyage-card .cm-content,
+.modal-split-main input, .modal-split-main textarea, .modal-split-main select, .modal-split-main .cm-editor, .modal-split-main .cm-content {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+}
+
+@keyframes voyage-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-stagger-in {
+  animation: voyage-card-in 0.42s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes dot-pop-in {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-dot-pop {
+  animation: dot-pop-in 0.3s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes line-draw-down {
+  0% { transform: scaleY(0); }
+  100% { transform: scaleY(1); }
+}
+
+.animate-line-draw {
+  transform-origin: top;
+  animation: line-draw-down 0.7s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.diff-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.55rem;
+  border-radius: 999px; letter-spacing: 0.01em; white-space: nowrap;
+  background: linear-gradient(135deg, rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.18) 0%, rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.05) 100%);
+  color: rgb(var(--diff-r), var(--diff-g), var(--diff-b));
+  border: 1px solid rgba(var(--diff-r), var(--diff-g), var(--diff-b), 0.35);
+  filter: brightness(1.1);
+}
+
+.subject-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 600;
+  padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid var(--glass-border);
+  color: var(--muted-500); background: rgba(128,128,128,0.08);
+  white-space: nowrap; flex-shrink: 0;
+}
+.type-pill {
+  display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem;
+  color: var(--muted-500);
+}
+
+/* Course like/dislike reactions (course.html, courseReactionHtml()).
+   .reaction-btn is the catalog card's standalone pill; .reaction-btn-plain
+   is the same button stripped of the pill chrome for the modal, where it
+   sits next to the "Ambil Kursus" button instead of anchoring a corner
+   on its own. Icons are sized down and given a fixed line-height (instead
+   of the raw 24x24 stroke SVGs the browser was rendering at native size
+   with default button chrome) so the count sits snug next to its icon
+   instead of trailing off grey to the side. */
+.reaction-btn, .reaction-btn-plain {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.72rem; font-weight: 600; line-height: 1;
+  color: var(--muted-500); background: none; border: none; cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.reaction-btn svg, .reaction-btn-plain svg {
+  width: 14px; height: 14px; flex-shrink: 0;
+}
+.reaction-btn {
+  padding: 0.32rem 0.55rem; border-radius: 999px;
+  border: 1px solid var(--glass-border); background: rgba(128,128,128,0.08);
+}
+.reaction-btn:hover { color: var(--text-color); background: rgba(128,128,128,0.14); }
+.reaction-btn-plain:hover { color: var(--text-color); }
+.reaction-btn:disabled, .reaction-btn-plain:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.reaction-btn.active-like, .reaction-btn-plain.active-like { color: rgb(34, 197, 94); }
+.reaction-btn.active-like { border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.12); }
+.reaction-btn.active-dislike, .reaction-btn-plain.active-dislike { color: rgb(239, 68, 68); }
+.reaction-btn.active-dislike { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.12); }
+
+#vm-submit-btn:disabled {
+  background-image: none;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.voyage-option {
+  display: flex; align-items: center; gap: 0.65rem;
+  border: 1px solid var(--glass-border); background: var(--glass-input-bg);
+  border-radius: 0.7rem; padding: 0.7rem 0.9rem; cursor: pointer;
+  font-size: 0.85rem; transition: all 0.15s ease;
+}
+.voyage-option:hover { background: rgba(128,128,128,0.1); }
+.voyage-option.selected {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+}
+.voyage-option.correct {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(34, 197, 94, 0.12);
+}
+.voyage-option.incorrect {
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.12);
+}
+.voyage-option-dot {
+  width: 18px; height: 18px; border-radius: 999px; flex-shrink: 0;
+  border: 1.5px solid var(--glass-border); position: relative;
+}
+.voyage-option.selected .voyage-option-dot { border-color: rgb(var(--accent-rgb)); }
+.voyage-option.selected .voyage-option-dot::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 999px;
+  background: rgb(var(--accent-rgb));
+}
+
+.deltas-toast {
+  position: fixed; left: 50%; bottom: 2rem; transform: translate(-50%, 20px);
+  z-index: 60; opacity: 0; pointer-events: none;
+  transition: all 0.35s cubic-bezier(.2,.8,.2,1);
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--bg-color); border: 1px solid rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 10px 40px -8px rgba(var(--accent-rgb), 0.5);
+  padding: 0.75rem 1.15rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+}
+.deltas-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+
+/* ==========================================================
+   Leaderboard
+   ========================================================== */
+.podium-place {
+  display: flex; flex-direction: column; align-items: center;
+  border-radius: 1rem; position: relative;
+  padding: 1.75rem 0.75rem 1.25rem;
+  min-height: 9.5rem;
+  box-sizing: border-box;
+}
+.podium-place.rank-2, .podium-place.rank-3 { align-self: end; min-height: 8rem; }
+.podium-place.rank-1 { min-height: 11rem; }
+
+/* Rank hierarchy built from the single per-user accent hue instead of
+   gold/silver/bronze — intensity + size step down from 1st to 3rd so
+   it still reads instantly, but never clashes with the branch color. */
+.podium-place.rank-1 {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.04));
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 32px -12px rgba(var(--accent-rgb), 0.55);
+}
+.podium-place.rank-2 {
+  background: rgba(var(--accent-rgb), 0.07);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+}
+.podium-place.rank-3 {
+  background: rgba(var(--accent-rgb), 0.045);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+}
+
+.podium-rank-icon {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  width: 28px; height: 28px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 0.7rem;
+  border: 2px solid var(--bg-color);
+}
+.podium-crown {
+  position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+  color: rgb(var(--accent-light-rgb));
+  filter: drop-shadow(0 2px 6px rgba(var(--accent-rgb), 0.6));
+}
+.podium-avatar {
+  width: 3.25rem; height: 3.25rem; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-family: 'Bricolage Grotesque', sans-serif;
+  margin-bottom: 0.65rem; border: 2px solid var(--bg-color); flex-shrink: 0;
+}
+.rank-1 .podium-avatar { width: 4rem; height: 4rem; box-shadow: 0 0 24px -4px rgba(var(--accent-rgb), 0.7); }
+
+.rank-badge-1 {
+  background: linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)));
+  color: #fff;
+  box-shadow: 0 0 14px -3px rgba(var(--accent-rgb), 0.75);
+}
+.rank-badge-2 {
+  background: rgba(var(--accent-rgb), 0.55);
+  color: #fff;
+}
+.rank-badge-3 {
+  background: rgba(var(--accent-rgb), 0.28);
+  color: rgb(var(--accent-lighter-rgb));
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+}
+
+.podium-name {
+  font-size: 0.85rem; font-weight: 600; text-align: center;
+  color: var(--text-color); line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word; padding: 0 0.15rem; min-height: 2.1em;
+}
+
+/* Podium cards animate positional swaps via JS-driven FLIP (transform +
+   transition set inline, see playFlip()). This entrance animation is only
+   for a member who's brand new to the top 3 — not for ones just moving
+   between slots, since that's handled by the FLIP instead. */
+@keyframes podium-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.podium-enter {
+  animation: podium-enter 0.45s cubic-bezier(.2,.8,.2,1) both;
+}
+
+/* Filter chips + search (Leaderboard) */
+.lb-chip {
+  padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 500;
+  white-space: nowrap; border: 1px solid var(--glass-border); background: rgba(128,128,128,0.06);
+  color: var(--muted-500); transition: all 0.15s ease; cursor: pointer; flex-shrink: 0;
+}
+.lb-chip:hover { color: var(--text-color); background: rgba(128,128,128,0.12); }
+.lb-chip.active {
+  background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); color: #fff;
+}
+.lb-chip-divider { width: 1px; height: 1.25rem; background: var(--glass-border); flex-shrink: 0; margin: 0 0.15rem; }
+
+/* ==========================================================
+   Split modal layout — Tasks + Voyages modals put the item
+   itself on the left and a dedicated comments column on the
+   right, so the comment composer can stay pinned to the
+   bottom of its own column instead of trailing after a long
+   description. Mobile stacks the two panes instead (comments
+   pane gets its own capped height + internal scroll there too).
+   ========================================================== */
+.modal-card.modal-card-split {
+  max-width: 44rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* children scroll internally instead */
+}
+@media (min-width: 768px) {
+  .modal-card.modal-card-split {
+    max-width: 56rem;
+    flex-direction: row;
+  }
+}
+.modal-split-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 46vh;
+}
+@media (min-width: 768px) {
+  .modal-split-main { max-height: 88vh; }
+}
+.modal-split-comments {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  border-top: 1px solid var(--glass-border);
+  max-height: 44vh;
+}
+@media (min-width: 768px) {
+  .modal-split-comments {
+    flex: 0 0 320px;
+    width: 320px;
+    border-top: none;
+    border-left: 1px solid var(--glass-border);
+    max-height: 88vh;
+  }
+}
+.comment-panel-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  padding: 1.25rem 1.5rem;
+}
+.comment-panel-inner .comment-list {
+  flex: 1 1 auto;
+  max-height: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+.comment-panel-inner .comment-composer {
+  flex-shrink: 0;
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Course detail modal's main column (course.html) — mirrors the
+   comment column right next to it: .course-modal-body is a flex
+   column stretched to the same height as .comment-panel-inner (both
+   are the sole flex child of their .modal-split-* parent, so the
+   shared row's default align-items:stretch already equalizes their
+   heights — see .modal-card-split above). The description box is the
+   only flexible child, so it's what absorbs/scrolls extra content;
+   the take-button/reactions row is shrink-0 and therefore always
+   lands exactly at the column's bottom edge, level with the comment
+   composer. Scoped to #course-modal rather than touching the shared
+   .modal-split-main/.p-6 rules, since Voyages/Tasks reuse the same
+   split-modal classes without this internal flex structure. */
+#course-modal .modal-split-main {
+  display: flex;
+  overflow: hidden;
+}
+#course-modal .course-modal-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+#course-modal .course-modal-desc-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+#course-modal .course-modal-actions {
+  flex-shrink: 0;
+}
+
+/* ==========================================================
+   Comments — shared mini widget on Tasks + Voyages modals
+   ========================================================== */
+.comment-list { max-height: 15rem; overflow-y: auto; }
+.comment-item {
+  position: relative;
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  padding: 0.6rem 0;
+}
+.comment-avatar {
+  width: 1.75rem; height: 1.75rem; border-radius: 999px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem; font-weight: 600; font-family: 'Bricolage Grotesque', sans-serif; color: #fff;
+}
+.comment-author { font-size: 0.78rem; font-weight: 600; color: var(--text-color); }
+.comment-time { font-size: 0.68rem; color: var(--muted-500); }
+.comment-text {
+  font-size: 0.82rem; color: var(--text-color); opacity: 0.85; margin-top: 0.15rem;
+  white-space: pre-wrap; word-break: break-word; line-height: 1.4;
+}
+.comment-attachment-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem;
+  color: var(--muted-500); background: rgba(128,128,128,0.08); border: 1px solid var(--glass-border);
+  border-radius: 0.5rem; padding: 0.3rem 0.6rem; margin-top: 0.4rem;
+}
+.comment-attachment-image {
+  display: block; max-width: 140px; max-height: 140px; object-fit: cover;
+  border-radius: 0.6rem; border: 1px solid var(--glass-border); margin-top: 0.4rem;
+}
+.comment-delete-btn {
+  font-size: 0.68rem; color: var(--muted-600); text-decoration: underline;
+  cursor: pointer; background: none; border: none; padding: 0;
+}
+.comment-delete-btn:hover { color: var(--muted-500); }
+
+.comment-reply-btn {
+  font-size: 0.68rem; font-weight: 600; color: var(--muted-500); text-decoration: underline;
+  cursor: pointer; background: none; border: none; padding: 0;
+}
+.comment-reply-btn:hover { color: var(--text-color); }
+
+.comment-reply-composer { margin-top: 0.6rem; }
+
+.comment-replies {
+  position: relative;
+  margin-top: 0.15rem;
+  padding-left: 2.375rem;
+}
+
+.comment-replies .comment-replies {
+  padding-left: 2.2rem;
+}
+
+.comment-thread-group {
+  position: relative;
+}
+
+.comment-item-reply {
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+.comment-item-reply .comment-avatar { width: 1.4rem; height: 1.4rem; font-size: 0.6rem; }
+
+/* Segment 1: The Elbow (from the top of the branch group down to the avatar) */
+.comment-thread-group > .comment-item-reply::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 0;
+  width: 1.5rem;
+  height: 1.2rem;
+  border-left: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* Segment 2: The Trunk (from the elbow down to the bottom of the entire branch) */
+.comment-thread-group:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 1.2rem;
+  bottom: 0;
+  border-left: 1px solid var(--glass-border);
+}
+
+/* Connector from parent avatar down to the first reply */
+.comment-thread-connector {
+  position: absolute;
+  left: 0.875rem;
+  top: 2.35rem;
+  bottom: -0.15rem;
+  border-left: 1px solid var(--glass-border);
+}
+
+/* Connector from reply avatar down to nested replies */
+.comment-item-reply .comment-thread-connector {
+  left: 0.7rem;
+  top: 1.9rem;
+}
+
+.comment-attach-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem;
+  color: var(--muted-500); cursor: pointer; transition: color 0.15s ease;
+}
+.comment-attach-btn:hover { color: var(--text-color); }
+.comment-attach-preview {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;
+}
+.comment-attach-preview .comment-attachment-image { margin-top: 0; }
+.comment-attach-remove {
+  width: 18px; height: 18px; border-radius: 999px; flex-shrink: 0;
+  background: rgba(128,128,128,0.18); color: var(--text-color);
+  font-size: 0.85rem; line-height: 1; border: none; cursor: pointer;
+}
+.comment-attach-remove:hover { background: rgba(239,68,68,0.3); }
+
+.leaderboard-row {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.85rem 1.1rem; border-radius: 0.9rem;
+  border: 1px solid transparent; transition: all 0.15s ease;
+}
+.leaderboard-row:hover { background: rgba(128,128,128,0.06); }
+.leaderboard-row.you {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.leaderboard-rank-num {
+  width: 1.75rem; text-align: center; font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 600; color: var(--muted-500); font-size: 0.9rem; flex-shrink: 0;
+}
+.leaderboard-rank-num.rank-badge-1,
+.leaderboard-rank-num.rank-badge-2,
+.leaderboard-rank-num.rank-badge-3 {
+  color: #fff;
+}
+.leaderboard-rank-num.rank-badge-3 { color: rgb(var(--accent-lighter-rgb)); }
+
+/* ==========================================================
+   Dashboard widget grid (Beranda) — editable, phone-widget-style
+   --------------------------------------------------------
+   Every widget sits on a square-cell CSS grid. --dash-cols and
+   --dash-cell are set from JS (dashboard.html) so cells stay
+   square across breakpoints. Row-gap and column-gap intentionally
+   share the same value (`gap` shorthand below) so spacing feels
+   uniform in both directions, like a real home-screen grid.
+   ========================================================== */
+.widget-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--dash-cols, 4), 1fr);
+  grid-auto-rows: var(--dash-cell, 96px);
+  gap: 20px;
+  grid-auto-flow: row;
+}
+
+.widget-grid.edit-mode {
+  border-radius: 1.25rem;
+}
+
+.widget-grid.edit-mode::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  z-index: 0;
+  background-size: calc(var(--dash-cell, 96px) + 20px) calc(var(--dash-cell, 96px) + 20px);
+  background-image:
+    linear-gradient(to right, transparent calc(100% - 1px), rgba(var(--accent-rgb), 0.28) calc(100% - 1px)),
+    linear-gradient(to bottom, transparent calc(100% - 1px), rgba(var(--accent-rgb), 0.28) calc(100% - 1px));
+  background-position: 0 0;
+}
+
+.widget-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.widget-wrap .widget-inner {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.widget-grid.edit-mode .widget-wrap .widget-inner {
+  cursor: grab;
+}
+.widget-wrap {
+  transition: grid-column 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), grid-row 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.widget-grid.edit-mode .widget-wrap.dragging {
+  opacity: 0.35;
+}
+
+/* The phantom placeholder that snaps to the grid */
+.widget-phantom {
+  border-radius: 1.25rem;
+  border: 2px dashed rgba(var(--accent-rgb), 0.8);
+  background: rgba(var(--accent-rgb), 0.1);
+  box-shadow: inset 0 0 20px rgba(var(--accent-rgb), 0.15);
+  pointer-events: none;
+  animation: fade-resize-anim 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Smooth fade for live content updates during resize */
+.fade-resize {
+  animation: fade-resize-anim 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes fade-resize-anim {
+  0% { opacity: 0; filter: blur(4px); transform: scale(0.96); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+/* Widget Drag & Resize Enhancements */
+.widget-grid.edit-mode .widget-wrap.drag-over-target .widget-inner {
+  outline: 2px solid rgb(var(--accent-rgb));
+  outline-offset: 4px;
+  transform: scale(0.98);
+  transition: transform 0.15s ease, outline 0.1s ease;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  touch-action: none;
+}
+/* Edges */
+.resize-n { top: -8px; left: 12px; right: 12px; height: 16px; cursor: ns-resize; }
+.resize-s { bottom: -8px; left: 12px; right: 12px; height: 16px; cursor: ns-resize; }
+.resize-w { left: -8px; top: 12px; bottom: 12px; width: 16px; cursor: ew-resize; }
+.resize-e { right: -8px; top: 12px; bottom: 12px; width: 16px; cursor: ew-resize; }
+/* Corners */
+.resize-nw { top: -8px; left: -8px; width: 24px; height: 24px; cursor: nwse-resize; }
+.resize-ne { top: -8px; right: -8px; width: 24px; height: 24px; cursor: nesw-resize; }
+.resize-sw { bottom: -8px; left: -8px; width: 24px; height: 24px; cursor: nesw-resize; }
+.resize-se { 
+  bottom: -8px; right: -8px; width: 24px; height: 24px; cursor: nwse-resize;
+  background: radial-gradient(circle at bottom right, rgba(var(--accent-rgb), 0.8) 15%, transparent 20%);
+}
+
+.widget-remove-btn {
+  position: absolute;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  background: var(--bg-color);
+  color: var(--text-color);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+.widget-remove-btn { top: -10px; left: -10px; color: #ef4444; z-index: 70; }
+.widget-resize-btn { bottom: -8px; right: -8px; color: var(--muted-500); }
+.widget-remove-btn:hover,
+.widget-resize-btn:hover { background: rgba(128,128,128,0.16); transform: scale(1.08); }
+
+.widget-add-tile {
+  border: 1.5px dashed var(--glass-border);
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted-500);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  background: rgba(128,128,128,0.03);
+}
+.widget-add-tile:hover {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+/* Size picker popover (click the resize handle on a widget) */
+.size-picker-popover {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  gap: 0.4rem;
+  background: var(--bg-color);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.9rem;
+  padding: 0.5rem;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.4);
+  animation: size-picker-in 0.14s ease both;
+}
+@keyframes size-picker-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.size-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  width: 3.1rem;
+  height: 3.1rem;
+  padding: 0.3rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.size-picker-option:hover { background: rgba(128,128,128,0.1); }
+.size-picker-option.active {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.size-picker-swatch {
+  background: rgba(var(--accent-rgb), 0.4);
+  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  border-radius: 3px;
+}
+.size-picker-label {
+  font-size: 0.62rem;
+  color: var(--muted-500);
+  font-weight: 600;
+}
+
+.widget-catalog-tile {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.widget-catalog-tile:active { transform: scale(0.98); }
+
+/* Fancy clock widget */
+.clock-face {
+  position: relative;
+  border-radius: 999px;
+  border: 1.5px solid var(--glass-border);
+  background: radial-gradient(circle at 32% 28%, rgba(var(--accent-rgb), 0.16), transparent 62%);
+  flex-shrink: 0;
+}
+.clock-tick {
+  position: absolute;
+  background: var(--muted-500);
+  border-radius: 2px;
+  opacity: 0.6;
+}
+.clock-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: bottom center;
+  border-radius: 999px;
+}
+.clock-hand-hour { width: 3px; background: var(--text-color); }
+.clock-hand-min  { width: 2.5px; background: var(--text-color); }
+.clock-hand-sec  { width: 1.5px; background: rgb(var(--accent-rgb)); }
+.clock-center-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgb(var(--accent-rgb));
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+/* ==========================================================
+   Programming voyages — IDE-style shell: toolbar (with the
+   language switcher folded in, next to the file "tab"), the
+   CodeMirror host, and a tabbed console (Test Case / Output)
+   that reads like a real terminal. Deliberately a fixed dark
+   "console surface" rather than following the light/dark site
+   toggle, same convention already used by the black/30-black/50
+   <pre> blocks elsewhere on the site — code surfaces stay dark
+   even when the rest of the page is light.
+   ========================================================== */
+.code-shell {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+.code-toolbar-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.code-toolbar-right { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
+.code-dot { width: 0.55rem; height: 0.55rem; border-radius: 999px; opacity: 0.55; }
+.code-dot-a { background: #f87171; }
+.code-dot-b { background: #fbbf24; }
+.code-dot-c { background: #34d399; }
+.code-filename {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--muted-500);
+  margin-left: 0.35rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.code-lang-wrap { display: flex; align-items: center; gap: 0.5rem; }
+.code-lang-label {
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted-500);
+}
+/* Purpose-built language DROPDOWN for the code editor toolbar. This is
+   deliberately its own small component, not a reuse of the site-wide
+   kir-select (see kirRefreshCustomSelect in auth.js) — that one's a
+   generic <select> replacement sized and styled for regular form
+   fields (full-width trigger, roomy option rows). This one only ever
+   needs to show a handful of short language names inline in a dark
+   toolbar, so it gets a compact, monospace, terminal-flavored trigger
+   that reads as part of the code-* toolbar chrome instead of a bolted-
+   on form control. */
+.code-lang-picker { position: relative; display: inline-block; }
+.code-lang-dd-trigger {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.01em;
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(0, 0, 0, 0.22); border: 1px solid var(--glass-border);
+  border-radius: 0.45rem; padding: 0.32rem 0.6rem; cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.code-lang-dd-trigger:hover { border-color: rgba(var(--accent-rgb), 0.4); background: rgba(0, 0, 0, 0.32); }
+.code-lang-dd-trigger.open {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+.code-lang-dd-value { white-space: nowrap; }
+.code-lang-dd-chevron {
+  width: 0.75rem; height: 0.75rem; flex-shrink: 0; color: var(--muted-500);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.code-lang-dd-trigger.open .code-lang-dd-chevron { transform: rotate(180deg); color: rgb(var(--accent-light-rgb)); }
+
+.code-lang-dd-panel {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  min-width: 8rem;
+  background: #101014; border: 1px solid var(--glass-border);
+  border-radius: 0.55rem; padding: 0.3rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.code-lang-dd-panel.hidden { display: none; }
+.code-lang-dd-option {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--muted-500); padding: 0.4rem 0.6rem; border-radius: 0.4rem;
+  cursor: pointer; white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.code-lang-dd-option:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-color); }
+.code-lang-dd-option.active {
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.18);
+}
+.code-lang-fixed {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem; font-weight: 600; color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 0.4rem; padding: 0.3rem 0.6rem;
+}
+/* Terminal/IDE-flavored "run" action — monospace label + a subtle inset
+   top highlight so it reads like a keycap sitting in the toolbar, rather
+   than the site's generic solid accent-gradient CTA button (which is
+   reserved for primary actions like Kirim Jawaban elsewhere). */
+.code-run-btn {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.01em;
+  color: rgb(var(--accent-light-rgb));
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  border-radius: 0.4rem; padding: 0.35rem 0.8rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.code-run-btn:hover { background: rgba(var(--accent-rgb), 0.24); }
+.code-run-btn:active { transform: scale(0.97); }
+.code-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.code-editor-host { border-bottom: 1px solid var(--glass-border); }
+.code-editor-host .cm-editor { outline: none; }
+
+/* Shown briefly while the CodeMirror bundle is still loading — and, if
+   it errors out instead, repurposed (via .code-editor-error) to explain
+   why instead of just leaving the box empty. */
+.code-editor-loading {
+  padding: 0.9rem 1rem; font-size: 0.75rem; color: var(--muted-500);
+  font-style: italic; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.code-editor-error { color: #f87171; font-style: normal; white-space: pre-wrap; }
+
+/* Plain-textarea stand-in for CodeMirror, used when the real editor
+   can't load (e.g. the esm.sh CDN is unreachable on the network). Kept
+   visually close to the real editor — same monospace font, same dark
+   surface, same 26rem height — so it doesn't read as a broken state,
+   just a lighter-weight one. */
+.code-editor-fallback {
+  display: block; width: 100%; height: 26rem; resize: vertical;
+  background: rgba(0, 0, 0, 0.28); border: none; outline: none;
+  color: #e4e4e7; caret-color: rgb(var(--accent-light-rgb));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem; line-height: 1.55; padding: 0.85rem 1rem;
+  tab-size: 4;
+}
+
+/* Section header shared by the Test Case panel and the Console panel —
+   small, uppercase, icon-led labels that separate the two from each
+   other and from the editor above, like distinct panes in an IDE. */
+.code-panel-header {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted-500);
+}
+.code-panel-header svg { opacity: 0.7; flex-shrink: 0; }
+.code-terminal-header { background: rgba(0, 0, 0, 0.24); }
+.terminal-dot {
+  width: 0.4rem; height: 0.4rem; border-radius: 999px;
+  background: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+  flex-shrink: 0;
+}
+
+.code-console-body {
+  background: rgba(0, 0, 0, 0.32);
+  overflow-y: auto;
+  padding: 0.85rem 1rem;
+}
+/* Sample test cases: their own scroll region, capped so a voyage with
+   many samples doesn't push the console off-screen above it. */
+/* The terminal/console: a real judge-output surface — solid near-black,
+   monospace, with its own idle "$" prompt + blinking cursor at rest so
+   it visibly reads as "ready", not just an empty panel. */
+.code-terminal-body {
+  background: #0a0a0d;
+  min-height: 12rem;
+  max-height: 24rem;
+}
+.console-pane.hidden { display: none; }
+.console-empty { font-size: 0.75rem; color: var(--muted-500); font-style: italic; }
+
+.console-cursor-row { 
+  display: flex; align-items: center; margin-top: 0.6rem; 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+}
+.console-cursor {
+  display: inline-block; width: 0.5rem; height: 0.95rem;
+  margin-left: 0.35rem;
+  background: rgb(var(--accent-light-rgb));
+  animation: console-blink 1s step-end infinite;
+}
+@keyframes console-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.console-testcase { margin-bottom: 1rem; }
+.console-testcase:last-child { margin-bottom: 0; }
+.console-testcase-label {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted-500); margin-bottom: 0.4rem;
+}
+.console-io-label { font-size: 0.68rem; font-weight: 500; color: var(--muted-500); margin: 0.4rem 0 0.25rem; }
+.console-io-block {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: #e4e4e7;
+  white-space: pre-wrap;
+}
+.console-testcase-result { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--glass-border); }
+
+.console-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #d4d4d8;
+  margin-bottom: 0.6rem;
+  line-height: 1.5;
+}
+.console-line:last-child { margin-bottom: 0; }
+.console-prompt { color: rgb(var(--accent-light-rgb)); font-weight: 700; margin-right: 0.15rem; }
+.console-line-muted { color: var(--muted-500); }
+.console-line-ok { color: #4ade80; }
+.console-line-fail { color: #f87171; }
+.console-result-block { margin-top: 0.3rem; }
+/* ----------------------------------------------------------
+   Markdown-rendered voyage content (question text, essay
+   feedback, etc), produced by kirRenderVoyageMarkdown() in
+   voyages.html. Tailwind's preflight strips default spacing and
+   list markers from raw HTML tags, so this restores just enough
+   styling to make Markdown output (bold, lists, headings, code,
+   links, quotes) look intentional instead of flat.
+   ---------------------------------------------------------- */
+.kir-markdown { line-height: 1.6; }
+.kir-markdown > *:first-child { margin-top: 0; }
+.kir-markdown > *:last-child { margin-bottom: 0; }
+.kir-markdown p { margin: 0.6em 0; }
+.kir-markdown strong { font-weight: 700; color: var(--text-color); }
+.kir-markdown em { font-style: italic; }
+.kir-markdown ul, .kir-markdown ol { margin: 0.6em 0; padding-left: 1.4em; }
+.kir-markdown ul { list-style: disc; }
+.kir-markdown ol { list-style: decimal; }
+.kir-markdown li { margin: 0.25em 0; }
+.kir-markdown li > ul, .kir-markdown li > ol { margin: 0.25em 0; }
+.kir-markdown h1, .kir-markdown h2, .kir-markdown h3, .kir-markdown h4 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0.9em 0 0.4em;
+  line-height: 1.3;
+}
+.kir-markdown h1 { font-size: 1.25em; }
+.kir-markdown h2 { font-size: 1.15em; }
+.kir-markdown h3 { font-size: 1.05em; }
+.kir-markdown h4 { font-size: 1em; }
+.kir-markdown a { color: rgb(var(--accent-rgb)); text-decoration: underline; text-underline-offset: 2px; }
+.kir-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.3rem;
+  padding: 0.1em 0.35em;
+}
+.kir-markdown pre {
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.6rem;
+  padding: 0.75em 0.9em;
+  margin: 0.6em 0;
+  overflow-x: auto;
+}
+.kir-markdown pre code { background: none; border: none; padding: 0; }
+.kir-markdown blockquote {
+  margin: 0.6em 0;
+  padding: 0.3em 0.9em;
+  border-left: 3px solid rgba(var(--accent-rgb), 0.5);
+  color: var(--muted-500);
+}
+.kir-markdown hr { border: none; border-top: 1px solid var(--glass-border); margin: 1em 0; }
+.kir-markdown table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; }
+.kir-markdown th, .kir-markdown td { border: 1px solid var(--glass-border); padding: 0.4em 0.6em; text-align: left; }
+.kir-markdown th { font-weight: 600; color: var(--text-color); }
+.kir-markdown img { max-width: 100%; border-radius: 0.5rem; margin: 0.5em 0; }
+
+/* Line-clamped previews (voyage card question snippet): markdown
+   can add block tags, so make sure nested elements stay inline
+   for the clamp to actually clamp instead of just clipping the
+   first block and leaving the rest visible.
+
+   MathJax's own output (mjx-container and everything inside it) is
+   excluded via :not() rather than overridden afterwards — MathJax
+   relies on its own injected stylesheet (inline-block / table /
+   table-row / table-cell) to stack fraction numerators over
+   denominators and lift superscripts. `display: revert` does NOT
+   restore that: revert rolls back to the user-agent/user stylesheet,
+   skipping MathJax's CSS entirely (it's an author stylesheet too),
+   which is why that attempt still broke. Excluding these elements
+   from our selector means our rule never applies to them at all, so
+   MathJax's real stylesheet cascades normally, uncontested. */
+.kir-markdown-clamp,
+.kir-markdown-clamp *:not(mjx-container, mjx-container *) { display: inline; }
+
+/* Create a cutout halo effect around diagram text to prevent line overlap */
+.kir-diagram text {
+  paint-order: stroke fill !important;
+  stroke: var(--bg-color) !important;
+  stroke-width: 6px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}

@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Orbit</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/tailwind-output.css">
+
+<style id="kir-page-style">
+  /* ==========================================================
+     ORBIT LANDING: Jupiter *is* the website.
+     The page never scrolls. Wheel / touch / keys rotate the
+     ring, stepping through content that lives in a single
+     floating card which itself orbits from corner to corner
+     around the planet as the active section changes.
+     ========================================================== */
+
+  html, body { height: 100%; overscroll-behavior: none; }
+
+  body.obt-body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .obt-stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      radial-gradient(1.5px 1.5px at 8% 18%, rgba(255,255,255,0.55), transparent),
+      radial-gradient(1px 1px at 22% 74%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 38% 32%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 52% 86%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 68% 22%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1px 1px at 80% 66%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1.5px 1.5px at 91% 40%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 14% 52%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1.5px 1.5px at 86% 88%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 30% 92%, rgba(255,255,255,0.28), transparent),
+      radial-gradient(1px 1px at 95% 15%, rgba(255,255,255,0.3), transparent);
+    opacity: 0.65;
+    transition: transform 0.6s cubic-bezier(.2,.8,.2,1);
+    will-change: transform;
+  }
+  html[data-theme="light"] .obt-stars { display: none; }
+
+  .obt-vignette {
+    position: fixed; inset: 0; z-index: 6; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,0.55) 100%);
+  }
+  html[data-theme="light"] .obt-vignette {
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
+  }
+
+  /* The header used to be a normal flex item, which reserved its own
+     row and pushed .obt-cosmos (and therefore the planet/ring) down to
+     start only below it — so the top of the ring/glow could never
+     reach that high, and the area behind the nav read as a flat empty
+     bar instead of fading naturally like the rest of the scene.
+     Taking it out of flow and pinning it over the top of the viewport
+     lets .obt-cosmos claim the full height underneath, so the glow and
+     orbit rings now extend up behind the (transparent) header instead
+     of stopping short of it. */
+  .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
+  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
+  @media (max-width: 560px) {
+    .obt-footer-meta { white-space: normal; text-align: left; }
+  }
+
+  /* Header edges: equal literal padding reads as unbalanced because
+     the logo lockup (icon + wordmark + tagline) carries more visual
+     weight on the left than the compact circular avatar/CTA on the
+     right, so the right edge is trimmed slightly to match it
+     optically rather than just matching the padding value. */
+  header.obt-header { padding-left: 1rem; padding-right: 0.875rem; }
+  @media (min-width: 640px) {
+    header.obt-header { padding-left: 2rem; padding-right: 1.625rem; }
+  }
+
+  /* Below ~400px (small phones in portrait) the logo lockup's tagline
+     plus the Masuk/Daftar cluster no longer both fit on one line at a
+     readable size — drop the tagline first since the wordmark alone
+     already identifies the site, freeing width for the nav instead of
+     letting either cluster wrap or crowd the other. */
+  @media (max-width: 400px) {
+    .obt-header-tagline { display: none; }
+  }
+
+  /* Center nav ("Beranda / Galeri / Program Kerja"): with the logo
+     lockup and the auth/avatar cluster differing in width, distributing
+     space with justify-between never actually lands the nav on the
+     header's true center. Pull it out of flex flow and center it
+     against the full header width instead. */
+  @media (min-width: 768px) {
+    .obt-header-center-nav {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .obt-footer-mini { display: none; }
+  }
+
+  /* ---------------- Cosmos (the whole interactive stage) ---------------- */
+  .obt-cosmos {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    touch-action: none;
+    /* The header is now position:fixed (out of flow) so the ring/glow
+       can show through it, but that also gives .obt-cosmos the full
+       viewport height to center in — which pulled the planet up by
+       roughly half the header's height. Padding the top back in by the
+       header's actual measured height (set as --obt-header-h below)
+       puts the centered content back where it originally sat. */
+    padding-top: var(--obt-header-h, 92px);
+  }
+
+  .obt-stage-outer {
+    position: relative;
+    width: clamp(360px, 90vmin, 1100px);
+    aspect-ratio: 1 / 1;
+    perspective: 2000px;
+    transition: transform 0.6s cubic-bezier(.2,.8,.2,1);
+    /* The progress rail + dots sit below the sphere and pull the eye
+       down, so the mathematically-centered planet reads as too low.
+       Nudge the whole stage up slightly to optically re-center the
+       composition against that extra weight underneath. */
+    margin-top: -3vh;
+  }
+  @media (max-width: 900px) {
+    /* Below 900px, .obt-card (the bottom sheet, e.g. "Dokumentasi")
+       switches to `position: fixed; bottom: 0; height: 44vh`,
+       pulling it out of layout flow entirely (see .obt-card's own
+       max-width:900px block). .obt-cosmos has no idea that sheet
+       exists, so it keeps centering the planet against the FULL
+       viewport height — the sheet then just gets laid on top,
+       covering close to half the sphere and reading as "too low".
+       Shift up by roughly half the sheet's height so the planet
+       optically centers in the space actually left above it. */
+    .obt-stage-outer { width: clamp(280px, 108vmin, 480px); margin-top: -31vh; }
+  }
+  .obt-stage {
+    position: absolute; inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(.2,.8,.2,1);
+    will-change: transform;
+  }
+
+  .obt-guide {
+    position: absolute; left: 50%; top: 50%;
+    border-radius: 50%;
+    border: 1px dashed rgba(var(--accent-rgb), 0.13);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .obt-guide-1 { width: 108%; height: 108%; animation: obt-spin 160s linear infinite; }
+  .obt-guide-2 { width: 128%; height: 128%; border-color: rgba(var(--accent-rgb), 0.07); animation: obt-spin 240s linear infinite reverse; }
+
+  /* ---------------- Jupiter itself ---------------- */
+  .obt-sphere {
+    position: absolute; left: 50%; top: 50%;
+    width: 62%; aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    overflow: hidden;
+    z-index: 20;
+    box-shadow:
+      0 0 160px -10px rgba(var(--accent-rgb), 0.6),
+      0 70px 130px -40px rgba(0,0,0,0.7);
+  }
+  .obt-sphere-bands {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 30% 26%, rgba(255,255,255,0.32), transparent 46%),
+      linear-gradient(150deg, rgb(var(--accent-light-rgb)) 0%, rgb(var(--accent-rgb)) 50%, rgb(var(--accent-2-rgb)) 100%);
+    background-size: 100% 100%, 160% 160%;
+    animation: obt-drift 42s ease-in-out infinite alternate;
+  }
+  .obt-sphere-shade {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 68% 74%, rgba(0,0,0,0.5), transparent 58%),
+      radial-gradient(circle at 28% 22%, rgba(255,255,255,0.4), transparent 42%);
+    mix-blend-mode: soft-light;
+  }
+  .obt-sphere-vignette {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: inset -26px -30px 70px rgba(0,0,0,0.5), inset 18px 20px 50px rgba(255,255,255,0.10);
+  }
+  @keyframes obt-drift {
+    from { background-position: 30% 26%, 0% 0%; }
+    to   { background-position: 30% 26%, 100% 70%; }
+  }
+  @keyframes obt-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  /* ---------------- Corruption event (occasional signal glitch) ----------------
+     A separate inner wrapper carries the SVG distortion filter so the
+     circular clip on .obt-sphere itself is never touched by `filter`
+     (Safari drops border-radius clipping on filtered elements).
+
+     The planet's real texture lives in .obt-sphere-surface. During an
+     event that surface itself fades (it doesn't just get covered by
+     something else), uncovering .obt-corrupt-wireframe, which is a true
+     latitude/longitude wireframe sphere rather than a flat grid, as if the
+     surface has been stripped away to show the structure underneath.
+     The wireframe trails the surface by a beat (see the JS lerp on
+     --corrupt-wire) so the reveal and the reconstruction both read as
+     a brief dissolve rather than a hard cut. Every other layer just
+     reads --corrupt / --corrupt-wire (written by JS once a frame) so
+     the browser only ever recomposites opacity/transform. */
+  .obt-sphere-inner {
+    position: absolute; inset: 0;
+    --corrupt: 0;
+    --corrupt-wire: 0;
+  }
+  .obt-sphere-inner.is-corrupting {
+    filter: url(#obt-corrupt-filter);
+  }
+
+  .obt-sphere-surface {
+    position: absolute; inset: 0;
+    opacity: calc(1 - var(--corrupt) * 0.88);
+  }
+
+  .obt-corrupt { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+
+  /* True wireframe sphere: meridian + latitude ellipses, not a flat
+     grid, so it reads as the planet's internal geometry. */
+  .obt-corrupt-wireframe {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible;
+    filter: hue-rotate(var(--corrupt-hue, 0deg));
+  }
+  .obt-corrupt-wireframe .wire-line {
+    fill: none;
+    stroke: rgb(var(--accent-light-rgb));
+    stroke-width: 0.45;
+    vector-effect: non-scaling-stroke;
+  }
+  .obt-corrupt-wireframe .wire-meridians {
+    opacity: var(--corrupt-wire);
+    mix-blend-mode: screen;
+    transform-origin: 50% 50%;
+  }
+  .obt-corrupt-wireframe .wire-latitudes {
+    opacity: var(--corrupt-wire);
+    mix-blend-mode: screen;
+    transform-origin: 50% 50%;
+    transition: opacity 0.2s ease-out;
+  }
+  .obt-corrupt-wireframe .wire-core {
+    opacity: calc(var(--corrupt-wire) * 0.7);
+    mix-blend-mode: screen;
+  }
+  @keyframes obt-wire-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.012); }
+  }
+  .obt-sphere-inner.is-corrupting .wire-meridians,
+  .obt-sphere-inner.is-corrupting .wire-latitudes {
+    animation: obt-wire-breathe 2.6s ease-in-out infinite;
+  }
+
+  .obt-corrupt-scan {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.35) 0px, rgba(255,255,255,0.35) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode: overlay;
+    opacity: calc(var(--corrupt) * 0.4);
+    animation: obt-scan-move 1.1s linear infinite;
+    animation-play-state: paused;
+  }
+  @keyframes obt-scan-move { from { background-position: 0 0; } to { background-position: 0 -28px; } }
+
+  .obt-corrupt-noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 140px 140px;
+    mix-blend-mode: overlay;
+    opacity: calc(var(--corrupt) * 0.5);
+    animation: obt-noise-flicker 0.45s steps(4) infinite;
+    animation-play-state: paused;
+  }
+  @keyframes obt-noise-flicker {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0, 0); }
+  }
+
+  .obt-corrupt-ghost {
+    position: absolute; inset: 0;
+    mix-blend-mode: screen;
+  }
+  .obt-corrupt-ghost-r {
+    background: radial-gradient(circle at 30% 26%, rgba(255,60,90,0.55), transparent 55%);
+    transform: translateX(calc(var(--corrupt) * -6px));
+    opacity: calc(var(--corrupt) * 0.85);
+  }
+  .obt-corrupt-ghost-c {
+    background: radial-gradient(circle at 30% 26%, rgba(70,220,255,0.5), transparent 55%);
+    transform: translateX(calc(var(--corrupt) * 6px));
+    opacity: calc(var(--corrupt) * 0.85);
+  }
+
+  .obt-corrupt-slice {
+    position: absolute; left: 0; right: 0; height: 6%;
+    background: rgba(var(--accent-light-rgb), 0.7);
+    mix-blend-mode: color-dodge;
+    opacity: calc(var(--corrupt) * 0.5);
+    transform: translateX(calc(var(--corrupt) * var(--corrupt-slice-dir, 1) * 10px)) scaleY(calc(0.6 + var(--corrupt) * 0.4));
+  }
+  .obt-corrupt-slice-a { top: 34%; }
+  .obt-corrupt-slice-b { top: 61%; height: 4%; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .obt-sphere-inner.is-corrupting { filter: none !important; }
+    .obt-sphere-surface { opacity: 1 !important; }
+    .obt-corrupt { display: none !important; }
+  }
+
+  /* obt-ring-group is sized/positioned to the ring's OWN true bounding
+     box (not inset:0 to the whole square stage). This box is exactly
+     what the cross-document view transition snapshots and morphs, so
+     it must match the visible ring's real geometry, or the morph scales
+     against the wrong reference and the ring reads as the wrong size
+     mid-transition (and on the far side) relative to the planet. See
+     the matching .obt-ring-group rule on auth.html. */
+  .obt-ring-group {
+    position: absolute; left: 50%; top: 50%;
+    width: 102%; aspect-ratio: 1 / 0.3;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .obt-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(var(--accent-light-rgb), 0.55);
+    box-shadow: 0 0 40px -3px rgba(var(--accent-rgb), 0.55);
+    /* Purely decorative. Without this, its full (mostly-transparent)
+       bounding ellipse sits above the nav nodes in stacking order and
+       swallows clicks/taps meant for whatever node happens to be
+       passing through that band. */
+    pointer-events: none;
+  }
+  .obt-ring-back {
+    z-index: 8; opacity: 0.4; border-color: rgba(var(--accent-rgb), 0.32); box-shadow: none;
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 52%);
+    mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 52%);
+  }
+  .obt-ring-front {
+    z-index: 32;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 48%, black 60%, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 48%, black 60%, black 100%);
+  }
+
+  /* Fine asteroid dust scattered along the ring, purely decorative */
+  .obt-dust { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+  .obt-dust span {
+    position: absolute; left: 50%; top: 50%; width: 2px; height: 2px; border-radius: 999px;
+    background: rgba(var(--accent-light-rgb), 0.8);
+    box-shadow: 0 0 4px 1px rgba(var(--accent-rgb), 0.6);
+  }
+
+  .obt-moon-orbit {
+    position: absolute; inset: 8%; border-radius: 50%; pointer-events: none; z-index: 14;
+    animation: obt-spin-full 34s linear infinite;
+  }
+  .obt-moon-orbit.obt-moon-2 { inset: -2%; animation-duration: 52s; animation-direction: reverse; }
+  .obt-moon-orbit .obt-dot {
+    position: absolute; top: 0; left: 50%; width: 7px; height: 7px; margin-left: -3.5px;
+    border-radius: 999px; background: rgb(var(--accent-light-rgb));
+    box-shadow: 0 0 12px 2px rgba(var(--accent-rgb), 0.75);
+    opacity: 0.75;
+  }
+  @keyframes obt-spin-full { to { transform: rotate(360deg); } }
+
+  /* ---------------- Ring navigation nodes ---------------- */
+  .obt-nodes { position: absolute; inset: 0; z-index: 25; }
+  .obt-node {
+    position: absolute; left: 50%; top: 50%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0.65rem;
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-color);
+    will-change: transform, opacity;
+    cursor: pointer;
+    /* Removes the ~300ms tap delay some mobile browsers add while they
+       wait to see if a touch turns into a double-tap/zoom gesture, and
+       stops the orbit's own swipe handling from fighting a tap. */
+    touch-action: manipulation;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  }
+  .obt-node:hover { border-color: rgba(var(--accent-rgb), 0.6) !important; box-shadow: 0 0 26px -4px rgba(var(--accent-rgb), 0.65); }
+  .obt-node svg { width: 14px; height: 14px; flex-shrink: 0; color: rgb(var(--accent-light-rgb)); }
+  .obt-node.obt-node-active { background: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%); color: #fff; border: none !important; box-shadow: 0 0 30px -4px rgba(var(--accent-rgb), 0.8); }
+  .obt-node.obt-node-active svg { color: #fff; }
+
+  /* Labels are dropped everywhere now, not just on narrow viewports —
+     nodes are icon-only circles at every breakpoint (this used to live
+     inside a max-width:520px media query). */
+  .obt-node-label { display: none; }
+
+  /* ---------------- Floating orbiting content card ---------------- */
+  .obt-card {
+    position: absolute;
+    width: min(380px, 88vw);
+    max-width: 380px;
+    z-index: 45;
+    padding: 1.75rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.55);
+    top: 50%;
+    left: 50%;
+    transition: transform 0.75s cubic-bezier(.2,.8,.2,1);
+    --dock-x: min(26vw, 300px);
+    --dock-y: min(30vh, 165px);
+    /* Cards are docked flush to a top or bottom corner (see the
+       .obt-dock-* rules below) and only ever constrain the OPPOSITE
+       edge, so a card taller than the remaining headroom used to
+       just keep growing past the cosmos boundary and get sliced off
+       by its overflow:hidden. Bound the height to what's actually
+       left between the dock inset and the far edge, and let the card
+       scroll internally instead, so bigger panels (e.g. "cabang")
+       are never clipped. */
+    max-height: calc(100% - 2 * clamp(1rem, 6vh, 3.5rem));
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+  /* Custom scrollbar, subtle and rounded, accent-tinted, and readable
+     against both the dark and light theme's glass surfaces. */
+  .obt-card::-webkit-scrollbar { width: 6px; }
+  .obt-card::-webkit-scrollbar-track { background: transparent; margin-block: 0.5rem; }
+  .obt-card::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 999px;
+    background-clip: padding-box;
+    border: 1.5px solid transparent;
+  }
+  .obt-card::-webkit-scrollbar-thumb:hover { background-color: var(--muted-500); }
+  .obt-card::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px; border-radius: 999px;
+    background: rgb(var(--accent-light-rgb));
+    box-shadow: 0 0 14px 3px rgba(var(--accent-rgb), 0.8);
+  }
+
+  .obt-dock-tr { top: clamp(1rem, 6vh, 3.5rem); left: 74%; transform: translate(-50%, 0); }
+  .obt-dock-tr::after { bottom: -5px; left: -5px; }
+  .obt-dock-br { bottom: clamp(1rem, 6vh, 3.5rem); left: 74%; transform: translate(-50%, 0); }
+  .obt-dock-br::after { top: -5px; left: -5px; }
+  .obt-dock-bl { bottom: clamp(1rem, 6vh, 3.5rem); left: 26%; transform: translate(-50%, 0); }
+  .obt-dock-bl::after { top: -5px; right: -5px; }
+  .obt-dock-tl { top: clamp(1rem, 6vh, 3.5rem); left: 26%; transform: translate(-50%, 0); }
+  .obt-dock-tl::after { bottom: -5px; right: -5px; }
+
+  @media (max-width: 900px) {
+    .obt-card {
+      position: fixed;
+      left: 0; right: 0; bottom: 0; top: auto !important;
+      width: 100%; max-width: none;
+      transform: none !important;
+      border-radius: 0;
+      height: 44vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 1.5rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+      transition: opacity 0.35s ease;
+    }
+    .obt-card::after { display: none; }
+  }
+
+  .obt-panel { display: none; flex-direction: column; }
+  .obt-panel.is-active { display: flex; animation: obt-panel-in 0.55s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes obt-panel-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .obt-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgb(var(--accent-light-rgb));
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+  .obt-eyebrow-count { color: var(--muted-500); font-weight: 500; letter-spacing: 0.05em; }
+
+  /* ---------------- Typewriter effect on each panel's heading ----------------
+     The caret lives on .obt-typehead itself (not gated behind a
+     .obt-typing flag) so it blinks continuously forever, including
+     while the heading sits fully typed and idle between scenes — it's
+     pure CSS so it can't drift out of sync with the JS-driven character
+     timing. .obt-typing is still toggled by JS purely to mark when a
+     heading is mid-type/mid-erase, in case anything else hooks into it. */
+  .obt-typehead::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 0.85em;
+    margin-left: 2px;
+    background: var(--text-color);
+    vertical-align: middle;
+    animation: obt-caret-blink 0.85s step-end infinite;
+  }
+  @keyframes obt-caret-blink { 50% { opacity: 0; } }
+
+  /* "Ctrl+A" erase variant — the whole heading gets a selection-style
+     highlight for a beat before it's cleared in one shot, standing in
+     for the moments transitionTypeHead() decides to select-all instead
+     of holding backspace. box-decoration-break keeps the highlight
+     looking like a real per-line text selection if the heading wraps.
+     No caret while "selected", same as a real editor with a selection. */
+  .obt-typehead.obt-selected {
+    background: rgba(var(--accent-rgb), 0.35) !important;
+    border-radius: 3px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    width: fit-content;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+  }
+  .obt-typehead.obt-selected::after { display: none; }
+
+  .obt-feat-row { display: flex; gap: 0.85rem; align-items: flex-start; padding: 0.6rem 0; border-top: 1px solid var(--glass-border); }
+  .obt-feat-row:first-of-type { border-top: none; }
+  .obt-feat-icon {
+    width: 2.1rem; height: 2.1rem; border-radius: 0.65rem; flex-shrink: 0;
+    background: rgba(var(--accent-rgb), 0.15); border: 1px solid rgba(var(--accent-rgb), 0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------------- FAQ accordion ----------------
+     Plain <details>/<summary> so click-to-expand works with zero JS
+     and stays keyboard/screen-reader accessible for free. Default
+     marker triangle is stripped and replaced with a chevron that
+     rotates on [open]; only the clicked question's answer shows,
+     the rest stay collapsed, since that's what <details> does natively. */
+  .obt-faq-item {
+    border-radius: 0.85rem;
+    margin-bottom: 0.6rem;
+    overflow: hidden;
+  }
+  .obt-faq-item:last-of-type { margin-bottom: 0; }
+  .obt-faq-q {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.86rem; font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text-100, #f4f4f5);
+  }
+  .obt-faq-q::-webkit-details-marker { display: none; }
+  .obt-faq-q::marker { content: ''; }
+  .obt-faq-chevron {
+    flex-shrink: 0; width: 1rem; height: 1rem;
+    color: var(--muted-500);
+    transition: transform 0.25s ease;
+  }
+  .obt-faq-item[open] .obt-faq-chevron { transform: rotate(180deg); color: rgb(var(--accent-light-rgb)); }
+  .obt-faq-a {
+    padding: 0 1rem 1rem;
+    font-size: 0.82rem;
+    color: var(--muted-500);
+    line-height: 1.55;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .obt-faq-chevron { transition: none; }
+  }
+
+  /* ---------------- Progress rail + arrows ---------------- */
+  .obt-progress {
+    position: absolute; left: 50%; bottom: clamp(0.75rem, 3vh, 1.75rem); transform: translateX(-50%);
+    z-index: 50;
+    display: flex; flex-direction: row; align-items: center; gap: 0.85rem;
+  }
+  .obt-arrow-btn {
+    width: 2.2rem; height: 2.2rem; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted-500);
+    transition: color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  }
+  .obt-arrow-btn:hover { color: rgb(var(--accent-light-rgb)); border-color: rgba(var(--accent-rgb), 0.4); }
+  .obt-arrow-btn:active { transform: scale(0.92); }
+  .obt-dots { display: flex; flex-direction: row; gap: 0.55rem; padding: 0.6rem 0.7rem; border-radius: 999px; }
+  .obt-dot {
+    width: 7px; height: 7px; border-radius: 999px;
+    background: var(--muted-500); opacity: 0.5;
+    transition: all 0.25s ease; cursor: pointer;
+  }
+  .obt-dot:hover { opacity: 0.85; }
+  .obt-dot.is-active { width: 22px; height: 8px; border-radius: 999px; background: rgb(var(--accent-light-rgb)); opacity: 1; }
+
+  @media (max-width: 900px) {
+    .obt-progress { display: none; }
+  }
+
+  /* ---------------- In-card nav (mobile only) ----------------
+     On mobile the standalone arrows+dots rail above the planet is
+     hidden entirely (see .obt-progress above) to give the planet
+     more headroom. These duplicate prev/next buttons live inside
+     the bottom-sheet card instead, driven by the exact same
+     prev()/next() handlers as #obt-prev/#obt-next.
+
+     `position: absolute` (not sticky/fixed) anchored to #obt-card
+     itself — every .obt-panel starts flush at the top of #obt-panels,
+     so this overlays the same spot regardless of which panel is
+     active: right in line with that panel's eyebrow ("FITUR 02 / 05"
+     etc). Being absolute rather than sticky, it's just more content
+     inside the card's own scroll area, so it scrolls out of view
+     with everything else once the panel's text is taller than the
+     card — it does NOT stay pinned while scrolling. */
+  .obt-card-nav { display: none; }
+  @media (max-width: 900px) {
+    .obt-card-nav {
+      display: flex; align-items: center; gap: 0.4rem;
+      position: absolute; top: 1.15rem; right: 1.25rem; z-index: 6;
+    }
+    .obt-card-arrow {
+      width: 1.65rem; height: 1.65rem;
+      background: rgba(128,128,128,0.14);
+    }
+  }
+
+  /* ---------------- Scroll hint ---------------- */
+  .obt-hint {
+    position: absolute; left: 50%;
+    /* Absolutely-positioned children measure their offset from
+       .obt-cosmos's own top edge, ignoring the padding-top we added
+       there to re-center the planet — so without this, the hint stayed
+       pinned right under the (now floating, out-of-flow) header instead
+       of moving down with everything else. Add the same measured
+       header height here so it clears the nav. */
+    top: calc(var(--obt-header-h, 92px) + clamp(0.75rem, 3vh, 1.75rem));
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 1.05rem;
+    border-radius: 999px;
+    font-size: 0.72rem; color: var(--muted-500);
+    letter-spacing: 0.04em;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .obt-hint.is-hidden { opacity: 0; transform: translateX(-50%) translateY(-8px); pointer-events: none; }
+  .obt-hint-icon { display: flex; }
+  .obt-hint-icon svg { animation: obt-hint-bounce 1.8s ease-in-out infinite; }
+  @keyframes obt-hint-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+
+  @media (max-width: 900px) {
+    .obt-hint { top: auto; bottom: 46vh; margin-bottom: 0.75rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .obt-sphere-bands, .obt-storm, .obt-moon-orbit, .obt-guide-1, .obt-guide-2, .obt-hint-icon svg {
+      animation: none !important;
+    }
+    .obt-stage, .obt-node, .obt-panel, .obt-card, .obt-stars { transition: none !important; }
+    .obt-typehead::after { animation: none !important; }
+  }
+
+</style>
+
+</head>
+
+<body class="obt-body antialiased relative">
+
+<div class="obt-stars" id="obt-stars"></div>
+<div class="glow-layer">
+  <div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="top:-16rem; left:-11rem;"></div>
+  <div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="bottom:-13rem; right:-9rem;"></div>
+</div>
+<div class="obt-vignette"></div>
+
+<header class="obt-header w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-4">
+  <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+    <div class="w-9 h-9 shrink-0 flex items-center justify-center">
+      <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="KIR Logo" class="w-8 h-8 object-contain" />
+    </div>
+    <div>
+      <div class="flex items-center gap-1.5">
+        <span class="font-display font-semibold text-lg block leading-none tracking-wider text-gradient-accent">orbit.io</span>
+        <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="obt-header-tagline text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
+    </div>
+  </a>
+  <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
+    <a href="index.html" class="public-nav-link active" data-i18n="nav_beranda">Beranda</a>
+    <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
+    <a href="program-kerja.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+  </nav>
+  <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
+    <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+  </nav>
+</header>
+
+<script>
+  // Measure the header's real rendered height (it varies by breakpoint —
+  // the tagline drops below 400px, nav wraps differently, etc.) so
+  // .obt-cosmos's padding-top compensation always matches exactly,
+  // instead of guessing a fixed pixel value that only fits one size.
+  // Runs synchronously here (before .obt-cosmos below is painted) and
+  // again on resize so rotating a device or resizing a window stays correct.
+  (function syncHeaderHeightVar() {
+    const headerEl = document.querySelector('.obt-header');
+    function apply() {
+      if (!headerEl) return;
+      document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+    }
+    apply();
+    window.addEventListener('resize', apply);
+  })();
+</script>
+
+<main class="obt-cosmos" id="obt-cosmos">
+
+  <div class="obt-stage-outer" id="obt-stage-outer">
+    <div class="obt-stage" id="obt-stage">
+      <div class="obt-guide obt-guide-1"></div>
+      <div class="obt-guide obt-guide-2"></div>
+
+      <!-- obt-ring-group wraps BOTH ring halves (front + back, not the
+           moons/nodes). z-index on the two children sandwiches the
+           sphere visually. Plain non-positioned wrapper box. -->
+      <div class="obt-ring-group">
+        <div class="obt-ring obt-ring-back"></div>
+        <div class="obt-ring obt-ring-front"></div>
+      </div>
+
+      <div class="obt-moon-orbit"><span class="obt-dot"></span></div>
+      <div class="obt-moon-orbit obt-moon-2"><span class="obt-dot"></span></div>
+
+      <div class="obt-sphere">
+        <div class="obt-sphere-inner" id="obt-sphere-inner">
+          <div class="obt-sphere-surface">
+            <div class="obt-sphere-bands"></div>
+            <div class="obt-storm"></div>
+            <div class="obt-sphere-shade"></div>
+          </div>
+          <div class="obt-sphere-vignette"></div>
+        </div>
+      </div>
+
+      <div class="obt-dust" id="obt-dust"></div>
+
+      <div class="obt-nodes" id="obt-nodes">
+        <button type="button" class="obt-node glass" data-angle="0" data-scene="beranda">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+          <span class="obt-node-label" data-i18n="nav_beranda">Beranda</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="60" data-scene="fitur">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_fitur">Fitur</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="120" data-scene="cabang">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
+          <span class="obt-node-label" data-i18n="nav_cabang">Cabang</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="180" data-scene="faq">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_faq">FAQ</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="240" data-scene="proker">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_proker">Proker</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="300" data-scene="galeri">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15.5l-5-5L5 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="obt-node-label" data-i18n="nav_galeri">Galeri</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="obt-card glass obt-dock-tr" id="obt-card">
+    <div class="obt-card-nav" id="obt-card-nav">
+      <button type="button" class="obt-arrow-btn obt-card-arrow glass" id="obt-card-prev" aria-label="Sebelumnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+      </button>
+      <button type="button" class="obt-arrow-btn obt-card-arrow glass" id="obt-card-next" aria-label="Berikutnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </button>
+    </div>
+    <div id="obt-panels">
+
+      <div class="obt-panel is-active" data-scene="beranda">
+        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 06</span></p>
+        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient obt-typehead" data-i18n="idx_hero_title">
+          “In Harmonia Innovatio”
+        </h1>
+        <p class="text-zinc-400 text-sm mb-7" data-i18n="idx_hero_subtitle">
+          Platform generasi baru KIR. Semua eksplorasi, penemuan, dan kegiatan ekstrakurikuler terjadi di sini.
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="auth.html?tab=register" id="hero-cta-primary" class="rounded-lg px-6 py-3 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="idx_cta_1">Mulai sekarang</a>
+          <a href="auth.html?tab=login" id="hero-cta-secondary" class="rounded-lg px-6 py-3 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition" data-i18n="idx_cta_2">Sudah punya akun? Masuk</a>
+        </div>
+      </div>
+
+      <div class="obt-panel" data-scene="fitur">
+        <p class="obt-eyebrow"><span data-i18n="nav_fitur">FITUR</span> <span class="obt-eyebrow-count">02 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
+        <div>
+          <div class="obt-feat-row">
+            <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+            <div>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat1_title">Pelacakan tugas</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat1_desc">Pantau penanggung jawab tugas, tenggat waktu, dan status penyelesaian setiap kegiatan. Sistem ini memastikan seluruh proyek berjalan sesuai rencana.</p>
+            </div>
+          </div>
+          <div class="obt-feat-row">
+            <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+            <div>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat2_title">Jadwal ekstrakurikuler</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat2_desc">Susun kalender ekstrakurikuler dalam linimasa sentral. Modul ini mencegah bentrok jadwal latihan, rapat, dan kompetisi.</p>
+            </div>
+          </div>
+          <div class="obt-feat-row">
+            <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg></div>
+            <div>
+              <h3 class="font-display font-semibold text-sm mb-0.5" data-i18n="idx_feat3_title">Koordinasi tim</h3>
+              <p class="text-zinc-500 text-sm" data-i18n="idx_feat3_desc">Fasilitasi anggota memahami alur kerja dan minimalkan miskomunikasi. Ruang kerja terpadu ini menampung laporan progres aktual.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="obt-panel" data-scene="cabang">
+        <p class="obt-eyebrow"><span data-i18n="nav_cabang">CABANG</span> <span class="obt-eyebrow-count">03 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
+        <div class="space-y-3 mb-4">
+          <div class="glass rounded-xl p-4">
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik" data-i18n="robotik">Robotik</span>
+            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_rob_sub">Fokus pada kegiatan rancang bangun, pemrograman, dan kompetisi robot. Modul ini menyediakan ruang eksplorasi ke berbagai bidang seperti mikrokontroler, pengembangan game, pengembangan web, pemanfaatan AI cerdas, dan logika otomasi.</p>
+          </div>
+          <div class="glass rounded-xl p-4">
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-sains" data-i18n="sains">Sains</span>
+            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_sci_sub">Fokus pada praktik riset, eksperimen, dan penulisan karya ilmiah. Anggota mengembangkan hipotesis, menguji metodologi baru, serta mempersiapkan diri untuk OPSI dan kompetisi penelitian lainnya di sini.</p>
+          </div>
+        </div>
+        <p class="text-zinc-600 text-xs" data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</p>
+      </div>
+
+      <div class="obt-panel" data-scene="faq">
+        <p class="obt-eyebrow"><span data-i18n="nav_faq">FAQ</span> <span class="obt-eyebrow-count">04 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
+        <p class="text-zinc-500 text-sm mb-5" data-i18n="idx_faq_sub">Klik pertanyaan untuk melihat jawabannya.</p>
+        <div>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q1">Apa itu Orbit?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a1">Orbit adalah dasbor terpusat untuk KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang, Robotik dan Sains, dalam satu ruang kerja.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q2">Apa itu KIR?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a2">KIR (Karya Ilmiah Remaja) adalah ekstrakurikuler sekolah dengan dua cabang, Robotik dan Sains, tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q3">Bagaimana cara bergabung?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a3">Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q4">Apa saja kegiatan KIR?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a4">Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.</p>
+          </details>
+          <details class="obt-faq-item glass">
+            <summary class="obt-faq-q">
+              <span data-i18n="idx_faq_q5">Apakah KIR punya Tutoring?</span>
+              <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="obt-faq-a" data-i18n="idx_faq_a5">Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.</p>
+          </details>
+        </div>
+      </div>
+
+
+      <div class="obt-panel" data-scene="proker">
+        <p class="obt-eyebrow"><span data-i18n="nav_proker">PROGRAM KERJA</span> <span class="obt-eyebrow-count">05 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
+        <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
+          <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+        </a>
+      </div>
+
+      <div class="obt-panel" data-scene="galeri">
+        <p class="obt-eyebrow"><span data-i18n="nav_galeri">GALERI</span> <span class="obt-eyebrow-count">06 / 06</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="gallery.html" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition">
+            <span data-i18n="idx_gallery_cta">Buka Galeri</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+          </a>
+          <a href="auth.html?tab=register" id="final-cta" data-i18n="proker_cta_btn" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">Daftar Sekarang</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="obt-hint glass" id="obt-hint">
+    <span class="obt-hint-icon">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+    </span>
+    <span data-i18n="idx_scroll_hint">Gulir untuk melihat</span>
+  </div>
+
+  <div class="obt-progress">
+    <button type="button" class="obt-arrow-btn glass" id="obt-prev" aria-label="Sebelumnya">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+    </button>
+    <div class="obt-dots glass" id="obt-dots">
+      <span class="obt-dot is-active" data-index="0"></span>
+      <span class="obt-dot" data-index="1"></span>
+      <span class="obt-dot" data-index="2"></span>
+      <span class="obt-dot" data-index="3"></span>
+      <span class="obt-dot" data-index="4"></span>
+      <span class="obt-dot" data-index="5"></span>
+    </div>
+    <button type="button" class="obt-arrow-btn glass" id="obt-next" aria-label="Berikutnya">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+    </button>
+  </div>
+
+</main>
+
+<footer class="obt-footer-mini w-full px-4 sm:px-8 py-3 text-[11px] text-zinc-600 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <span class="obt-footer-tagline" data-i18n="idx_footer">KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.</span>
+  <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
+</footer>
+
+<script>
+  kirApplyTranslations();
+
+  if (kirIsLoggedIn()) {
+    const authLink = document.getElementById('nav-auth-link');
+    const ctaLink = document.getElementById('nav-cta-link');
+    const heroPrimary = document.getElementById('hero-cta-primary');
+    const heroSecondary = document.getElementById('hero-cta-secondary');
+    const finalCta = document.getElementById('final-cta');
+    const lang = localStorage.getItem('kir_lang') || 'id';
+
+    authLink.remove();
+
+    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+    ctaLink.className = 'flex items-center justify-center shrink-0';
+    ctaLink.removeAttribute('data-i18n');
+    ctaLink.href = 'dashboard.html';
+
+    heroPrimary.textContent = I18N[lang].idx_open_dashboard_hero;
+    heroPrimary.setAttribute('data-i18n', 'idx_open_dashboard_hero');
+    heroPrimary.href = 'dashboard.html';
+
+    heroSecondary.remove();
+
+    finalCta.textContent = I18N[lang].idx_open_dashboard;
+    finalCta.setAttribute('data-i18n', 'idx_open_dashboard');
+    finalCta.href = 'dashboard.html';
+
+    kirRenderUserChrome();
+  }
+
+  /* ----------------------------------------------------------
+     Scatter the decorative asteroid dust once, at fixed angles
+     along the ring so it doesn't reshuffle on every re-render.
+     ---------------------------------------------------------- */
+  (function scatterDust() {
+    const wrap = document.getElementById('obt-dust');
+    if (!wrap) return;
+    const count = 22;
+    let html = '';
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * 360 + (i % 2 === 0 ? 4 : -6);
+      const wobble = (i % 3) * 2 - 2;
+      html += `<span data-dust-angle="${angle.toFixed(2)}" data-dust-wobble="${wobble}"></span>`;
+    }
+    wrap.innerHTML = html;
+  })();
+
+  /* ----------------------------------------------------------
+     Orbit navigation controller
+     Wheel / touch / keyboard / dots / ring nodes all funnel
+     into goToStep(), which advances a continuous step counter
+     (never wrapped) so the ring always spins in one consistent
+     direction, looping naturally like a real orbit. The floating
+     content card docks to a different corner for each scene,
+     sweeping around the planet as you move through it.
+     ---------------------------------------------------------- */
+  (function () {
+    const scenes = ['beranda', 'fitur', 'cabang', 'faq', 'proker', 'galeri'];
+    const docks = ['obt-dock-tr', 'obt-dock-br', 'obt-dock-bl', 'obt-dock-tl', 'obt-dock-tr', 'obt-dock-br'];
+    const stepAngle = 360 / scenes.length;
+
+    const cosmos = document.getElementById('obt-cosmos');
+    const stage = document.getElementById('obt-stage');
+    const stageOuter = document.getElementById('obt-stage-outer');
+    const nodesWrap = document.getElementById('obt-nodes');
+    const dustWrap = document.getElementById('obt-dust');
+    const ringBack = document.querySelector('.obt-ring-back');
+    const ringFront = document.querySelector('.obt-ring-front');
+    const card = document.getElementById('obt-card');
+    const panelsWrap = document.getElementById('obt-panels');
+    const dotsWrap = document.getElementById('obt-dots');
+    const hintEl = document.getElementById('obt-hint');
+    const prevBtn = document.getElementById('obt-prev');
+    const nextBtn = document.getElementById('obt-next');
+    const cardPrevBtn = document.getElementById('obt-card-prev');
+    const cardNextBtn = document.getElementById('obt-card-next');
+    const starsEl = document.getElementById('obt-stars');
+
+    if (!cosmos || !stage) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const nodes = Array.from(nodesWrap.querySelectorAll('.obt-node')).map(el => ({
+      el,
+      base: parseFloat(el.getAttribute('data-angle')) || 0,
+      scene: el.getAttribute('data-scene'),
+    }));
+    const dust = Array.from(dustWrap.querySelectorAll('[data-dust-angle]')).map(el => ({
+      el,
+      base: parseFloat(el.getAttribute('data-dust-angle')) || 0,
+      wobble: parseFloat(el.getAttribute('data-dust-wobble')) || 0,
+    }));
+    const panels = Array.from(panelsWrap.querySelectorAll('.obt-panel'));
+    const dots = Array.from(dotsWrap.querySelectorAll('.obt-dot'));
+
+    /* ----------------------------------------------------------
+       Typewriter effect on each panel's heading — typed out on
+       first load, then erased and retyped every time the active
+       scene changes. kirApplyTranslations() has already run by
+       the time this script executes, so each heading's textContent
+       already holds its correct, final (translated) string — that
+       string is captured once, right here, into typeHeadText. Every
+       later type-out replays that captured string character by
+       character instead of re-reading live textContent, so it can
+       never get confused by its own mid-animation partial text.
+       ---------------------------------------------------------- */
+    const typeHeads = Array.from(document.querySelectorAll('.obt-typehead'));
+    const typeHeadText = new Map();
+    typeHeads.forEach(el => typeHeadText.set(el, (el.textContent || '').trim()));
+    let typeGen = 0;      // bumped on every transition to invalidate any in-flight loop
+    let typeTimer = null;
+    let currentTypeHead = null;
+    let visibleText = '';  // whatever's actually rendered right now, kept in sync on every
+                            // single character step so a transition started mid-animation
+                            // always picks up from what the user can actually see, not from
+                            // wherever a stale timer thought it was.
+
+    // Small per-character jitter so the type/erase cadence reads as a
+    // person typing rather than a metronome: a randomized base pace,
+    // longer breaths after spaces/punctuation, and an occasional brief
+    // hesitation — same idea real typists have, just kept subtle.
+    function typeDelay(ch) {
+      const base = 24 + Math.random() * 26; // ~24-50ms baseline jitter
+      if (ch === ' ') return base + 35 + Math.random() * 45;
+      if (/[.,:;!?—-]/.test(ch)) return base + 80 + Math.random() * 110;
+      if (Math.random() < 0.06) return base + 70 + Math.random() * 130; // rare hesitation
+      return base;
+    }
+    function eraseDelay() { return 9 + Math.random() * 10; }
+
+    function typeIntoHead(el, gen, startIndex) {
+      const text = typeHeadText.get(el) || '';
+      if (reduceMotion) { el.textContent = text; visibleText = text; return; }
+      el.classList.add('obt-typing');
+      let i = startIndex || 0;
+      (function step() {
+        if (gen !== typeGen) return; // superseded by a newer scene change mid-type
+        if (i > text.length) { el.classList.remove('obt-typing'); return; }
+        const shown = text.slice(0, i);
+        el.textContent = shown;
+        visibleText = shown;
+        const justTyped = text[i - 1] || '';
+        i++;
+        typeTimer = window.setTimeout(step, typeDelay(justTyped));
+      })();
+    }
+
+    // Seeds `nextEl` with whatever text was actually visible a moment
+    // ago (so switching cards never hard-cuts to blank — the old
+    // heading appears to "follow you" onto the new card), erases it
+    // character by character, then types the new heading's text in.
+    // First run ever (nothing visible yet) just types straight in.
+    // Because every step writes through `visibleText`, flipping cards
+    // rapidly mid-animation always resumes from the real current state
+    // instead of snapping back to a stale full/empty string.
+    function transitionTypeHead(nextEl) {
+      if (nextEl === currentTypeHead) return;
+      const gen = ++typeGen;
+      if (typeTimer) window.clearTimeout(typeTimer);
+      if (currentTypeHead) currentTypeHead.classList.remove('obt-selected');
+      const startText = visibleText;
+      currentTypeHead = nextEl;
+      if (!nextEl) { visibleText = ''; return; }
+
+      const targetText = typeHeadText.get(nextEl) || '';
+      if (reduceMotion) { nextEl.textContent = targetText; visibleText = targetText; return; }
+
+      if (!startText) { nextEl.textContent = ''; visibleText = ''; typeIntoHead(nextEl, gen); return; }
+
+      nextEl.classList.add('obt-typing');
+      nextEl.textContent = startText;
+      visibleText = startText;
+
+      // Two different ways to clear the old heading, picked at random
+      // each transition: hold backspace (character by character, as
+      // before) or Ctrl+A — highlight the whole heading, pause for a
+      // beat as if it were actually selected, then delete it all in
+      // one shot. Keeps the erase from feeling like the same canned
+      // animation every single time.
+      if (Math.random() < 0.5) {
+        let text = startText;
+        (function eraseStep() {
+          if (gen !== typeGen) return; // superseded by yet another scene change
+          if (text.length <= 0) {
+            nextEl.classList.remove('obt-typing');
+            typeIntoHead(nextEl, gen);
+            return;
+          }
+          text = text.slice(0, -1);
+          nextEl.textContent = text;
+          visibleText = text;
+          typeTimer = window.setTimeout(eraseStep, eraseDelay());
+        })();
+      } else {
+        nextEl.classList.add('obt-selected');
+        typeTimer = window.setTimeout(() => {
+          if (gen !== typeGen) return; // superseded mid-"selection"
+          nextEl.classList.remove('obt-selected');
+          nextEl.textContent = '';
+          visibleText = '';
+          nextEl.classList.remove('obt-typing');
+          typeIntoHead(nextEl, gen);
+        }, 260 + Math.random() * 140);
+      }
+    }
+
+    // The whole ring drifts slowly on its own even when idle, which is
+    // nice ambience but makes a node a moving target right as someone
+    // tries to click it. Freeze that drift the moment a node is under
+    // the pointer/finger or focused, so the tap that follows lands on
+    // something that isn't still sliding away.
+    let driftPaused = false;
+    nodes.forEach(({ el }) => {
+      el.addEventListener('pointerenter', () => { driftPaused = true; });
+      el.addEventListener('pointerleave', () => { driftPaused = false; });
+      el.addEventListener('focus', () => { driftPaused = true; });
+      el.addEventListener('blur', () => { driftPaused = false; });
+    });
+
+    // Everything below registers on `window`/`document` directly (rAF
+    // loop, keydown, resize) rather than on `cosmos`/`stage` themselves,
+    // so none of it stops on its own when the router swaps this page's
+    // body away — it would otherwise keep running, invisibly, for as
+    // long as the tab stays open, and every repeat visit to this page
+    // adds yet another copy on top. `teardown` is populated below with
+    // exactly what this instance needs undone, and runs once, right
+    // before the router replaces this page's body.
+    let teardown = () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('keydown', onKeydown);
+      if (lockTimer) window.clearTimeout(lockTimer);
+      if (typeTimer) window.clearTimeout(typeTimer);
+    };
+    window.addEventListener('kir:teardown', () => teardown(), { once: true });
+
+    let rx = 0, ry = 0;
+    function sizeStage() {
+      // .obt-stage-outer used to size itself off raw 90vmin, which
+      // ignores how much the header/footer have already eaten into
+      // the viewport. When that gap was big enough, the square stage
+      // came out taller than .obt-cosmos actually had room for, and
+      // since .obt-cosmos clips overflow, the top/bottom of the ring
+      // (and any card docked near those edges) got sliced off. Size
+      // from the cosmos box's real, already-shrunk dimensions instead.
+      if (window.innerWidth <= 900) { stageOuter.style.width = ''; return; }
+      const rect = cosmos.getBoundingClientRect();
+      const available = Math.min(rect.width, rect.height) * 0.9;
+      const size = Math.max(360, Math.min(1100, available));
+      stageOuter.style.width = size.toFixed(1) + 'px';
+    }
+    function measure() {
+      const rect = stageOuter.getBoundingClientRect();
+      rx = (rect.width / 2) * 0.99;
+      ry = rect.height * 0.148;
+    }
+    sizeStage();
+    measure();
+    function onResize() { sizeStage(); measure(); }
+    window.addEventListener('resize', onResize);
+
+    let step = 0;
+    let sceneIndex = 0;
+    let isLocked = false;
+    let lockTimer = null;
+    let currentAngle = 90;
+    let targetAngle = 90;
+    let idleAngle = 0;
+
+    function sceneFor(s) { return ((s % scenes.length) + scenes.length) % scenes.length; }
+
+    function place(angleOffset) {
+      nodes.forEach(({ el, base }) => {
+        const theta = ((base + angleOffset) * Math.PI) / 180;
+        const x = rx * Math.cos(theta);
+        const y = ry * Math.sin(theta);
+        const depth = (Math.sin(theta) + 1) / 2;
+        const scale = 0.72 + 0.36 * depth;
+        const opacity = 0.4 + 0.6 * depth;
+        el.style.zIndex = Math.sin(theta) >= 0 ? 40 : 12;
+        el.style.opacity = opacity.toFixed(2);
+        el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${scale.toFixed(3)})`;
+      });
+      dust.forEach(({ el, base, wobble }) => {
+        const theta = ((base + angleOffset) * Math.PI) / 180;
+        const dr = 1 + wobble * 0.01;
+        const x = rx * dr * Math.cos(theta);
+        const y = ry * dr * Math.sin(theta);
+        const depth = (Math.sin(theta) + 1) / 2;
+        el.style.zIndex = Math.sin(theta) >= 0 ? 33 : 9;
+        el.style.opacity = (0.15 + 0.65 * depth).toFixed(2);
+        el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      });
+    }
+
+    function updateActiveStates() {
+      nodes.forEach(({ el, scene }) => el.classList.toggle('obt-node-active', scene === scenes[sceneIndex]));
+      panels.forEach(p => p.classList.toggle('is-active', p.getAttribute('data-scene') === scenes[sceneIndex]));
+      dots.forEach((d, i) => d.classList.toggle('is-active', i === sceneIndex));
+      docks.forEach(d => card.classList.remove(d));
+      card.classList.add(docks[sceneIndex]);
+
+      const activePanel = panels.find(p => p.getAttribute('data-scene') === scenes[sceneIndex]);
+      const activeHead = activePanel ? activePanel.querySelector('.obt-typehead') : null;
+      transitionTypeHead(activeHead);
+    }
+
+    function hideHint() { hintEl.classList.add('is-hidden'); }
+
+    /* Commits a new step (and therefore a new target angle) and restarts
+       the settle timer. Node/dust positions are driven by a continuous
+       per-frame lerp toward targetAngle (see the rAF loop below), never
+       by a CSS transition, so retargeting mid-flight always produces a
+       smooth curve toward the new destination rather than a jump or cut,
+       which is what lets jumpTo() redirect instantly and safely below. */
+    function commitStep(newStep) {
+      step = newStep;
+      sceneIndex = sceneFor(step);
+      targetAngle = 90 - step * stepAngle;
+      updateActiveStates();
+      hideHint();
+      isLocked = true;
+      if (lockTimer) window.clearTimeout(lockTimer);
+      lockTimer = window.setTimeout(() => { isLocked = false; }, reduceMotion ? 50 : 780);
+    }
+
+    // Sequential single-notch navigation (wheel / keyboard / touch swipe /
+    // arrow buttons): still respects the in-flight lock so one gesture
+    // always advances exactly one section, preserving the existing
+    // "spins like a real orbit" pacing.
+    function goToStep(newStep) {
+      if (isLocked) return;
+      commitStep(newStep);
+    }
+
+    function next() { goToStep(step + 1); }
+    function prev() { goToStep(step - 1); }
+
+    // Explicit destination picks (ring nodes, progress dots): the most
+    // recent pick always wins immediately, even while a previous rotation
+    // is still settling; it is never queued, never dropped. The shortest
+    // angular distance is always recomputed from the ring's current
+    // logical position, so the ring never travels more than half the
+    // circle (never the long way around, never dipping behind the planet
+    // unnecessarily) and always lands the picked item at the front.
+    function jumpTo(targetSceneIndex) {
+      const cur = sceneFor(step);
+      if (targetSceneIndex === cur) return;
+      let diff = targetSceneIndex - cur;
+      if (diff > scenes.length / 2) diff -= scenes.length;
+      if (diff < -scenes.length / 2) diff += scenes.length;
+      commitStep(step + diff);
+    }
+
+    nodes.forEach(({ el, scene }) => {
+      el.addEventListener('click', () => jumpTo(scenes.indexOf(scene)));
+    });
+    dots.forEach((d, i) => d.addEventListener('click', () => jumpTo(i)));
+    prevBtn.addEventListener('click', () => { hideHint(); prev(); });
+    nextBtn.addEventListener('click', () => { hideHint(); next(); });
+    if (cardPrevBtn) cardPrevBtn.addEventListener('click', () => { hideHint(); prev(); });
+    if (cardNextBtn) cardNextBtn.addEventListener('click', () => { hideHint(); next(); });
+
+    let wheelCooldown = false;
+    cosmos.addEventListener('wheel', (e) => {
+      // If the cursor is over the card, completely disable scroll chaining.
+      // This prevents the orbit from accidentally rotating when reaching the
+      // bottom or top of the card's content.
+      const cardEl = e.target.closest ? e.target.closest('.obt-card') : null;
+      if (cardEl) {
+        return; // let the browser handle card scrolling natively
+      }
+      
+      e.preventDefault();
+      hideHint();
+      if (wheelCooldown || isLocked) return;
+      if (Math.abs(e.deltaY) < 4) return;
+      wheelCooldown = true;
+      window.setTimeout(() => { wheelCooldown = false; }, 60);
+      if (e.deltaY > 0) next(); else prev();
+    }, { passive: false });
+
+    let touchStartY = null;
+    cosmos.addEventListener('touchstart', (e) => {
+      // A tap that starts on the card or on a nav node should always
+      // be free to become a normal tap/click, and never swallowed into a
+      // scene-swipe just because it happened over the rotating stage.
+      if (e.target.closest('.obt-card') || e.target.closest('.obt-node')) { touchStartY = null; return; }
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    cosmos.addEventListener('touchmove', (e) => {
+      if (e.target.closest('.obt-card') || e.target.closest('.obt-node')) return;
+      e.preventDefault();
+    }, { passive: false });
+    cosmos.addEventListener('touchend', (e) => {
+      if (touchStartY === null) return;
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      touchStartY = null;
+      if (Math.abs(dy) < 36) return;
+      hideHint();
+      if (dy > 0) next(); else prev();
+    });
+
+    function onKeydown(e) {
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); hideHint(); next(); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); hideHint(); prev(); }
+    }
+    window.addEventListener('keydown', onKeydown);
+
+    updateActiveStates();
+
+    if (reduceMotion) {
+      currentAngle = targetAngle;
+      place(currentAngle);
+    } else {
+      let lastT = performance.now();
+      let loopRafId = null;
+      function loop(t) {
+        const dt = Math.min(t - lastT, 48);
+        lastT = t;
+        if (!driftPaused) idleAngle += dt * 0.0022;
+        currentAngle += (targetAngle - currentAngle) * 0.055;
+        place(currentAngle + idleAngle);
+        loopRafId = requestAnimationFrame(loop);
+      }
+      loopRafId = requestAnimationFrame(loop);
+
+      teardown = () => {
+        cancelAnimationFrame(loopRafId);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('keydown', onKeydown);
+        if (lockTimer) window.clearTimeout(lockTimer);
+      };
+    }
+  })();
+</script>
+<script src="js/router.js"></script>
+</body>
+</html>
