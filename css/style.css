@@ -169,7 +169,16 @@ html.kir-scroll-locked body {
    rule further down: killing the shorthand strips fill-mode too, so
    the box would snap to its DEFAULT computed size instead of landing
    on the new page's actual final size. */
-::view-transition-group(root) {
+:root {
+  view-transition-name: none;
+}
+main, .auth-form-pane {
+  view-transition-name: main-content;
+}
+.kir-app-shell > .lg\:hidden {
+  view-transition-name: mobile-header;
+}
+::view-transition-group(main-content) {
   animation-duration: 0.001ms !important;
   animation-delay: -1ms !important;
 }
@@ -355,7 +364,6 @@ html[data-theme="light"] .nav-active-pill {
   z-index: 40;
   width: 16rem;
   min-width: 16rem;
-  view-transition-name: kir-sidebar;
   contain: layout;
 }
 
@@ -1118,7 +1126,6 @@ body {
   opacity: 0;
   pointer-events: none;
   contain: layout;
-  view-transition-name: kir-nav-pill;
   transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1), left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.2s ease;

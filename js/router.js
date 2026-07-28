@@ -322,7 +322,7 @@
     const preserveGlow = !!(oldGlowLayer && doc.body.querySelector(':scope > .glow-layer'));
 
     let bodySwapped = false;
-    const swapBody = () => {
+    const swapBody = async () => {
       if (bodySwapped) return;
       bodySwapped = true;
 
@@ -423,6 +423,20 @@
       });
 
       document.documentElement.classList.add('kir-ready');
+
+      // Re-run inline scripts to populate dynamic content
+      const bodyScripts = Array.from(document.body.querySelectorAll('script'));
+      for (const node of bodyScripts) {
+        if (node.getAttribute('src')) {
+          if (node.hasAttribute('async') || node.hasAttribute('defer')) {
+            loadExternalAsset(node);
+          } else {
+            await loadExternalAsset(node);
+          }
+        } else {
+          runInlineScript(node.textContent);
+        }
+      }
     };
 
     // Prefer a real View Transition so the browser cross-fades the old
@@ -434,25 +448,11 @@
     // startViewTransition (e.g. Firefox, older Safari), where there's no
     // crossfade to mask the swap with anyway.
     if (typeof document.startViewTransition === 'function') {
-      const transition = document.startViewTransition(swapBody);
+      const transition = document.startViewTransition(async () => { await swapBody(); });
       try { await transition.finished; } catch (e) { /* interrupted by a newer nav; swap already applied */ }
     } else {
       document.documentElement.classList.add('kir-router-loading');
-      swapBody();
-    }
-
-    // Re-run inline scripts to populate dynamic content
-    const bodyScripts = Array.from(document.body.querySelectorAll('script'));
-    for (const node of bodyScripts) {
-      if (node.getAttribute('src')) {
-        if (node.hasAttribute('async') || node.hasAttribute('defer')) {
-          loadExternalAsset(node);
-        } else {
-          await loadExternalAsset(node);
-        }
-      } else {
-        runInlineScript(node.textContent);
-      }
+      await swapBody();
     }
 
     document.documentElement.classList.remove('kir-router-loading');

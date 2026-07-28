@@ -1048,34 +1048,16 @@ function kirInjectSidebar(activeTab) {
   // falls through to the full kirRenderSidebarNow() build below.
   const existingSidebar = document.getElementById('sidebar');
   if (existingSidebar) {
-    // Get old active element before toggling for animation
-    const oldActive = existingSidebar.querySelector('.nav-link.active');
-    
     existingSidebar.querySelectorAll('.nav-link[data-tab]').forEach(a => {
       a.classList.toggle('active', a.dataset.tab === activeTab);
     });
     
-    // Prefer the native View Transition to glide the pill: router.js
-    // wraps the whole navigation in document.startViewTransition(), and
-    // .nav-active-pill carries view-transition-name: kir-nav-pill (see
-    // style.css), so the browser itself morphs it from its old rect to
-    // its new one — smoothly, off the main thread. The manual "place at
-    // oldActive's rect, force reflow, then CSS-transition to the real
-    // spot" trick below is ONLY needed as a fallback on browsers without
-    // View Transition support, where nothing else would animate the
-    // pill at all. Running both at once — which is what happened while
-    // router.js's startViewTransition() call was accidentally missing —
-    // meant two independent systems were fighting over the same pill's
-    // position every navigation: the native morph would start gliding
-    // toward a rect the manual CSS transition was simultaneously trying
-    // to leave, which is what read as the pill "not really animating"
-    // (most visible on the collapsed/icon-only sidebar, where the old-
-    // vs-new size delta between the two systems' targets is largest).
-    if (typeof document.startViewTransition === 'function') {
-      kirPositionNavPill(false);
-    } else {
-      requestAnimationFrame(() => kirPositionNavPill(true, oldActive));
-    }
+    // Exclude the sidebar from View Transitions and rely strictly on
+    // CSS transitions for the pill's physics. By avoiding VT snapshots 
+    // for the sidebar entirely, CSS naturally interpolates from its current 
+    // physical computed position, guaranteeing smooth mid-flight redirection 
+    // if a user clicks tabs rapidly before the animation finishes.
+    requestAnimationFrame(() => kirPositionNavPill(true));
 
     kirRenderUserChrome();
     kirRefreshAdminPingBadge();
@@ -1536,7 +1518,7 @@ function kirWatchNavScrollFade() {
    A ResizeObserver keeps it aligned through the sidebar
    collapse/expand animation and window resizes too.
    ---------------------------------------------------------- */
-function kirPositionNavPill(animate, oldActive) {
+function kirPositionNavPill(animate) {
   const sidebar = document.getElementById('sidebar');
   const navScroll = sidebar ? sidebar.querySelector('.sidebar-nav-scroll') : null;
   const pill = document.getElementById('nav-active-pill');
@@ -1549,20 +1531,7 @@ function kirPositionNavPill(animate, oldActive) {
   
   const containerRect = navScroll.getBoundingClientRect();
   
-  // If animating and we have an old active element, position pill at old location first
-  if (animate && oldActive) {
-    const oldRect = oldActive.getBoundingClientRect();
-    pill.style.transition = 'none';
-    pill.style.top = (oldRect.top - containerRect.top + navScroll.scrollTop) + 'px';
-    pill.style.left = (oldRect.left - containerRect.left + navScroll.scrollLeft) + 'px';
-    pill.style.width = oldRect.width + 'px';
-    pill.style.height = oldRect.height + 'px';
-    pill.style.opacity = '1';
-    
-    // Force reflow then animate to new position
-    void pill.offsetHeight;
-    pill.style.transition = '';
-  } else if (!animate) {
+  if (!animate) {
     pill.style.transition = 'none';
   }
 
