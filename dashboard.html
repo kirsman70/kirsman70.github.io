@@ -1,4 +1,22 @@
 <!DOCTYPE html>
+
+<script>
+window.onerror = function (msg, src, line, col, err) {
+  var box = document.createElement('div');
+  box.style.cssText = '';
+  box.setAttribute('style', 'position:fixed;bottom:0;left:0;right:0;z-index:999999;background:#b91c1c;color:#fff;font:12px monospace;padding:10px;max-height:40vh;overflow:auto;white-space:pre-wrap;');
+  box.textContent = 'JS ERROR: ' + msg + '\n@ ' + src + ':' + line + ':' + col + (err && err.stack ? '\n' + err.stack : '');
+  document.body ? document.body.appendChild(box) : window.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(box); });
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  var box = document.createElement('div');
+  box.setAttribute('style', 'position:fixed;bottom:0;left:0;right:0;z-index:999999;background:#92400e;color:#fff;font:12px monospace;padding:10px;max-height:40vh;overflow:auto;white-space:pre-wrap;');
+  box.textContent = 'UNHANDLED PROMISE REJECTION: ' + (e.reason && e.reason.stack ? e.reason.stack : e.reason);
+  document.body ? document.body.appendChild(box) : window.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(box); });
+});
+</script>
+
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
