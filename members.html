@@ -172,6 +172,7 @@
     const { data, error } = await supabaseClient
       .from('profiles')
       .select('*')
+      .eq('status', 'approved')
       .order('name', { ascending: true });
       
     if (error) {

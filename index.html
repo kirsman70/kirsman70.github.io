@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Orbit</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js"></script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -999,6 +996,8 @@
   <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
 <script>
   kirApplyTranslations();
 
@@ -1479,8 +1478,25 @@
       }
       loopRafId = requestAnimationFrame(loop);
 
+      // Tab-switching / app-switching on mobile leaves this rAF loop
+      // running in the background otherwise — it's cheap per frame, but
+      // "cheap x forever while backgrounded" still adds up on battery.
+      // Fully cancel it while hidden and pick back up from a fresh
+      // timestamp (so `dt` on the first resumed frame isn't the entire
+      // backgrounded duration) when the tab becomes visible again.
+      function onVisibilityChange() {
+        if (document.hidden) {
+          cancelAnimationFrame(loopRafId);
+        } else {
+          lastT = performance.now();
+          loopRafId = requestAnimationFrame(loop);
+        }
+      }
+      document.addEventListener('visibilitychange', onVisibilityChange);
+
       teardown = () => {
         cancelAnimationFrame(loopRafId);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('resize', onResize);
         window.removeEventListener('keydown', onKeydown);
         if (lockTimer) window.clearTimeout(lockTimer);

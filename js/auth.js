@@ -98,6 +98,8 @@ const I18N = {
     apply_confirm_approve_msg: '"{name}" akan bisa langsung masuk ke akun mereka.', apply_confirm_revoke_msg: '"{name}" tidak akan bisa masuk sampai disetujui kembali.',
     apply_confirm_approve_label: 'Setujui', apply_confirm_revoke_label: 'Batalkan',
     apply_toast_approved: 'Anggota disetujui.', apply_toast_revoked: 'Persetujuan dibatalkan.',
+    apply_edit_name_hint: 'Klik untuk mengedit nama', apply_name_empty_error: 'Nama tidak boleh kosong.',
+    apply_name_save_error: 'Gagal menyimpan nama.', apply_name_saved: 'Nama berhasil disimpan.',
     apply_section_kelas_cabang: 'Kelas & Cabang', apply_section_latar_belakang: 'Latar Belakang', apply_section_prestasi: 'Prestasi', apply_section_minat_lomba: 'Tertarik Dengan Lomba',
     apply_field_cabang: 'Cabang', apply_field_kelas: 'Kelas', apply_field_ekskul_lain: 'Ekstrakurikuler Lain', apply_field_smp_asal: 'SMP Asal', apply_field_prestasi: 'Prestasi',
     apply_registered_at: 'Terdaftar',
@@ -235,6 +237,11 @@ const I18N = {
     reset_voyages_confirm_hint: 'Ketik "SAYA YAKIN" di bawah untuk melanjutkan.', reset_voyages_confirm_placeholder: 'SAYA YAKIN', reset_voyages_confirm_phrase: 'SAYA YAKIN',
     reset_voyages_confirm_btn: 'Reset Voyages', reset_voyages_cancel: 'Batal', reset_voyages_processing: 'Mereset…',
     reset_voyages_success: 'Voyages kamu berhasil direset.', reset_voyages_error: 'Gagal mereset voyages. Coba lagi.',
+    logout_all_btn: 'Keluar dari Semua Perangkat',
+    logout_all_confirm_title: 'Keluar dari semua perangkat?',
+    logout_all_confirm_desc: 'Kamu akan keluar dari semua sesi aktif di semua perangkat, termasuk browser ini. Kamu perlu masuk lagi di mana pun.',
+    logout_all_cancel: 'Batal', logout_all_confirm_btn: 'Keluar dari Semua Perangkat', logout_all_processing: 'Memproses…',
+    logout_all_error: 'Gagal keluar dari semua perangkat. Coba lagi.',
 
     admin_title: 'Admin Panel', admin_desc: 'Tinjau dan kelola pendaftaran anggota baru.',
     admin_tab_tasks: 'Tugas', admin_tab_schedule: 'Jadwal', admin_tab_materials: 'Materi', admin_tab_voyages: 'Voyages',
@@ -345,6 +352,8 @@ const I18N = {
     apply_confirm_approve_msg: '\u201c{name}\u201d will be able to log straight into their account.', apply_confirm_revoke_msg: '\u201c{name}\u201d won\u2019t be able to log in until approved again.',
     apply_confirm_approve_label: 'Approve', apply_confirm_revoke_label: 'Revoke',
     apply_toast_approved: 'Member approved.', apply_toast_revoked: 'Approval revoked.',
+    apply_edit_name_hint: 'Click to edit name', apply_name_empty_error: 'Name can\u2019t be empty.',
+    apply_name_save_error: 'Failed to save name.', apply_name_saved: 'Name saved.',
     apply_section_kelas_cabang: 'Class & Branch', apply_section_latar_belakang: 'Background', apply_section_prestasi: 'Achievements', apply_section_minat_lomba: 'Interested In Competitions',
     apply_field_cabang: 'Branch', apply_field_kelas: 'Class', apply_field_ekskul_lain: 'Other Extracurriculars', apply_field_smp_asal: 'Previous School', apply_field_prestasi: 'Achievements',
     apply_registered_at: 'Registered',
@@ -477,6 +486,11 @@ const I18N = {
     reset_voyages_confirm_hint: 'Type "I\'M SURE" below to continue.', reset_voyages_confirm_placeholder: "I'M SURE", reset_voyages_confirm_phrase: "I'M SURE",
     reset_voyages_confirm_btn: 'Reset Voyages', reset_voyages_cancel: 'Cancel', reset_voyages_processing: 'Resetting…',
     reset_voyages_success: 'Your voyages have been reset.', reset_voyages_error: 'Failed to reset voyages. Try again.',
+    logout_all_btn: 'Log Out of All Devices',
+    logout_all_confirm_title: 'Log out of all devices?',
+    logout_all_confirm_desc: "You'll be signed out of every active session on every device, including this one. You'll need to sign back in everywhere.",
+    logout_all_cancel: 'Cancel', logout_all_confirm_btn: 'Log Out of All Devices', logout_all_processing: 'Signing out…',
+    logout_all_error: 'Failed to log out of all devices. Try again.',
 
     admin_title: 'Admin Panel', admin_desc: 'Review and manage new member registrations.',
     admin_tab_tasks: 'Tasks', admin_tab_schedule: 'Schedule', admin_tab_materials: 'Materials', admin_tab_voyages: 'Voyages',
@@ -1315,10 +1329,16 @@ function kirRenderSidebarNow(activeTab) {
           <button type="button" onclick="openResetVoyagesModal()" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition" data-i18n="reset_voyages_btn">Reset</button>
         </div>
       </section>
-      <button onclick="kirLogout()" class="flex items-center justify-center gap-2.5 mt-4 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-white/10 w-full transition">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-        <span data-i18n="keluar">Keluar</span>
-      </button>
+      <div class="mt-4 space-y-2">
+        <button onclick="kirLogout()" class="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-white/10 w-full transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <span data-i18n="keluar">Keluar</span>
+        </button>
+        <button onclick="openLogoutAllModal()" class="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 w-full transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 4l16 16" /></svg>
+          <span data-i18n="logout_all_btn">Keluar dari Semua Perangkat</span>
+        </button>
+      </div>
     </div>
   </div>
   `;
@@ -1375,7 +1395,27 @@ function kirRenderSidebarNow(activeTab) {
   </div>
   `;
 
-  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + resetVoyagesModalHtml + avatarCropModalHtml;
+  const logoutAllModalHtml = `
+  <div id="logout-all-modal" class="modal-overlay hidden" style="z-index:60;" onclick="if(event.target===this) closeLogoutAllModal()">
+    <div class="modal-card p-6" style="max-width:24rem;">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-display text-lg font-semibold text-red-400" data-i18n="logout_all_confirm_title">Keluar dari semua perangkat?</h2>
+        <button type="button" onclick="closeLogoutAllModal()" class="text-zinc-500 hover:text-zinc-300 p-1">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <p class="text-zinc-400 text-sm mb-4" data-i18n="logout_all_confirm_desc">Kamu akan keluar dari semua sesi aktif di semua perangkat, termasuk browser ini. Kamu perlu masuk lagi di mana pun.</p>
+      <p id="logout-all-status" class="hidden text-xs mb-3"></p>
+      <div class="flex items-center gap-2.5 mt-3">
+        <button type="button" onclick="closeLogoutAllModal()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition" data-i18n="logout_all_cancel">Batal</button>
+        <button type="button" id="logout-all-confirm-btn" onclick="confirmLogoutAll()"
+          class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition" data-i18n="logout_all_confirm_btn">Keluar dari Semua Perangkat</button>
+      </div>
+    </div>
+  </div>
+  `;
+
+  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + resetVoyagesModalHtml + logoutAllModalHtml + avatarCropModalHtml;
   kirApplyTranslations();
   kirApplyBrandAssets();
   
@@ -2033,8 +2073,15 @@ function kirLastKnownCabang() {
   return localStorage.getItem(KIR_LAST_CABANG_KEY) || 'robotik';
 }
 
-async function kirLogout() {
-  await supabaseClient.auth.signOut();
+// scope: 'local' (default) ends only this browser's session, leaving any
+// other logged-in devices/tabs untouched. Pass 'global' (see
+// confirmLogoutAll below, gated behind its own confirmation modal) to
+// end every session everywhere instead. Supabase's own default for
+// signOut() is 'global', so this MUST be passed explicitly here — never
+// call supabaseClient.auth.signOut() bare, or a plain "Keluar" click would
+// silently sign the person out everywhere too.
+async function kirLogout(scope = 'local') {
+  await supabaseClient.auth.signOut({ scope });
   localStorage.removeItem(KIR_SESSION_KEY);
   localStorage.removeItem(KIR_NAME_KEY);
   localStorage.removeItem(KIR_ROLE_KEY);
@@ -2043,6 +2090,51 @@ async function kirLogout() {
   document.documentElement.removeAttribute('data-cabang');
   kirApplyBrandAssets();
   window.location.href = 'index.html';
+}
+
+/* ----------------------------------------------------------
+   Log out of all sessions — signs out every device/tab the
+   account is currently logged into (Supabase scope: 'global'),
+   not just this browser. More far-reaching than the plain
+   "Keluar" button above, so it lives behind its own lightweight
+   confirm modal rather than firing on a single click.
+   ---------------------------------------------------------- */
+function openLogoutAllModal() {
+  const statusEl = document.getElementById('logout-all-status');
+  if (statusEl) statusEl.classList.add('hidden');
+  const btn = document.getElementById('logout-all-confirm-btn');
+  if (btn) {
+    btn.disabled = false;
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    btn.textContent = I18N[lang].logout_all_confirm_btn;
+  }
+  kirLocalModalShow(document.getElementById('logout-all-modal'));
+}
+
+function closeLogoutAllModal() {
+  kirLocalModalHide(document.getElementById('logout-all-modal'));
+}
+
+async function confirmLogoutAll() {
+  const btn = document.getElementById('logout-all-confirm-btn');
+  const statusEl = document.getElementById('logout-all-status');
+  const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+
+  btn.disabled = true;
+  btn.textContent = I18N[lang].logout_all_processing;
+
+  try {
+    await kirLogout('global');
+    // kirLogout() redirects to index.html on success, so there's
+    // normally nothing left to do here.
+  } catch (err) {
+    statusEl.textContent = I18N[lang].logout_all_error;
+    statusEl.className = 'text-xs text-red-400 mb-3';
+    statusEl.classList.remove('hidden');
+    kirShakeEl(document.querySelector('#logout-all-modal .modal-card'));
+    btn.disabled = false;
+    btn.textContent = I18N[lang].logout_all_confirm_btn;
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {

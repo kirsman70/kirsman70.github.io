@@ -137,6 +137,27 @@
     display: flex; gap: 0.65rem; padding: 1.1rem 1.5rem;
     border-top: 1px solid var(--glass-border);
   }
+
+  /* Click-to-edit full name in the header. The pencil only shows up
+     on hover (mirrors .apply-row:hover above) as an affordance that
+     the name itself is clickable — same wrapper handles the hover
+     bg AND the click target so there's no separate tiny hit-area to
+     aim for. */
+  .apply-modal-name-wrap {
+    display: inline-flex; align-items: center; gap: 0.4rem; max-width: 100%;
+    cursor: pointer; border-radius: 0.4rem; padding: 0.1rem 0.35rem; margin: -0.1rem -0.35rem;
+    transition: background 0.15s ease;
+  }
+  .apply-modal-name-wrap:hover { background: rgba(128,128,128,0.10); }
+  .apply-name-edit-icon {
+    color: var(--muted-500); flex-shrink: 0; opacity: 0; transition: opacity 0.15s ease;
+  }
+  .apply-modal-name-wrap:hover .apply-name-edit-icon { opacity: 1; }
+  .apply-name-input {
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.125rem; font-weight: 600;
+    line-height: 1.4; background: rgba(128,128,128,0.08); border: 1px solid rgba(var(--accent-rgb), 0.4);
+    border-radius: 0.4rem; padding: 0.05rem 0.5rem; color: var(--text-color); width: 100%; outline: none;
+  }
 </style>
 </head>
 
@@ -209,7 +230,10 @@
       <div class="flex items-center gap-3.5">
         <div id="apply-modal-avatar" class="apply-modal-avatar bg-accent-gradient text-white"></div>
         <div class="min-w-0">
-          <h2 id="apply-modal-name" class="font-display text-lg font-semibold truncate"></h2>
+          <div id="apply-modal-name-wrap" class="apply-modal-name-wrap" onclick="startEditApplicantName()">
+            <h2 id="apply-modal-name" class="font-display text-lg font-semibold truncate"></h2>
+            <svg class="apply-name-edit-icon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+          </div>
           <p id="apply-modal-email" class="text-xs text-zinc-500 truncate mb-1.5"></p>
           <span id="apply-modal-status" class="apply-status-badge"></span>
         </div>
@@ -367,7 +391,7 @@
     document.getElementById('apply-modal-avatar').style.backgroundImage = a.avatar_url ? `url('${a.avatar_url}')` : '';
     document.getElementById('apply-modal-avatar').style.backgroundSize = a.avatar_url ? 'cover' : '';
     document.getElementById('apply-modal-avatar').style.backgroundPosition = a.avatar_url ? 'center' : '';
-    document.getElementById('apply-modal-name').textContent = a.name || I18N[lang].apply_no_name;
+    renderApplyModalName(a.name || '');
     document.getElementById('apply-modal-email').textContent = a.email || '';
     document.getElementById('apply-modal-status').textContent = isApproved ? I18N[lang].apply_status_approved : I18N[lang].apply_status_pending_full;
     document.getElementById('apply-modal-status').className = `apply-status-badge ${isApproved ? 'apply-status-approved' : 'apply-status-pending'}`;
@@ -410,6 +434,77 @@
     kirModalHide(document.getElementById('apply-modal'), () => {
       currentApplicantId = null;
     });
+  }
+
+  /* ----------------------------------------------------------
+     Click-to-edit full name (modal header only). Swaps the <h2>
+     for a text input in place, saves on blur/Enter via
+     kirAdminUpdate, and reverts on Escape. Always goes back
+     through this same render function afterwards so the wrap's
+     onclick handler and pencil icon are freshly attached instead
+     of accumulating listeners on a reused input element.
+     ---------------------------------------------------------- */
+  function renderApplyModalName(name) {
+    const wrap = document.getElementById('apply-modal-name-wrap');
+    if (!wrap) return;
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    wrap.title = I18N[lang].apply_edit_name_hint;
+    wrap.onclick = startEditApplicantName;
+    wrap.innerHTML = `
+      <h2 id="apply-modal-name" class="font-display text-lg font-semibold truncate">${kirEscapeHtml(name || I18N[lang].apply_no_name)}</h2>
+      <svg class="apply-name-edit-icon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>`;
+  }
+
+  function startEditApplicantName() {
+    const wrap = document.getElementById('apply-modal-name-wrap');
+    if (!wrap || !currentApplicantId) return;
+    const a = APPLICANTS.find(x => x.id === currentApplicantId);
+    if (!a) return;
+
+    wrap.title = '';
+    wrap.onclick = null;
+    wrap.innerHTML = `<input type="text" id="apply-modal-name-input" class="apply-name-input" maxlength="100" />`;
+    const input = document.getElementById('apply-modal-name-input');
+    input.value = a.name || '';
+    input.focus();
+    input.select();
+
+    let cancelled = false;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelled = true; input.blur(); }
+    });
+    input.addEventListener('blur', () => {
+      if (cancelled) { renderApplyModalName(a.name || ''); return; }
+      saveApplicantName(a, input.value);
+    });
+  }
+
+  async function saveApplicantName(applicant, rawValue) {
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const newName = (rawValue || '').trim();
+
+    if (!newName) {
+      kirAdminToast(I18N[lang].apply_name_empty_error, 'error');
+      renderApplyModalName(applicant.name || '');
+      return;
+    }
+    if (newName === applicant.name) {
+      renderApplyModalName(applicant.name || '');
+      return;
+    }
+
+    const result = await kirAdminUpdate('profiles', applicant.id, { name: newName });
+    if (!result.success) {
+      kirAdminToast(result.error || I18N[lang].apply_name_save_error, 'error');
+      renderApplyModalName(applicant.name || '');
+      return;
+    }
+
+    applicant.name = newName;
+    renderApplyModalName(applicant.name);
+    renderApplicants();
+    kirAdminToast(I18N[lang].apply_name_saved, 'success');
   }
 
   function confirmSetApplicantStatus(applicant, status) {

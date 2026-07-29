@@ -973,8 +973,8 @@
 
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
     transition: background-color 0.2s ease, border-color 0.2s ease;
   }
@@ -1368,8 +1368,8 @@
       so it should read as glass sitting on top of it, not a solid slab
       that happens to match the page background. */
     background: var(--glass-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius: 0.85rem; padding: 1rem;
     box-shadow: 0 12px 28px rgba(0,0,0,0.35);
     opacity: 0;
@@ -1922,8 +1922,8 @@
     ========================================================== */
   .finder-window {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
     border-radius: 1rem;
     overflow: hidden;
