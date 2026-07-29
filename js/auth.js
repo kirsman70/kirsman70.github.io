@@ -2417,6 +2417,9 @@ function kirSetSidebarPosition(position) {
   // layout flips, so re-measure once the browser's had a frame to apply
   // the new CSS instead of positioning the pill against the old rects.
   requestAnimationFrame(() => requestAnimationFrame(() => kirPositionNavPill(false)));
+  // Ensure the pill catches the final settled dimensions after the 
+  // internal navigation links finish morphing their CSS transitions.
+  setTimeout(() => kirPositionNavPill(false), 350);
   // Same reasoning for the top/bottom taskbar clearance: don't wait on
   // the ResizeObserver alone (this setting is usually changed from
   // inside the Settings modal, which freezes #sidebar's box via

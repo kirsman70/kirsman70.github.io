@@ -2,6 +2,24 @@
    file rather than folded into style.css since it's a one-page novelty
    feature, not a shared design-system piece. */
 
+/* Mobile swipe controls: added to #schedule-cal-grid for the duration of
+   a run (see attachTouchControls/detachTouchControls in schedule-snake.js).
+   touch-action: none stops the browser's own scroll/pan/zoom gestures from
+   ever starting on the grid, so a swipe is free to steer the snake instead
+   of dragging the page underneath it. The JS side calls preventDefault on
+   touchmove too — same double-coverage pattern used elsewhere on this page
+   (see the reduced-motion comment below) — this is the CSS half of that
+   pair, and the one that matters most on iOS Safari, where a touchmove
+   listener alone can still let the initial gesture rubber-band the page
+   before preventDefault has a chance to run.
+   user-select: none stops the swipe from also highlighting day numbers as
+   selected text while dragging over them. */
+#schedule-cal-grid.kir-snake-touch-lock {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Reduced motion: the button that starts the game is hidden outright
    (see the reduce-motion check around the snake-icon button in
    schedule.html) and start() in schedule-snake.js refuses to start as a

@@ -436,6 +436,13 @@
       touch scrolling over the taskbar should only ever move the
       taskbar's own list, never the page behind it. */
     overscroll-behavior: contain;
+    /* Expand the padding box and offset with negative margin so the
+       nav pill's horizontal box-shadow has room to bleed without 
+       being clipped by overflow-x: hidden. */
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
   .sidebar-nav-scroll::-webkit-scrollbar {
     display: none;
@@ -470,6 +477,12 @@
     min-width: 4.5rem !important;
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
+    /* No transition override here on purpose — this falls through to
+       the plain #sidebar rule above (width/min-width/padding, 0.3s
+       ease, no delay), so collapsing and expanding animate at the
+       exact same speed. (Previously this shortened + delayed the
+       collapse direction only, which made the two directions feel
+       different from each other.) */
   }
 
   #sidebar.sidebar-collapsed .sidebar-header-text,
@@ -484,7 +497,7 @@
     line-height: 0 !important;
     font-size: 0 !important;
     overflow: hidden !important;
-    transition: all 0.2s ease;
+    transition: all 0.12s ease;
   }
 
   #sidebar .sidebar-header-text, 
@@ -538,33 +551,25 @@
     padding-right: 0.75rem !important;
     gap: 0 !important;
     width: 100% !important;
+    /* No transition override here — this falls through to the base
+       "#sidebar > a:first-of-type, ..." rule above (padding/gap/width,
+       0.3s ease, no delay), the same untouched transition driving
+       #sidebar's own width change. Padding/width interpolate in lockstep
+       with the bar's resize instead of on a separate, later-starting
+       clock, so the icon's reposition reads as one continuous motion
+       tied to the bar shrinking, not a distinct snap tacked on at the
+       end of it. (Previously this ran its own 0.15s-delayed transition,
+       which is what produced the late sideways twitch.) */
   }
 
   #sidebar.sidebar-collapsed .nav-link,
   #sidebar.sidebar-collapsed .mt-auto > a,
   #sidebar.sidebar-collapsed button[onclick="kirLogout()"] {
-    /* 1rem (not the old 1.125rem) is what actually leaves the icon's
-      own 1.25rem box flush inside .nav-link's content box once its
-      `border: 1px solid transparent` (always-on, 1px each side, see
-      .nav-link below) is accounted for:
-        collapsed nav content width (54px, itself already reduced by
-        #sidebar's own 0.5rem padding + border) minus .nav-link's own
-        2px border minus 2 * 1rem padding = 20px = exactly the 1.25rem
-        collapsed icon. The old 1.125rem number left the icon 4px too
-        big for its box, so flexbox's default flex-start alignment
-        pushed the overflow entirely to the right.
-    */
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 1.0625rem !important;
+    padding-right: 1.0625rem !important;
     gap: 0 !important;
     width: 100% !important;
-    /* Center by construction instead of relying on the padding numbers
-      above happening to net out to zero. That arithmetic is fragile —
-      any future change to the sidebar's border, padding, or icon size
-      silently reintroduces the drift. justify-content: center
-      guarantees centering regardless. Scoped to collapsed mode only:
-      expanded mode still left-aligns the icon+label pair. */
-    justify-content: center !important;
+    justify-content: flex-start !important;
   }
 
   #sidebar.sidebar-collapsed > a:first-of-type > div:first-child,
@@ -735,7 +740,20 @@
         reserves in .kir-app-shell's flex layout — see the
         `html[data-sidebar-pos="top"/"bottom"] main` rules below, fed by
         the same --kir-top-taskbar-h / --kir-bottom-taskbar-h variables
-        js/auth.js already measures live. */
+        js/auth.js already measures live.
+
+        height/min-height below MUST carry !important, same as the other
+        properties in this block. This stylesheet is compiled into
+        Tailwind's `components` layer, and #sidebar carries the
+        `lg:h-screen` utility class, which lives in the `utilities`
+        layer — declared later in the `@layer theme, base, components,
+        utilities;` order. Cascade layers rank strictly by declaration
+        order before specificity is ever consulted, so without
+        !important here `.lg\:h-screen`'s `height: 100vh` wins even
+        though this selector is far more specific — leaving #sidebar
+        fixed at full viewport height (i.e. covering the whole page,
+        nav content vertically centered in the middle of it) instead of
+        collapsing to a thin top/bottom strip. */
       position: fixed !important;
       left: 0 !important;
       right: 0 !important;
@@ -743,8 +761,8 @@
       align-items: center;
       width: auto !important;
       min-width: 0 !important;
-      height: auto;
-      min-height: 0;
+      height: auto !important;
+      min-height: 0 !important;
       padding: 0.55rem 1.1rem !important;
       gap: 0;
       /* Overflow now lives on .sidebar-nav-scroll (below), not here —
@@ -770,6 +788,15 @@
       min-width: 0;
       overflow-x: auto;
       overflow-y: hidden;
+      /* Swap the bleed room to the vertical axis for the horizontal taskbar */
+      margin-left: 0;
+      margin-right: 0;
+      padding-left: 0;
+      padding-right: 0;
+      margin-top: -1.25rem;
+      margin-bottom: -1.25rem;
+      padding-top: 1.25rem;
+      padding-bottom: 1.25rem;
     }
     /* Fade runs along whichever axis actually scrolls here: horizontal,
       not vertical — same start/end logic as the vertical bar, just
@@ -815,11 +842,15 @@
       rendered height, kept in sync by kirWatchTaskbarClearance in
       js/auth.js (0px whenever that position/breakpoint isn't active, so
       these rules are harmless no-ops the rest of the time). */
+    html[data-sidebar-pos="top"] {
+      scroll-padding-top: calc(1rem + var(--kir-top-taskbar-h, 0px)) !important;
+    }
+
     html[data-sidebar-pos="top"] main {
-      padding-top: calc(2rem + var(--kir-top-taskbar-h, 0px));
+      padding-top: calc(2rem + var(--kir-top-taskbar-h, 0px)) !important;
     }
     html[data-sidebar-pos="bottom"] main {
-      padding-bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px));
+      padding-bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px)) !important;
     }
 
     /* Collapse trigger stays available in top/bottom mode too — same
@@ -1463,12 +1494,6 @@
     text-align: center;
     box-shadow: 0 0 0 2px var(--bg-color);
   }
-  @keyframes nav-ping-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 0 0 2px var(--bg-color); }
-    50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0), 0 0 0 2px var(--bg-color); }
-  }
-  .nav-ping-badge:not(.hidden) { animation: nav-ping-pulse 2s infinite; }
-
   @keyframes star-burst {
     0% { 
       translate: -50% -50%; 

@@ -39,9 +39,13 @@
   let dir = { dr: -1, dc: 0 };
   let dirQueue = [];   // up to MAX_QUEUED buffered turns ahead of the committed `dir`
   let appleIdx = null;
+  let gridEl = null;   // the live grid node, so touch listeners can be attached/detached per run
+  let touchX = null;   // in-progress swipe's tracking origin, reset after each registered turn
+  let touchY = null;
 
   const TICK_MS = 170;      // was 260 — snappier without being twitchy
   const MAX_QUEUED = 2;     // how many rapid taps ahead of the current tick we'll remember
+  const SWIPE_PX = 24;      // how far a finger has to travel before it counts as a swipe
   const HIGH_SCORE_KEY = 'kirSnakeHighScore';
 
   // Score is apples eaten, i.e. how much the snake has grown past its
@@ -95,6 +99,8 @@
     clearAllTimers();
     phase = 'idle';
     snakeBody = []; appleIdx = null; dirQueue = [];
+    detachTouchControls();
+    gridEl = null;
     lockNav(false);
     setModeActive(false);
   }
@@ -167,6 +173,7 @@
 
     cells = getCells();
     if (!cells.length) return;
+    gridEl = document.getElementById('schedule-cal-grid');
 
     // The button only ever exists in the 16-July popover, so that key is
     // always present in whichever grid is currently on screen (possibly as
@@ -181,6 +188,7 @@
 
     setModeActive(true);
     lockNav(true);
+    attachTouchControls();
     // Whatever cell was focused going in (very likely 16 July, since that's
     // where the snake button lives) doesn't need to stay focused for the
     // rest of the run, and leaving it focused is one less thing to worry
@@ -303,16 +311,22 @@
     if (!gridStillLive()) { forceRecover(); return; }
     const next = KEY_DIRS[key];
     if (!next) return;
+    applyDirection(next);
+  }
 
+  // Shared by both input sources (WASD/arrows via handleKey, swipes via the
+  // touch handlers below) so a turn means the same thing regardless of how
+  // it was made.
+  function applyDirection(next) {
     // The intro-walk plays out a few automatic steps upward before handing
     // control to the player (see beginIntroWalk). That's paced for looks
     // (450ms/step) rather than for gameplay (170ms/tick), so a player who
-    // starts pressing WASD/arrows as soon as they see the highlight move
-    // ends up mashing keys into a phase that's still ignoring them — by the
-    // time input is actually accepted, several automatic steps have already
-    // gone by in the default direction, which reads as "the snake won't
-    // turn for its first several steps." The first press during the walk
-    // instead cuts it short right there and hands over control immediately.
+    // starts steering as soon as they see the highlight move ends up
+    // mashing input into a phase that's still ignoring them — by the time
+    // input is actually accepted, several automatic steps have already gone
+    // by in the default direction, which reads as "the snake won't turn for
+    // its first several steps." The first input during the walk instead
+    // cuts it short right there and hands over control immediately.
     if (phase === 'intro-walk') { skipIntroWalk(next); return; }
 
     if (phase !== 'playing') return; // scramble/countdown/death: movement does nothing
@@ -322,14 +336,83 @@
     // Checking against the committed `dir` alone (or a single overwritable
     // "pendingDir" slot) is the old bug: rattling off two or three turns to
     // round a corner within one tick window used to overwrite the earlier
-    // presses instead of queueing them, so keys felt like they weren't
+    // presses instead of queueing them, so input felt like it wasn't
     // registering. Buffering a short queue (capped at MAX_QUEUED) lets quick
-    // taps land in order without letting input run arbitrarily far ahead.
+    // taps/swipes land in order without letting input run arbitrarily far
+    // ahead.
     const effectiveDir = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
     if (next.dr === -effectiveDir.dr && next.dc === -effectiveDir.dc) return; // no reversing into your own neck
     if (next.dr === effectiveDir.dr && next.dc === effectiveDir.dc) return; // already queued/heading this way, nothing to add
     if (dirQueue.length >= MAX_QUEUED) dirQueue.shift(); // drop the oldest queued turn rather than let the buffer grow unbounded
     dirQueue.push(next);
+  }
+
+  // ---------------- touch/swipe controls (mobile) ----------------
+  // No on-screen d-pad — the whole grid is the swipe surface, since that's
+  // exactly where the player's thumb already is while watching the snake.
+  // A swipe registers a single turn once the finger has moved SWIPE_PX in a
+  // clear-enough direction, then the tracking origin resets to the finger's
+  // current position — so one continuous drag can chain several turns
+  // without the player having to lift and re-swipe each time, the same way
+  // a real d-pad would feel under a dragging thumb.
+  function touchDirFromDelta(dx, dy) {
+    if (Math.abs(dx) < SWIPE_PX && Math.abs(dy) < SWIPE_PX) return null;
+    return Math.abs(dx) > Math.abs(dy)
+      ? (dx > 0 ? KEY_DIRS.arrowright : KEY_DIRS.arrowleft)
+      : (dy > 0 ? KEY_DIRS.arrowdown : KEY_DIRS.arrowup);
+  }
+
+  function onTouchStart(e) {
+    if (!gridStillLive()) { forceRecover(); return; }
+    if (e.touches.length !== 1) return; // ignore pinch/multi-finger gestures entirely
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }
+
+  function onTouchMove(e) {
+    if (touchX === null || e.touches.length !== 1) return;
+    // The whole point of swipe controls is that dragging a finger up/down/
+    // left/right over the grid steers the snake instead of scrolling the
+    // page out from under it — so this always blocks the browser's native
+    // scroll/pan for a touch that started on the grid while a run is live,
+    // not just on the ticks where a turn actually gets registered.
+    // touch-action: none on the grid (see schedule-snake.css) is the CSS-
+    // level backstop for the same thing, same double-coverage pattern the
+    // rest of this file/site uses elsewhere (e.g. reduced motion).
+    e.preventDefault();
+    if (!gridStillLive()) { forceRecover(); return; }
+
+    const t = e.touches[0];
+    const dx = t.clientX - touchX, dy = t.clientY - touchY;
+    const next = touchDirFromDelta(dx, dy);
+    if (!next) return;
+    applyDirection(next);
+    touchX = t.clientX;
+    touchY = t.clientY;
+  }
+
+  function onTouchEnd() {
+    touchX = null;
+    touchY = null;
+  }
+
+  function attachTouchControls() {
+    if (!gridEl) return;
+    gridEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    gridEl.addEventListener('touchmove', onTouchMove, { passive: false });
+    gridEl.addEventListener('touchend', onTouchEnd, { passive: true });
+    gridEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    gridEl.classList.add('kir-snake-touch-lock');
+  }
+
+  function detachTouchControls() {
+    touchX = null; touchY = null;
+    if (!gridEl) return;
+    gridEl.removeEventListener('touchstart', onTouchStart);
+    gridEl.removeEventListener('touchmove', onTouchMove);
+    gridEl.removeEventListener('touchend', onTouchEnd);
+    gridEl.removeEventListener('touchcancel', onTouchEnd);
+    gridEl.classList.remove('kir-snake-touch-lock');
   }
 
   function tick() {
@@ -439,6 +522,8 @@
     cells.forEach(c => { const el = numEl(c); if (el) el.style.color = ''; });
     snakeBody = []; appleIdx = null; dirQueue = [];
     phase = 'idle';
+    detachTouchControls();
+    gridEl = null;
     lockNav(false);
     setModeActive(false);
     restoreCalendarChrome(); // re-renders the grid from real state: numbers, selection, today, holidays, dots, all of it

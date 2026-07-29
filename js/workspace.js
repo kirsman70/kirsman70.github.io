@@ -2941,9 +2941,7 @@
   function courseCloseInspector() {
     courseSelectedId = null;
     const inspector = document.getElementById('course-inspector');
-    inspector.classList.remove('open', 'is-beside-left', 'is-beside-right');
-    inspector.style.left = '';
-    inspector.style.top = '';
+    inspector.classList.remove('open');
     document.querySelectorAll('#course-graph .course-node').forEach(el => el.classList.remove('is-selected'));
   }
 

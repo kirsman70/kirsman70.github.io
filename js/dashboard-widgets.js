@@ -1293,8 +1293,8 @@ function renderTasksWidget(w, h) {
     return `
       <div class="glow-blob w-32 h-32 bg-accent-20 -top-10 -right-10"></div>
       <div class="relative h-full flex flex-col items-center justify-center text-center px-2">
-        <div class="w-8 h-8 rounded-lg bg-accent-15 border border-accent-30 flex items-center justify-center mb-2">${icon}</div>
-        <p class="font-display font-semibold text-sm" data-i18n="empty_dash_tasks_title">Bebas tugas!</p>
+        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-2 text-zinc-500">${icon}</div>
+        <p class="text-zinc-300 text-xs font-medium" data-i18n="empty_dash_tasks_title">Bebas tugas!</p>
         ${h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1" data-i18n="empty_dash_tasks_desc">Semua tugas sudah selesai atau belum ada tugas baru.</p>' : ''}
       </div>`;
   }
@@ -1663,14 +1663,15 @@ function deltasDateLabels(lang) {
 function renderDeltasSparkline() {
   const svg = document.getElementById('deltas-sparkline');
   if (!svg) return;
-  const w = 280, h = 60, pad = 4;
+  svg.classList.add('overflow-visible');
+  const w = 280, h = 60, padX = 2, padY = 4;
   const data = currentDeltasHistory();
   const max = Math.max(...data), min = Math.min(...data);
   const range = (max - min) || 1;
-  const stepX = (w - pad * 2) / (data.length - 1);
+  const stepX = (w - padX * 2) / (data.length - 1);
   const points = data.map((v, i) => [
-    pad + i * stepX,
-    h - pad - ((v - min) / range) * (h - pad * 2)
+    padX + i * stepX,
+    h - padY - ((v - min) / range) * (h - padY * 2)
   ]);
   const line = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
   const area = line + ` L${points[points.length - 1][0].toFixed(1)},${h} L${points[0][0].toFixed(1)},${h} Z`;
@@ -1678,24 +1679,24 @@ function renderDeltasSparkline() {
   const gridRows = 3;
   let gridlines = '';
   for (let i = 1; i < gridRows; i++) {
-    const y = pad + ((h - pad * 2) / gridRows) * i;
-    gridlines += `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${w - pad}" y2="${y.toFixed(1)}" stroke="var(--glass-border)" stroke-width="1" stroke-opacity="0.5" />`;
+    const y = padY + ((h - padY * 2) / gridRows) * i;
+    gridlines += `<line x1="${padX}" y1="${y.toFixed(1)}" x2="${w - padX}" y2="${y.toFixed(1)}" stroke="var(--glass-border)" stroke-width="1" stroke-opacity="0.5" />`;
   }
   for (let i = 0; i < data.length; i++) {
-    const x = pad + i * stepX;
-    gridlines += `<line x1="${x.toFixed(1)}" y1="${pad}" x2="${x.toFixed(1)}" y2="${h - pad}" stroke="var(--glass-border)" stroke-width="1" stroke-opacity="0.5" />`;
+    const x = padX + i * stepX;
+    gridlines += `<line x1="${x.toFixed(1)}" y1="${padY}" x2="${x.toFixed(1)}" y2="${h - padY}" stroke="var(--glass-border)" stroke-width="1" stroke-opacity="0.5" />`;
   }
 
   svg.innerHTML = `
     <defs>
-      <linearGradient id="deltas-area-grad" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id="deltas-area-grad" x1="0" y1="0" x2="0" y2="${h}" gradientUnits="userSpaceOnUse">
         <stop offset="0%" style="stop-color: rgb(var(--accent-rgb)); stop-opacity: 0.35" />
         <stop offset="100%" style="stop-color: rgb(var(--accent-rgb)); stop-opacity: 0" />
       </linearGradient>
     </defs>
     ${gridlines}
     <path d="${area}" fill="url(#deltas-area-grad)" stroke="none" />
-    <path d="${line}" fill="none" stroke="rgb(var(--accent-rgb))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="${line}" fill="none" stroke="rgb(var(--accent-rgb))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 6px rgba(var(--accent-rgb), 0.6));" />
   `;
 
   const lang = localStorage.getItem('kir_lang') || 'id';
@@ -1881,8 +1882,10 @@ function renderActivityWidget(w, h) {
 
   if (ACTIVITIES.length === 0) {
     return `
-      <div class="relative h-full flex flex-col items-center justify-center text-center p-4">
-        <svg class="w-6 h-6 text-zinc-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <div class="relative h-full flex flex-col items-center justify-center text-center px-2">
+        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-2 text-zinc-500">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
         <p class="text-zinc-300 text-xs font-medium" data-i18n="empty_dash_activity_title">Belum ada aktivitas</p>
         ${w > 1 && h >= 2 ? '<p class="text-zinc-500 text-[10px] mt-1" data-i18n="empty_dash_activity_desc">Kegiatan terbaru dari anggota akan muncul di sini.</p>' : ''}
       </div>`;
