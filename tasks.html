@@ -15,6 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="css/tailwind-output.css">
+<link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/admin-shared.css">
 <script>
   window.MathJax = {
@@ -162,14 +163,14 @@
   let currentTaskFilter = 'individual';
   let activeCabangFilters = kirCurrentUserCabang() === 'both' ? new Set(['robotik', 'sains']) : new Set([kirCurrentUserCabang()]);
 
-  function setApplyFilter(filter) {
-    applyFilter = filter;
-    ['pending', 'approved', 'all'].forEach(f => {
-      const btn = document.getElementById(`apply-filter-${f}`);
+  function setTaskFilter(filter) {
+    currentTaskFilter = filter;
+    ['individual', 'ekskul', 'kelompok'].forEach(f => {
+      const btn = document.getElementById(`filter-${f}`);
       if (!btn) return;
       btn.classList.toggle('opacity-50', f !== filter);
     });
-    renderApplicants();
+    renderTaskList();
   }
 
   function toggleCabangFilter(cabang) {

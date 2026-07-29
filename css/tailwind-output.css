@@ -2033,12 +2033,12 @@
   }
   @media (max-width: 1023.98px) {
     #sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100dvh;
-      width: 17rem;
-      max-width: 82vw;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      height: 100dvh !important;
+      width: 17rem !important;
+      max-width: 82vw !important;
       z-index: 60;
       display: flex !important;
       flex-direction: column;
@@ -2051,7 +2051,7 @@
       transform: translateX(0);
     }
     #sidebar-collapse-btn {
-      display: none;
+      display: none !important;
     }
   }
   .kir-sidebar-backdrop {

@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="css/tailwind-output.css">
+<link rel="stylesheet" href="css/style.css">
 
 <style id="kir-page-style">
   /* ==========================================================
@@ -157,9 +158,29 @@
        exists, so it keeps centering the planet against the FULL
        viewport height — the sheet then just gets laid on top,
        covering close to half the sphere and reading as "too low".
-       Shift up by roughly half the sheet's height so the planet
-       optically centers in the space actually left above it. */
-    .obt-stage-outer { width: clamp(280px, 108vmin, 480px); margin-top: -31vh; }
+       Shift up by half the sheet's height so the planet optically
+       centers in the space actually left above it. -22vh (half of
+       the sheet's 44vh) is just the pre-JS fallback so there's no
+       flash of a wrong position before script runs — syncMobilePlanetOffset()
+       below overwrites this with the sheet's real, measured height
+       (env(safe-area-inset-bottom), content-driven padding, etc. all
+       included) once the page has laid out, and keeps it correct
+       across resizes/rotations from then on.
+
+       This MUST be `transform`, not `margin-top`: .obt-cosmos centers
+       this box with align-items:center, which centers the box's
+       MARGIN box — so a one-sided margin-top only shifts it by HALF
+       its value (the enlarged margin box gets split evenly across
+       both edges by the centering), leaving the planet still visibly
+       low. transform applies after alignment, so the full value here
+       is the full visual shift. margin-top is reset to 0 so the base
+       rule's desktop-only -3vh optical nudge doesn't leak in here too
+       (also subject to the same halving) and stack with this. */
+    .obt-stage-outer {
+      width: clamp(280px, 108vmin, 480px);
+      margin-top: 0;
+      transform: translateY(-22vh);
+    }
   }
   .obt-stage {
     position: absolute; inset: 0;
@@ -1223,7 +1244,26 @@
       // since .obt-cosmos clips overflow, the top/bottom of the ring
       // (and any card docked near those edges) got sliced off. Size
       // from the cosmos box's real, already-shrunk dimensions instead.
-      if (window.innerWidth <= 900) { stageOuter.style.width = ''; return; }
+      if (window.innerWidth <= 900) {
+        // Below 900px .obt-card is a fixed bottom sheet, not a docked
+        // corner card, so the vertical room actually available for the
+        // stage is bounded by the sheet's real height on top of the
+        // header's — sizing off vmin alone (the CSS clamp's fallback)
+        // ignores that and the stage comes out taller than the gap
+        // between header and sheet, so it overflows past the header at
+        // the top and gets clipped by (or clips into) the sheet at the
+        // bottom, exactly like the desktop case above but with the card
+        // as the culprit instead of the header. Shrink to whichever of
+        // width/height is tighter, same as the desktop branch does.
+        const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--obt-header-h')) || 0;
+        const cardH = card ? card.getBoundingClientRect().height : 0;
+        const availableW = cosmos.getBoundingClientRect().width;
+        const availableH = window.innerHeight - headerH - cardH;
+        const available = Math.min(availableW, availableH) * 0.92;
+        const size = Math.max(240, Math.min(480, available));
+        stageOuter.style.width = size.toFixed(1) + 'px';
+        return;
+      }
       const rect = cosmos.getBoundingClientRect();
       const available = Math.min(rect.width, rect.height) * 0.9;
       const size = Math.max(360, Math.min(1100, available));
@@ -1234,9 +1274,41 @@
       rx = (rect.width / 2) * 0.99;
       ry = rect.height * 0.148;
     }
+    /* Below 900px, .obt-card becomes a fixed, full-width bottom sheet
+       (see its own max-width:900px rule) that .obt-cosmos's centering
+       has no awareness of, so the planet reads as sitting too low —
+       it's centered against space the sheet is actually covering. The
+       CSS's own transform is just a fallback for before this runs;
+       this reads the sheet's REAL rendered height (device UI chrome,
+       env(safe-area-inset-bottom), etc. all folded in automatically)
+       and shifts the stage up by exactly half of it, so the planet
+       centers in whatever space is actually left uncovered above the
+       sheet on this device — not a fixed vh guess tuned for one
+       viewport. Above 900px the card docks to a corner instead (not a
+       bottom sheet), so this is a no-op there and the CSS's own
+       -3vh margin-top optical nudge is left alone.
+
+       IMPORTANT: this shifts via `transform: translateY()`, not
+       `margin-top`. .obt-cosmos centers its child with
+       align-items:center, which centers the item's MARGIN BOX — so a
+       one-sided margin-top actually only moves the item by HALF its
+       value (the browser splits the enlarged margin box evenly across
+       both edges when centering it), silently halving the correction
+       and leaving the planet still noticeably low. transform happens
+       after alignment is resolved, so the full pixel amount here is
+       the full visual shift. */
+    function syncMobilePlanetOffset() {
+      if (window.innerWidth > 900 || !card) {
+        stageOuter.style.transform = '';
+        return;
+      }
+      const cardH = card.getBoundingClientRect().height;
+      stageOuter.style.transform = `translateY(-${(cardH / 2).toFixed(1)}px)`;
+    }
     sizeStage();
     measure();
-    function onResize() { sizeStage(); measure(); }
+    syncMobilePlanetOffset();
+    function onResize() { sizeStage(); measure(); syncMobilePlanetOffset(); }
     window.addEventListener('resize', onResize);
 
     let step = 0;

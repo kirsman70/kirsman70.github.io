@@ -1006,6 +1006,21 @@ function kirToggleMobileSidebar() {
   void sidebar.offsetWidth;
   sidebar.classList.add('kir-sidebar-open');
   document.getElementById('sidebar-mobile-backdrop').classList.add('visible');
+
+  // Reposition the pill once the drawer's slide-in transition (0.28s —
+  // see #sidebar.kir-sidebar-open in style.css) has actually finished.
+  // Opening the drawer only ever changes #sidebar's transform, never its
+  // width, so kirWatchNavPill's ResizeObserver (which only tracks
+  // offsetWidth) never fires for this case, and nothing else repositions
+  // the pill on drawer-open either — only on initial load, SPA nav, and
+  // width changes. Left alone, the pill sits wherever it was last
+  // measured, which can be from before the drawer was ever visible in
+  // its true on-screen position (i.e. floating outside the drawer).
+  // animate:false regardless — the mobile media query in style.css
+  // strips .nav-active-pill's top/left/width/height transition entirely
+  // below the lg breakpoint, so this always lands as a plain snap, never
+  // a visible glide.
+  setTimeout(() => kirPositionNavPill(false), 280);
 }
 
 // If the viewport grows past the lg breakpoint while the mobile drawer
@@ -1013,9 +1028,31 @@ function kirToggleMobileSidebar() {
 // becomes the normal always-visible desktop sidebar via `lg:flex` —
 // make sure the drawer-only state (backdrop, scroll lock, slide
 // transform) doesn't linger into that layout.
+/* Collapse is a desktop-only affordance — #sidebar-collapse-btn is hidden
+   outright below 1024px (see the mobile media query in css/style.css), so
+   there is no UI on mobile to undo a collapsed state. The persisted
+   preference (KIR_SIDEBAR_COLLAPSED_KEY) should therefore only ever be
+   *applied* on desktop, even though it keeps being *stored* regardless of
+   viewport. Without this gate, a user who collapsed the sidebar on desktop
+   would open the mobile drawer later and find it permanently squashed down
+   to icon-only width with no button to expand it back out. */
+function kirSidebarCollapsedClass() {
+  const isDesktop = typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(min-width: 1024px)').matches;
+  return (isDesktop && localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true') ? 'sidebar-collapsed' : '';
+}
+
 if (typeof window !== 'undefined' && window.matchMedia) {
   window.matchMedia('(min-width: 1024px)').addEventListener('change', (e) => {
     if (e.matches) kirCloseMobileSidebar();
+    // Live-sync the collapsed class to whichever side of the breakpoint we
+    // just landed on (window resize / tablet rotation, not just a fresh
+    // page load) — same gate as kirSidebarCollapsedClass() above.
+    const sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl) {
+      const shouldCollapse = e.matches && localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true';
+      sidebarEl.classList.toggle('sidebar-collapsed', shouldCollapse);
+    }
     // Keep the Settings modal's taskbar-position picker in sync if it's
     // open (or opened later) across the same crossing — e.g. rotating a
     // tablet, or resizing a desktop window down past 1024px.
@@ -1102,7 +1139,7 @@ function kirInjectSidebar(activeTab) {
 
 function kirRenderSidebarNow(activeTab) {
   const sidebarHtml = `
-  <aside id="sidebar" class="hidden lg:flex lg:flex-col w-full lg:h-screen glass border-y-0 border-l-0 px-4 py-6 lg:sticky lg:top-0 relative ${localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true' ? 'sidebar-collapsed' : ''}">
+  <aside id="sidebar" class="hidden lg:flex lg:flex-col w-full lg:h-screen glass border-y-0 border-l-0 px-4 py-6 lg:sticky lg:top-0 relative ${kirSidebarCollapsedClass()}">
     <button id="sidebar-collapse-btn" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-accent-gradient text-white flex items-center justify-center z-50 hover:brightness-110 cursor-pointer touch-none">
       <svg class="w-3 h-3 collapse-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
     </button>
