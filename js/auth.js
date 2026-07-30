@@ -2640,7 +2640,7 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply,
         ${kirCommentAttachmentHtml(c.attachment)}
         <div class="flex items-center gap-3 mt-0.5">
           <button onclick="kirToggleReplyBox('${containerId}','${scope}','${itemId}','${c.id}')" class="comment-reply-btn" data-i18n="comments_reply">${I18N[lang].comments_reply}</button>
-          ${isYou ? `<button onclick="kirDeleteCommentAndRerender('${containerId}','${scope}','${itemId}','${c.id}')" class="comment-delete-btn" data-i18n="comments_delete">${I18N[lang].comments_delete}</button>` : ''}
+          ${isYou || (typeof kirIsAdmin === 'function' && kirIsAdmin()) ? `<button onclick="kirDeleteCommentAndRerender('${containerId}','${scope}','${itemId}','${c.id}')" class="comment-delete-btn" data-i18n="comments_delete">${I18N[lang].comments_delete}</button>` : ''}
         </div>
         <div id="${replyBoxId}" class="comment-reply-composer hidden">
           <textarea id="${replyBoxId}-text" rows="2" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="comments_reply_placeholder" placeholder="${I18N[lang].comments_reply_placeholder}"></textarea>
