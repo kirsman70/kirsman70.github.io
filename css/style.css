@@ -9,60 +9,60 @@
    <html>, both set by js/theme.js before the page paints:
 
    1. data-cabang="robotik" | "sains" | "both"
-      Sets the --accent-* CSS variables (red / blue / purple).
+      Sets the --accent-* CSS variables (red, blue, or purple).
       This is the user's extracurricular branch, chosen at register and
       editable later on the Settings page.
 
    2. data-theme="dark" | "light"
-      Sets background/text/glass variables. Dark is default.
+      Sets background, text, and glass variables. Dark is default.
 
    3. data-reduce-motion="true" | "false"
       User-controlled toggle (Settings → Tampilan, below Mode
-      terang). When "true", every animation/transition on the
-      site is switched off — see the rule right after :root
-      below. Off by default; independent of the OS-level
+      terang). When "true", every animation or transition on the
+      site is switched off. See the rule right after :root
+      below. Off by default. Independent of the OS-level
       prefers-reduced-motion media query further down this file.
 
    Every "accent" utility class below (bg-accent, text-accent-300,
    shadow-glow, etc.) reads from these variables instead of a
-   fixed hex, so the whole site re-colors itself automatically —
-   no per-page CSS needed.
+   fixed hex, so the whole site re-colors itself automatically.
+   No per-page CSS needed.
    ========================================================== */
 @layer components {
   html {
     scroll-behavior: smooth;
     background-color: var(--bg-color);
-    /* Reserve the vertical scrollbar's gutter permanently, whether or
+    /* I reserve the vertical scrollbar's gutter permanently, whether or
       not a scrollbar is actually showing. Otherwise, the instant a
       modal locks scroll (overflow:hidden below) the scrollbar
       disappears and hands its width back to the viewport, nudging
-      everything right — flow content AND position:fixed elements like
-      the Ekspedisi/create/Impor JSON FABs, since their containing
-      block is the real (scrollbar-excluding) viewport. Reserving the
-      gutter up front means that width was never "given back" in the
+      everything right. This affects flow content and position:fixed
+      elements like the Ekspedisi, create, or Impor JSON FABs, since their
+      containing block is the real (scrollbar-excluding) viewport. Reserving
+      the gutter up front means that width was never "given back" in the
       first place, so nothing moves when the scrollbar toggles off. */
     scrollbar-gutter: stable;
   }
 
   /* Universal pointer cursor for anything clickable, site-wide.
-    Browsers only give `cursor: pointer` to <a href> by default —
-    plain <button> stays `cursor: default`, and this codebase's actual
+    Browsers only give `cursor: pointer` to <a href> by default.
+    Plain <button> stays `cursor: default`, and this codebase's actual
     click targets are overwhelmingly plain elements with a bare
     onclick="..." attribute (divs, spans, custom-select triggers, card
     footers, etc.), not always semantic <button>s. Up to now every one
     of those had to remember to add its own `cursor: pointer` in its
     own component CSS (see the many individual rules throughout this
-    file) — easy to do for a new class, easy to forget, and the
+    file). This is easy to do for a new class but easy to forget, and the
     inconsistent hand-cursor-sometimes behavior this ticket is about is
-    exactly that: spots where it got forgotten. This single rule covers
-    every current clickable element AND any future one built the same
+    exactly that, spots where it got forgotten. This single rule covers
+    every current clickable element and any future one built the same
     way (bare onclick, no dedicated class), so there's nothing new to
     remember going forward. Elements that are genuinely non-interactive
-    despite carrying onclick/role="button" (rare, but e.g. a disabled
-    state) opt back out via :not(:disabled)/:not([aria-disabled="true"])
-    below — the :not() guards never fire for plain non-form elements,
-    so they're a no-op there and only matter for real disableable
-    controls. */
+    despite carrying onclick or role="button" (rare, but for example a
+    disabled state) opt back out via :not(:disabled) or
+    :not([aria-disabled="true"]) below. The :not() guards never fire for
+    plain non-form elements, so they're a no-op there and only matter for
+    real disableable controls. */
   [onclick]:not(:disabled):not([aria-disabled="true"]),
   [role="button"]:not(:disabled):not([aria-disabled="true"]),
   button:not(:disabled),
@@ -86,21 +86,21 @@
   }
 
 
-  /* Paired with kirRevealPage()/`.kir-ready` in auth.js. Without this,
-    the browser paints <body> the instant it's parsed — showing the
+  /* Paired with kirRevealPage() and `.kir-ready` in auth.js. Without this,
+    the browser paints <body> the instant it's parsed. This shows the
     hardcoded Indonesian default text inside every [data-i18n] element
     (kirApplyTranslations() hasn't swapped it to the visitor's actual
     language yet) and raw, unstyled-size SVG icons (Tailwind's CDN
-    runtime JIT-compiles w-4/h-4-etc. utility CSS asynchronously via a
+    runtime JIT-compiles w-4 or h-4 etc. utility CSS asynchronously via a
     MutationObserver, not synchronously with the parse). On a warm local
     cache that whole gap closes in a couple of milliseconds and is never
-    noticed; over a real network (fonts, the Tailwind CDN script, and
-    auth.js itself all being fetched fresh, e.g. on GitHub Pages) it's
+    noticed. Over a real network (fonts, the Tailwind CDN script, and
+    auth.js itself all being fetched fresh, for example on GitHub Pages) it's
     wide enough to see as a flash of the wrong language snapping to the
     right one, and oversized icons shrinking down.
     auth.js adds `.kir-ready` to <html> once translations are applied
     (or, as a fallback for pages with no [data-i18n] content at all,
-    once the `load` event fires) — see kirRevealPage() there. */
+    once the `load` event fires). See kirRevealPage() there. */
   html:not(.kir-ready) body {
     visibility: hidden;
   }
@@ -111,34 +111,34 @@
   }
 
   /* Every page's <body> carries Tailwind's `overflow-x-hidden` utility
-    as a horizontal-scroll guard. The problem is `hidden`, specifically:
-    giving an element a non-visible overflow-x with no matching
-    overflow-y forces the used value of overflow-y to `auto` too — so
+    as a horizontal-scroll guard. The problem is `hidden`, specifically.
+    Giving an element a non-visible overflow-x with no matching
+    overflow-y forces the used value of overflow-y to `auto` too. So
     `overflow-x: hidden` on <body> silently turns <body> into its own
-    scroll container, distinct from the real document/viewport scroller.
-    #sidebar's `position: sticky` (the default left/right bar, and the
-    top/bottom taskbar rules further down this file) sticks relative to
-    its nearest scrolling ancestor — which this now-a-scroll-container
-    <body> intercepts. Since <body> itself never actually scrolls (it
+    scroll container, distinct from the real document or viewport scroller.
+    #sidebar's `position: sticky` (the default left or right bar, and the
+    top or bottom taskbar rules further down this file) sticks relative to
+    its nearest scrolling ancestor. This now-a-scroll-container
+    <body> intercepts that. Since <body> itself never actually scrolls (it
     just grows to fit its content), sticky positioning relative to it
     never recomputes, so the taskbar silently stops sticking and just
     scrolls away with the page instead.
-    `overflow: clip` is the fix, not just relocating `hidden`: unlike
-    `hidden`/`scroll`/`auto`, `clip` was specifically designed to NOT
+    `overflow: clip` is the fix, not just relocating `hidden`. Unlike
+    `hidden`, `scroll`, or `auto`, `clip` was specifically designed to NOT
     force the other axis to change and to NOT establish a scroll
-    container at all — there's no scrollport, no scrolling API, nothing
+    container at all. There's no scrollport, no scrolling API, nothing
     for a descendant's sticky positioning to mistake for its scrolling
     ancestor. It still visually clips horizontal overflow exactly like
-    `hidden` did; it just can't break sticky the way `hidden` can. */
+    `hidden` did. It just can't break sticky the way `hidden` can. */
   body.overflow-x-hidden {
     overflow-x: clip;
-    /* Safari-only bug (still present as of recent Safari/iOS builds,
-       tracked on Apple's own developer forums): `overflow-x: clip`
+    /* Safari-only bug (still present as of recent Safari or iOS builds,
+       tracked on Apple's own developer forums). `overflow-x: clip`
        incorrectly clips the Y-axis too, instead of leaving overflow-y
        alone like every other engine does. That stray vertical clip is
-       what was making the sticky mobile top bar / sidebar unreachable
-       to taps on iOS specifically (Chrome/Android implements this
-       correctly and never hit the bug) - the button was still painted,
+       what was making the sticky mobile top bar or sidebar unreachable
+       to taps on iOS specifically (Chrome or Android implements this
+       correctly and never hit the bug). The button was still painted,
        just outside where iOS was willing to hit-test it. Pairing an
        explicit `overflow-y: visible` alongside it costs nothing on
        correct engines (visible is already the default there) and
@@ -148,12 +148,12 @@
 
   /* Locked while any modal (or Ekspedisi's fullscreen focus mode) is
     open, so the page behind can't scroll and reveal its native
-    scrollbar — that scrollbar sits in the browser's UI layer, on top
+    scrollbar. That scrollbar sits in the browser's UI layer, on top
     of even a fullscreen fixed overlay, so without this it shows up as
     a stray bar down the right edge.
 
     `position: fixed` (not just overflow:hidden) is what actually keeps
-    the page from jumping to the top when this engages — a bare
+    the page from jumping to the top when this engages. A bare
     overflow:hidden resets body's scrollTop to 0, which was yanking
     everything, including sticky elements like the sidebar, up with it.
     js/admin-shared.js sets `top` to the negative of the current scroll
@@ -172,18 +172,18 @@
   /* #sidebar is lg:sticky lg:top-0 so it stays visible while the main
     column scrolls. It's also capped to lg:h-screen (exactly the
     viewport height, never taller) so it can never detach and travel
-    with the page the way an over-tall sticky element normally would —
-    see .sidebar-nav-scroll further down this file, which is the part
+    with the page the way an over-tall sticky element normally would.
+    See .sidebar-nav-scroll further down this file, which is the part
     of #sidebar that actually grows past the available space and
     absorbs that overflow with its own internal (scrollbar-less)
     scroll, while the profile footer pinned via .mt-auto stays put at
     the bottom of the bar at all times. Sticky can't
-    be trusted once .kir-scroll-locked engages: it recomputes against a
-    scroll offset that's now frozen/fake instead of real. So
+    be trusted once .kir-scroll-locked engages. It recomputes against a
+    scroll offset that's now frozen or fake instead of real. So
     __kirFreezeSidebar() in admin-shared.js swaps it to position:fixed
-    at the exact top/left/width/height it already had the instant
-    before the lock — wherever that was, stuck at top or partway
-    scrolled — instead of assuming it was at the top. #sidebar-root
+    at the exact top, left, width, and height it already had the instant
+    before the lock. Wherever that was, stuck at top or partway
+    scrolled, instead of assuming it was at the top. #sidebar-root
     gets a matching inline width so pulling the sidebar out of flex
     flow doesn't collapse the space it was holding, which is what was
     shifting <main> left. Transitions are suspended while frozen so
@@ -199,27 +199,27 @@
     navigation: auto;
   }
 
-  /* Every ::view-transition-group(name) has its OWN size/position morph
+  /* Every ::view-transition-group(name) has its OWN size or position morph
     animation, separate from the opacity crossfade on the ::old(name)/
-    ::new(name) images inside it — the group animates width/height/
-    transform from the old element's box to the new element's box, and
+    ::new(name) images inside it. The group animates width, height,
+    and transform from the old element's box to the new element's box, and
     the two screenshots (object-fit: cover by default) get stretched to
     fill whatever size the group currently is at each frame.
     For the unnamed root group specifically, "the old element's box" and
-    "the new element's box" are the two whole pages — and pages here
-    vary a lot in content height — so across a normal navigation the
+    "the new element's box" are the two whole pages. Pages here
+    vary a lot in content height, so across a normal navigation the
     root group is continuously resizing for the full transition
     duration, and both full-page screenshots are being rescaled to
-    chase it the entire time. Body text mostly hides that; small crisp
-    raster content doesn't — the brand logo above all is what was
+    chase it the entire time. Body text mostly hides that. Small crisp
+    raster content doesn't. The brand logo above all is what was
     showing that rescaling as visible blur on every navigation.
-    Crushing ONLY the root group's own animation removes the resize:
-    the box snaps straight to its final size and the old/new images
-    just cross-fade in place, already at 1:1 scale — their own opacity
-    animation lives separately on ::view-transition-old(root)/::view-
+    Crushing ONLY the root group's own animation removes the resize.
+    The box snaps straight to its final size and the old or new images
+    just cross-fade in place, already at 1:1 scale. Their own opacity
+    animation lives separately on ::view-transition-old(root) or ::view-
     transition-new(root) and is untouched by this. Duration-crush
     rather than `animation: none`, same reasoning as the reduced-motion
-    rule further down: killing the shorthand strips fill-mode too, so
+    rule further down. Killing the shorthand strips fill-mode too, so
     the box would snap to its DEFAULT computed size instead of landing
     on the new page's actual final size. */
   :root {
@@ -238,21 +238,21 @@
 
   :root {
     /* Live height of the taskbar when it's docked to the top or bottom of
-      the screen (data-sidebar-pos="top"/"bottom"), kept in sync by
+      the screen (data-sidebar-pos="top" or "bottom"), kept in sync by
       kirWatchTaskbarClearance() in js/auth.js. Since the taskbar is
       `position: fixed` in that layout (see the media query further down
       this file), it no longer reserves space in .kir-app-shell's flex
-      flow — <main>'s padding and any fixed-position bottom UI (admin
+      flow. <main>'s padding and any fixed-position bottom UI (admin
       FABs in css/admin-shared.css, the admin toast) add these on top of
       their normal offset so nothing renders underneath the taskbar. 0px
       the rest of the time (taskbar elsewhere, or below the lg breakpoint
-      where the top/bottom taskbar layout doesn't apply at all). */
+      where the top or bottom taskbar layout doesn't apply at all). */
     --kir-top-taskbar-h: 0px;
     --kir-bottom-taskbar-h: 0px;
 
-    /* Default Orbit Accent (Premium Neutral) — true grayscale, no blue
+    /* Default Orbit Accent (Premium Neutral). True grayscale, no blue
       tint, and lighter overall so it reads as an extension of the
-      white/light-grey logo instead of a colored (blue-ish) accent. */
+      white or light-grey logo instead of a colored (blue-ish) accent. */
     --accent-rgb: 212, 212, 216;
     --accent-2-rgb: 82, 82, 91;
     --accent-light-rgb: 244, 244, 245;
@@ -291,28 +291,28 @@
   html[data-reduce-motion="true"] #orbit-traveler { display: none !important; }
   html[data-reduce-motion="true"] .pulse { animation: none !important; }
 
-  /* The universal `*` selector above can't reach these — view-transition
+  /* The universal `*` selector above can't reach these. View-transition
     pseudo-elements render on the document root, not as real descendants
-    of <html>. Named groups (kir-sidebar, kir-nav-pill — see .nav-active-
-    pill and #sidebar) get their own morph animation between old/new
-    position & size on every same-document transition, since
+    of <html>. Named groups (kir-sidebar, kir-nav-pill, see .nav-active-
+    pill and #sidebar) get their own morph animation between old or new
+    position and size on every same-document transition, since
     js/router.js now always runs one (needed so the Tailwind CDN's async
-    class reconciliation stays masked behind the snapshot crossfade —
-    see the comment on the startViewTransition call in router.js).
+    class reconciliation stays masked behind the snapshot crossfade.
+    See the comment on the startViewTransition call in router.js).
     ViewTransition.skipTransition() is supposed to cut that morph short,
     but named-group animations don't reliably honor it, so this CSS
     backstop is still required for reduced motion to actually be motion-
     free (the pill was still visibly gliding without it).
-    IMPORTANT: override animation-duration/delay here, NOT `animation:
-    none`. Killing the whole shorthand strips fill-mode too — with no
+    IMPORTANT: override animation-duration or delay here, NOT `animation:
+    none`. Killing the whole shorthand strips fill-mode too. With no
     fill-mode, the old and new snapshots can both fall back to their
     default full-opacity state and sit stacked on top of each other
     under `mix-blend-mode: plus-lighter` (the built-in crossfade
-    compositing), which washes out lighter/whiter instead of cleanly
+    compositing), which washes out lighter or whiter instead of cleanly
     showing just the new state. Crushing the duration instead keeps the
     animation running (so fill-mode still applies and it lands exactly
-    on its intended end frame) while making it visually instant — same
-    technique as the universal `*` rule above, just extended to the one
+    on its intended end frame) while making it visually instant. This is the
+    same technique as the universal `*` rule above, just extended to the one
     place that selector can't reach. */
   html[data-reduce-motion="true"]::view-transition-group(*),
   html[data-reduce-motion="true"]::view-transition-old(*),
@@ -345,12 +345,12 @@
   /* User toggle: "Nonaktifkan Warna Cabang" (Settings → Tampilan &
     Bahasa, js/auth.js kirSetDisableBranchColor()). When on, every
     accent-* utility above falls back to a neutral grayscale instead
-    of the red/blue/purple cabang tint — same idea as the Orbit
+    of the red, blue, or purple cabang tint. This is the same idea as the Orbit
     Accent default a logged-out visitor sees, just forced on while
     logged in too.
     Single-attribute selector, same specificity as the data-cabang
     rules above, so it MUST stay below them in the file to win the
-    cascade tie — don't reorder this block above data-cabang. */
+    cascade tie. Don't reorder this block above data-cabang. */
   html[data-disable-branch-color="true"] {
     --accent-rgb: 212, 212, 216;
     --accent-2-rgb: 82, 82, 91;
@@ -359,8 +359,8 @@
   }
 
   /* Light mode's background is white, so the dark theme's light-grey
-    "neutral" above would nearly disappear against it — swap to a
-    near-black neutral instead. Two attributes here (vs. one on the
+    "neutral" above would nearly disappear against it. I swap to a
+    near-black neutral instead. Two attributes here (versus one on the
     rule above) gives this higher specificity on purpose, so it wins
     regardless of source order once both data-theme="light" and
     data-disable-branch-color="true" are set. */
@@ -420,17 +420,17 @@
     contain: layout;
   }
 
-  /* The scrollable middle of the taskbar — everything between the logo
+  /* The scrollable middle of the taskbar. Everything between the logo
     and the profile footer (.mt-auto). #sidebar itself is capped to
-    lg:h-screen, so once the Menu/Voyage/Akun nav groups it wraps don't
-    fit that fixed height, this is what overflows and scrolls — not
-    #sidebar as a whole — which is exactly what keeps the profile
+    lg:h-screen, so once the Menu, Voyage, or Akun nav groups it wraps don't
+    fit that fixed height, this is what overflows and scrolls, not
+    #sidebar as a whole. This is exactly what keeps the profile
     footer glued to the bottom of the bar regardless of scroll
-    position. flex-1/min-h-0 (set inline via Tailwind utilities in the
+    position. flex-1 or min-h-0 (set inline via Tailwind utilities in the
     markup) are what let it actually shrink to the remaining space
     instead of pushing #sidebar taller than its cap.
     Scrollbar is intentionally hidden on all three engines (Firefox,
-    IE/old Edge, WebKit/Blink) — the region still scrolls via wheel,
+    IE or old Edge, WebKit or Blink). The region still scrolls via wheel,
     trackpad, touch, or keyboard, it just never shows a visible track,
     and naturally does nothing at all when there's nothing to scroll. */
   .sidebar-nav-scroll {
@@ -439,11 +439,11 @@
     overflow-x: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    /* Once the nav list itself hits the top/bottom of its own scroll
+    /* Once the nav list itself hits the top or bottom of its own scroll
       range, stop the scroll gesture there instead of letting the
       browser hand the rest of the gesture off to the page underneath
-      (the default "scroll chaining" behavior) — mousewheel/trackpad/
-      touch scrolling over the taskbar should only ever move the
+      (the default "scroll chaining" behavior). Mousewheel, trackpad,
+      or touch scrolling over the taskbar should only ever move the
       taskbar's own list, never the page behind it. */
     overscroll-behavior: contain;
     /* Expand the padding box and offset with negative margin so the
@@ -458,14 +458,14 @@
     display: none;
   }
 
-  /* Edge fade — hints that there's more to scroll to without resorting
+  /* Edge fade. Hints that there's more to scroll to without resorting
     to a visible scrollbar. Toggled by kirUpdateNavScrollFade() in
-    js/auth.js, which reads the container's real scroll position/size,
+    js/auth.js, which reads the container's real scroll position or size,
     so the fade on a given edge only ever appears when there's
-    genuinely more content past it — a list that fits entirely within
+    genuinely more content past it. A list that fits entirely within
     the taskbar never gets faded on either edge. .kir-fade-start is the
     edge content scrolls away FROM (top in the normal vertical bar,
-    left in the horizontal top/bottom taskbar); .kir-fade-end is the
+    left in the horizontal top or bottom taskbar). .kir-fade-end is the
     edge it scrolls TOWARD. Both can be active at once, in which case
     the two gradients below combine into a fade on both edges with the
     middle left fully opaque. */
@@ -487,12 +487,12 @@
     min-width: 4.5rem !important;
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
-    /* No transition override here on purpose — this falls through to
-       the plain #sidebar rule above (width/min-width/padding, 0.3s
+    /* No transition override here on purpose. This falls through to
+       the plain #sidebar rule above (width, min-width, or padding, 0.3s
        ease, no delay), so collapsing and expanding animate at the
-       exact same speed. (Previously this shortened + delayed the
+       exact same speed. Previously this shortened and delayed the
        collapse direction only, which made the two directions feel
-       different from each other.) */
+       different from each other. */
   }
 
   #sidebar.sidebar-collapsed .sidebar-header-text,
@@ -561,15 +561,15 @@
     padding-right: 0.75rem !important;
     gap: 0 !important;
     width: 100% !important;
-    /* No transition override here — this falls through to the base
-       "#sidebar > a:first-of-type, ..." rule above (padding/gap/width,
+    /* No transition override here. This falls through to the base
+       "#sidebar > a:first-of-type, ..." rule above (padding, gap, or width,
        0.3s ease, no delay), the same untouched transition driving
-       #sidebar's own width change. Padding/width interpolate in lockstep
+       #sidebar's own width change. Padding or width interpolate in lockstep
        with the bar's resize instead of on a separate, later-starting
        clock, so the icon's reposition reads as one continuous motion
        tied to the bar shrinking, not a distinct snap tacked on at the
-       end of it. (Previously this ran its own 0.15s-delayed transition,
-       which is what produced the late sideways twitch.) */
+       end of it. Previously this ran its own 0.15s-delayed transition,
+       which is what produced the late sideways twitch. */
   }
 
   #sidebar.sidebar-collapsed .nav-link,
@@ -600,26 +600,26 @@
   /* ==========================================================
     Mobile nav drawer (below the lg breakpoint)
     --------------------------------------------------------
-    #sidebar is `hidden lg:flex` — on mobile the hamburger button in
+    #sidebar is `hidden lg:flex`. On mobile the hamburger button in
     each page's top bar calls kirToggleMobileSidebar() (js/auth.js),
     which removes `hidden` and adds `kir-sidebar-open`. Without the
     rules below that would just drop the (very tall) desktop sidebar
     into normal block flow above <main>, pushing the whole page down
-    instead of floating over it — which is exactly what this fixes:
-    under 1024px, an un-hidden #sidebar is pulled out of flow and
+    instead of floating over it. This is exactly what this fixes.
+    Under 1024px, an un-hidden #sidebar is pulled out of flow and
     pinned to the viewport as a slide-in panel, with a dedicated
     backdrop behind it and the page underneath locked from scrolling.
     ========================================================== */
   @media (max-width: 1023.98px) {
     #sidebar {
-      /* !important on position/width (and top/left/height/max-width for the
-        same reason) isn't defensive fluff — it's load-bearing. #sidebar's
+      /* !important on position or width (and top, left, height, or max-width for the
+        same reason) isn't defensive fluff. It's load-bearing. #sidebar's
         own class list includes plain, unconditional `relative` and `w-full`
         (meant for the >=1024px layout), which live in Tailwind's
         `utilities` layer. This block lives in `components`, and per the
         declared layer order (theme, base, components, utilities) utilities
         always wins over components on equal (non-!important) declarations
-        REGARDLESS of selector specificity — an ID selector included. Without
+        REGARDLESS of selector specificity, an ID selector included. Without
         !important here, `.relative` silently overrides `position: fixed`
         (so this becomes an in-flow, static-positioned block instead of an
         overlay) and `.w-full` overrides `width: 17rem`, which is exactly
@@ -643,14 +643,14 @@
       transform: translateX(0);
     }
     /* Collapse is a desktop-only affordance (there's no room to save on
-      a 17rem overlay panel) — hide its toggle so it can't get stuck in
+      a 17rem overlay panel). I hide its toggle so it can't get stuck in
       a collapsed state that the mobile drawer has no way to expand
       back out of. */
     #sidebar-collapse-btn {
-      /* Same cascade-layer issue as #sidebar above: the button's own markup
+      /* Same cascade-layer issue as #sidebar above. The button's own markup
         carries a plain, unconditional `flex` class (utilities layer),
         which beats this `display: none` (components layer) without
-        !important — leaving the desktop-only collapse toggle visible (and
+        !important. This leaves the desktop-only collapse toggle visible (and
         tappable, with nowhere for the mobile drawer to un-collapse from)
         on mobile. */
       display: none !important;
@@ -667,14 +667,14 @@
     transition: opacity 0.25s ease;
   }
 
-  /* The mobile top bar (logo + hamburger) is a sibling of #sidebar-root
+  /* The mobile top bar (logo and hamburger) is a sibling of #sidebar-root
     inside .kir-app-shell, same as .kir-sidebar-backdrop, but it only
-    carries Tailwind's z-20 — well under the backdrop's z-index: 55.
+    carries Tailwind's z-20, well under the backdrop's z-index: 55.
     So the instant the drawer opens, the backdrop paints over the top
-    bar too: it visually dims and, because pointer-events flips to
-    auto while `.visible`, swallows clicks meant for the hamburger/logo
-    before they ever reach it. #sidebar itself (z-index: 60) is fine;
-    this is only about that top bar. Bumping it above the backdrop
+    bar too. It visually dims and, because pointer-events flips to
+    auto while `.visible`, swallows clicks meant for the hamburger or logo
+    before they ever reach it. #sidebar itself (z-index: 60) is fine.
+    This is only about that top bar. Bumping it above the backdrop
     (but below the drawer, which should still slide over it) fixes
     both. !important matches the rest of this file's convention for
     beating Tailwind CDN utility classes injected at runtime. */
@@ -693,12 +693,12 @@
   }
 
   /* ==========================================================
-    Taskbar (sidebar) position — Settings → Appearance & Language.
+    Taskbar (sidebar) position. Settings → Appearance & Language.
     `data-sidebar-pos="left"` is the default and needs nothing
-    extra: it's the exact layout the rules above already produce.
-    The other three are opt-in overrides, scoped to the same lg:
+    extra. It's the exact layout the rules above already produce.
+    The other three are opt-in overrides, scoped to the same lg
     breakpoint the sidebar itself only ever renders at (#sidebar is
-    `hidden lg:flex` — below that a separate mobile top bar with a
+    `hidden lg:flex`. Below that a separate mobile top bar with a
     hamburger dropdown takes over, untouched by this setting).
 
     .kir-app-shell is the flex row (`<div class="... lg:flex">`)
@@ -732,38 +732,38 @@
 
     html[data-sidebar-pos="top"] #sidebar,
     html[data-sidebar-pos="bottom"] #sidebar {
-      /* `position: fixed`, not `sticky`. A horizontal top/bottom taskbar
+      /* `position: fixed`, not `sticky`. A horizontal top or bottom taskbar
         is always shorter than the viewport, so there's none of the
         "scroll past it, let it detach and travel with the page" nuance
-        that makes `sticky` the right tool for the tall left/right bar
-        further up this file — a taskbar just needs to always be pinned
+        that makes `sticky` the right tool for the tall left or right bar
+        further up this file. A taskbar just needs to always be pinned
         to a viewport edge, full stop, which is exactly what `fixed` is
-        for. It also sidesteps `sticky`'s biggest footgun entirely:
-        sticky positioning is computed relative to the nearest ancestor
+        for. It also sidesteps `sticky`'s biggest footgun entirely.
+        Sticky positioning is computed relative to the nearest ancestor
         that establishes a scroll container, and that lookup can get
         hijacked by all sorts of ancestor styling (overflow, contain,
         transforms, third-party CSS injected by the Tailwind CDN runtime
-        at unpredictable times, etc.) — `fixed` has no such ancestor
-        dependency; it's relative to the viewport, always, unconditionally.
+        at unpredictable times, etc.). `fixed` has no such ancestor
+        dependency. It's relative to the viewport, always, unconditionally.
         Taking #sidebar out of flow like this does mean <main> needs
         explicit padding to compensate for the space #sidebar no longer
-        reserves in .kir-app-shell's flex layout — see the
-        `html[data-sidebar-pos="top"/"bottom"] main` rules below, fed by
-        the same --kir-top-taskbar-h / --kir-bottom-taskbar-h variables
+        reserves in .kir-app-shell's flex layout. See the
+        `html[data-sidebar-pos="top" or "bottom"] main` rules below, fed by
+        the same --kir-top-taskbar-h or --kir-bottom-taskbar-h variables
         js/auth.js already measures live.
 
-        height/min-height below MUST carry !important, same as the other
+        height or min-height below MUST carry !important, same as the other
         properties in this block. This stylesheet is compiled into
         Tailwind's `components` layer, and #sidebar carries the
         `lg:h-screen` utility class, which lives in the `utilities`
-        layer — declared later in the `@layer theme, base, components,
-        utilities;` order. Cascade layers rank strictly by declaration
+        layer, declared later in the `@layer theme, base, components,
+        utilities` order. Cascade layers rank strictly by declaration
         order before specificity is ever consulted, so without
         !important here `.lg\:h-screen`'s `height: 100vh` wins even
-        though this selector is far more specific — leaving #sidebar
-        fixed at full viewport height (i.e. covering the whole page,
+        though this selector is far more specific. This leaves #sidebar
+        fixed at full viewport height (covering the whole page,
         nav content vertically centered in the middle of it) instead of
-        collapsing to a thin top/bottom strip. */
+        collapsing to a thin top or bottom strip. */
       position: fixed !important;
       left: 0 !important;
       right: 0 !important;
@@ -775,15 +775,15 @@
       min-height: 0 !important;
       padding: 0.55rem 1.1rem !important;
       gap: 0;
-      /* Overflow now lives on .sidebar-nav-scroll (below), not here —
-        see that rule for why. */
+      /* Overflow now lives on .sidebar-nav-scroll (below), not here.
+        See that rule for why. */
       overflow: visible;
       transition: padding 0.25s ease;
     }
 
-    /* In the horizontal layout, .sidebar-nav-scroll (the Menu/Voyage/
-      Akun nav groups) becomes the row that can actually run out of
-      space and needs to scroll — sideways this time, not vertically —
+    /* In the horizontal layout, .sidebar-nav-scroll (the Menu, Voyage,
+      or Akun nav groups) becomes the row that can actually run out of
+      space and needs to scroll, sideways this time, not vertically,
       while the logo before it and the profile chip after it
       (margin-left: auto, outside this element entirely) stay fixed in
       place at their end of the bar and never move. min-width: 0 is
@@ -808,11 +808,11 @@
       padding-top: 1.25rem;
       padding-bottom: 1.25rem;
     }
-    /* Fade runs along whichever axis actually scrolls here: horizontal,
-      not vertical — same start/end logic as the vertical bar, just
-      rotated 90°. Higher specificity than the base .kir-fade-start/
+    /* Fade runs along whichever axis actually scrolls here, horizontal,
+      not vertical. This is the same start or end logic as the vertical bar, just
+      rotated 90 degrees. Higher specificity than the base .kir-fade-start or
       .kir-fade-end rules above, so this wins whenever the taskbar is
-      docked top/bottom. */
+      docked top or bottom. */
     html[data-sidebar-pos="top"] .sidebar-nav-scroll.kir-fade-start,
     html[data-sidebar-pos="bottom"] .sidebar-nav-scroll.kir-fade-start {
       mask-image: linear-gradient(to right, transparent, black 20px);
@@ -863,8 +863,8 @@
       padding-bottom: calc(2rem + var(--kir-bottom-taskbar-h, 0px)) !important;
     }
 
-    /* Collapse trigger stays available in top/bottom mode too — same
-      Windows-taskbar-style "show icons only" behavior as left/right,
+    /* Collapse trigger stays available in top or bottom mode too. This is the
+      same Windows-taskbar-style "show icons only" behavior as left or right,
       just relocated from the protruding edge tab (which only makes
       sense on a vertical bar) to an ordinary inline button at the
       far end of the row, past the account chip. */
@@ -928,11 +928,11 @@
 
     /* ---- collapsed (icon-only) state, top/bottom ---- */
     /* The generic #sidebar.sidebar-collapsed rules elsewhere in this
-      file already hide .nav-label/.sidebar-header-text/.min-w-0 and
+      file already hide .nav-label, .sidebar-header-text, or .min-w-0 and
       assume a vertical bar (width: 100% !important on every row,
-      justify-content: center). Those width/centering assumptions are
+      justify-content: center). Those width or centering assumptions are
       wrong for a horizontal strip, so they're reset back to natural
-      sizing here — higher specificity (html[...] + #sidebar.sidebar-
+      sizing here. Higher specificity (html[...] + #sidebar.sidebar-
       collapsed) wins over the generic versions further up the file. */
     html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .nav-link,
     html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > a,
@@ -981,18 +981,18 @@
 
   .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
 
-  /* Fixed, viewport-clipped layer the glow blobs live in. Pure decoration:
+  /* Fixed, viewport-clipped layer the glow blobs live in. Pure decoration.
     `position: fixed` + `inset: 0` locks this to the exact viewport box
-    regardless of how tall/wide the rest of the page ends up, and
-    `overflow: hidden` means nothing inside it — no matter how far a
-    blob's blur/negative-offset pushes it — can ever register as part
+    regardless of how tall or wide the rest of the page ends up, and
+    `overflow: hidden` means nothing inside it, no matter how far a
+    blob's blur or negative-offset pushes it, can ever register as part
     of the page's scrollable width or height. Previously the blobs were
     plain `position: absolute` children of <body>, relying on body's own
-    overflow-x:clip to contain them; that's a *paint* clip, not a layout
+    overflow-x:clip to contain them. That's a paint clip, not a layout
     one, so their boxes could still count toward the document's
     scrollable overflow and quietly widen the page. Giving them their
     own out-of-flow, self-clipping layer removes that possibility
-    entirely — they're now guaranteed to be background-only, never
+    entirely. They're now guaranteed to be background-only, never
     layout-affecting, on any device. */
   .glow-layer {
     position: fixed;
@@ -1002,7 +1002,7 @@
     z-index: 0;
   }
 
-  /* ambient glow blobs — the site's signature visual motif */
+  /* ambient glow blobs. The site's signature visual motif */
   .glow-blob {
     position: absolute;
     border-radius: 9999px;
@@ -1048,7 +1048,7 @@
   }
 
   /* ==========================================================
-    Custom dropdown — replaces native <select> appearance
+    Custom dropdown. Replaces native <select> appearance
     ========================================================== */
   .kir-select { position: relative; }
   .kir-select-trigger {
@@ -1059,8 +1059,8 @@
   }
   /* Default ("glass-input") look. Scoped with :not() rather than layered on
     top of .kir-select-pill below so that when a caller opts into the pill
-    variant, background/border/color simply aren't set by this rule at
-    all — leaving the caller's own utility classes (passed in via
+    variant, background, border, or color simply aren't set by this rule at
+    all. This leaves the caller's own utility classes (passed in via
     data-trigger-class on the source <select>, see kirRefreshCustomSelect
     in js/auth.js) completely free to color the trigger without having to
     out-specificity anything here, regardless of CSS load order. */
@@ -1108,22 +1108,22 @@
 
   /* min-width is set inline per-open (see kirPositionSelectPanel in
     js/auth.js) to match the trigger's own current width in real viewport
-    pixels — position: fixed means a CSS percentage here can't resolve
+    pixels. Position: fixed means a CSS percentage here can't resolve
     against the wrapper the way it could when this was position: absolute.
     width: max-content lets it grow WIDER than the trigger to fit its
-    longest option instead of wrapping/clipping (the trigger itself can be
-    as narrow as 7rem — see e.g. Voyages' SUBJEK filter — while an option
+    longest option instead of wrapping or clipping (the trigger itself can be
+    as narrow as 7rem, for example Voyages' SUBJEK filter, while an option
     like "Informatika" needs more room than that). max-width plus normal
     white-space keeps it from running off-screen or off a single line if
-    an option is ever genuinely long: it wraps instead of overflowing.
-    No max-height/overflow-y here on purpose — panels grow to fit every
+    an option is ever genuinely long. It wraps instead of overflowing.
+    No max-height or overflow-y here on purpose. Panels grow to fit every
     option instead of scrolling. kirPositionSelectPanel (auth.js) flips
-    the panel above the trigger, and/or shifts it left, whenever growing
+    the panel above the trigger, or shifts it left, whenever growing
     would push it past the viewport edge.
 
     position: fixed (rather than absolute, relative to the wrapper) is
-    deliberate: an absolutely-positioned panel is clipped by ANY ancestor
-    with overflow:hidden — a task card, a modal's scrollable body, etc. —
+    deliberate. An absolutely-positioned panel is clipped by ANY ancestor
+    with overflow:hidden, a task card, a modal's scrollable body, etc.,
     which used to cut the panel off after a sliver of its first option.
     Fixed positioning is relative to the viewport instead, so it always
     renders in full regardless of what it's nested inside. The trade-off
@@ -1149,8 +1149,8 @@
   .kir-select-option.selected {
     background: rgba(var(--accent-rgb), 0.14); color: rgb(var(--accent-light-rgb)); font-weight: 600;
   }
-  /* Visible-but-unselectable option (e.g. "Kompetitif (Coding)" when
-    Subjek isn't Informatika) — shown grayed out rather than removed
+  /* Visible-but-unselectable option (for example "Kompetitif (Coding)" when
+    Subjek isn't Informatika). Shown grayed out rather than removed
     from the list, so it's clear the choice exists but isn't valid
     right now. See disabledIf in admin-shared.js. */
   .kir-select-option.disabled {
@@ -1158,16 +1158,16 @@
   }
   .kir-select-option.disabled:hover { background: transparent; }
 
-  /* Multi-select variant — checkbox rows that stay open across picks.
+  /* Multi-select variant. Checkbox rows that stay open across picks.
     Unlike the single-select variant above, the row itself never gets
-    a hover/selected background or bold text here — only
+    a hover or selected background or bold text here. Only
     .kir-select-checkbox is allowed to visibly react (border on hover,
-    filled + checkmark once picked), so these two rules cancel out the
-    single-select `.kir-select-option:hover`/`.selected` styling
+    filled and checkmark once picked), so these two rules cancel out the
+    single-select `.kir-select-option:hover` or `.selected` styling
     specifically for `.multi` rows. Both are one class more specific
     than the rules they're overriding, so this wins regardless of
     source order. Applies to every kirRefreshMultiSelect() dropdown in
-    the app — there's nothing page-specific about it. */
+    the app. There's nothing page-specific about it. */
   .kir-select-option.multi:hover { background: transparent; }
   .kir-select-option.multi.selected {
     background: transparent; color: var(--text-color); font-weight: 400;
@@ -1175,8 +1175,8 @@
   .kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
   .kir-select-option.multi > span:last-child { min-width: 0; overflow-wrap: break-word; }
   /* display:flex centering (rather than the checkmark's ::after
-    hardcoding its own left/top offsets) keeps the checkmark centered
-    automatically no matter what — box size, border width, etc. all
+    hardcoding its own left or top offsets) keeps the checkmark centered
+    automatically no matter what. Box size, border width, etc. all
     stay in sync without re-deriving magic-number offsets by hand. */
   .kir-select-checkbox {
     width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0;
@@ -1213,7 +1213,7 @@
     opacity: 1;
   }
 
-  /* Traveling active-nav highlight — one shared pill, absolutely
+  /* Traveling active-nav highlight. One shared pill, absolutely
     positioned behind whichever .nav-link is active, moved into place
     by JS (kirPositionNavPill in auth.js). Also carries a
     view-transition-name so it glides smoothly across full page loads,
@@ -1243,15 +1243,15 @@
   }
 
   /* ==========================================================
-    Schedule page — full month calendar (schedule.html)
+    Schedule page. Full month calendar (schedule.html)
     --------------------------------------------------------
-    Only ever one month visible at a time: a header with
-    prev/next/"today" controls, a 7-col weekday grid, then a
+    Only ever one month visible at a time. A header with
+    prev, next, or "today" controls, a 7-col weekday grid, then a
     day panel below listing whatever's on the selected date.
     Kept as its own "kir-month-cal-*" namespace (rather than
     reusing .kir-cal-* from the small inline date-picker in
     admin-shared.css) since this is a much bigger, page-level
-    surface with its own hover/selection/today/has-events states
+    surface with its own hover, selection, today, or has-events states
     that would otherwise collide with the picker's compact ones.
     ========================================================== */
   .kir-month-cal-header {
@@ -1335,21 +1335,21 @@
   .kir-month-cal-day.kir-cal-holiday.kir-cal-selected .kir-month-cal-day-num,
   .kir-month-cal-day.kir-cal-holiday-leave.kir-cal-selected .kir-month-cal-day-num { color: #fff; opacity: 1; }
 
-  /* Hardcoded fun/special days (e.g. World Snake Day, July 16) — same tint
+  /* Hardcoded fun or special days (for example World Snake Day, July 16). Same tint
     pattern as the holiday styling above, just green instead of red, and
-    matched by month+day only so it recurs every year regardless of the
+    matched by month or day only so it recurs every year regardless of the
     grid's actual year. See SCHEDULE_SPECIAL_DAYS in schedule.html. */
   .kir-month-cal-day.kir-cal-special .kir-month-cal-day-num { color: rgb(74 222 128); }
   .kir-month-cal-day.kir-cal-special.kir-cal-selected .kir-month-cal-day-num { color: #fff; }
 
-  /* Select/deselect animations — plain `transition` doesn't work here because
+  /* Select or deselect animations. Plain `transition` doesn't work here because
     the calendar grid is fully rebuilt via innerHTML on every click, so each
     cell is a brand-new element with no "before" state to transition from.
     @keyframes animations play on newly-inserted elements regardless, so they
     animate correctly even across a full re-render. These classes are added
-    for exactly one render (see scheduleAnimateSelectKey/DeselectKey in
+    for exactly one render (see scheduleAnimateSelectKey or DeselectKey in
     schedule.html) and never removed afterward, but since the animation only
-    plays once, that's harmless. Plain color fades only — no scale/motion. */
+    plays once, that's harmless. Plain color fades only, no scale or motion. */
   @keyframes kir-cal-select-fade {
     0% { background: rgba(128,128,128,0.05); }
     100% { background: rgba(var(--accent-rgb), 0.14); }
@@ -1372,9 +1372,9 @@
   .kir-month-cal-day.kir-cal-deselect-anim { animation: kir-cal-deselect-fade 0.3s ease; }
   .kir-month-cal-day.kir-cal-deselect-anim .kir-month-cal-day-num { animation: kir-cal-deselect-num-fade 0.3s ease; }
 
-  /* Traveling highlight — a brief pulse stepped through intermediate cells
+  /* Traveling highlight. A brief pulse stepped through intermediate cells
     between the old and new selection (see scheduleRunTravelAnimation in
-    schedule.html). This class is toggled on/off on the same persistent DOM
+    schedule.html). This class is toggled on or off on the same persistent DOM
     node via classList (not a fresh render), so the existing plain
     `transition` on .kir-month-cal-day handles the fade in and back out. */
   .kir-month-cal-day.kir-cal-travel-pulse { background: rgba(var(--accent-rgb), 0.2); border-color: transparent; }
@@ -1392,8 +1392,8 @@
     .kir-month-cal-title { font-size: 1rem; }
   }
 
-  /* Day panel — list of the selected date's events, under the grid */
-  /* Day detail popover on the schedule calendar — a floating panel
+  /* Day panel. List of the selected date's events, under the grid */
+  /* Day detail popover on the schedule calendar. A floating panel
     positioned via JS (schedulePositionDayPopover in schedule.html),
     so it needs position:fixed the same way .kir-select-panel does.
     z-index matches .kir-select-panel so it still renders above a
@@ -1404,8 +1404,8 @@
     max-height: min(24rem, calc(100vh - 2rem));
     overflow-y: auto;
     /* Glassmorphism, matching the .glass utility used elsewhere on the
-      site (translucent glass-bg + blur), rather than a flat, opaque
-      var(--bg-color) panel — the popover floats over the calendar grid,
+      site (translucent glass-bg and blur), rather than a flat, opaque
+      var(--bg-color) panel. The popover floats over the calendar grid,
       so it should read as glass sitting on top of it, not a solid slab
       that happens to match the page background. */
     background: var(--glass-bg); border: 1px solid var(--glass-border);
@@ -1434,7 +1434,7 @@
   .kir-day-event-row.kir-cal-is-next .kir-day-event-dot { background: rgb(var(--accent-rgb)); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6); }
 
   /* ==========================================================
-    Difficulty range slider — gradient fill + smooth drag motion
+    Difficulty range slider. Gradient fill and smooth drag motion
     ========================================================== */
   .diff-track-fill {
     background: linear-gradient(90deg, rgba(var(--accent-2-rgb), 0.85), rgb(var(--accent-rgb)) 55%, rgba(var(--accent-light-rgb), 0.9));
@@ -1455,7 +1455,7 @@
   }
   input[type="range"].kir-range:active::-moz-range-thumb { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.18); }
 
-  /* Snap-position ticks — fade out to hint "precise dragging is
+  /* Snap-position ticks. Fade out to hint "precise dragging is
     available" whenever Alt is held, on every slider on the page (not
     just the one under the cursor), since Alt applies to whichever one
     you click next.
@@ -1485,7 +1485,7 @@
   }
   .pulse { animation: pulse-dot 2.2s infinite; }
 
-  /* Admin sidebar "ping" — small red unread-style count badge on the
+  /* Admin sidebar "ping". Small red unread-style count badge on the
     Admin Panel link's icon, echoing the Discord unread-ping look, so
     admins can spot pending member approvals from any page. */
   .nav-ping-badge {
@@ -1564,10 +1564,10 @@
   .auth-gate-hidden { display: none !important; }
 
   /* ==========================================================
-    Accent utility classes — these replace Tailwind's old
-    bg-accent/*, text-accent-*, border-accent/* classes so the
-    whole palette can move between red / blue / purple and
-    dark / light via the CSS variables above.
+    Accent utility classes. These replace Tailwind's old
+    bg-accent, text-accent, or border-accent classes so the
+    whole palette can move between red, blue, or purple and
+    dark or light via the CSS variables above.
     ========================================================== */
   .bg-accent { background-color: rgb(var(--accent-rgb)); }
   .bg-accent-gradient { background-image: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%); }
@@ -1616,7 +1616,7 @@
     color: transparent;
   }
 
-  /* Cabang badges — small pills used on the Members page, user
+  /* Cabang badges. Small pills used on the Members page, user
     chip, and Settings, always showing their OWN fixed color
     regardless of the active theme, so you can tell branches
     apart even when your own accent is purple ("both"). */
@@ -1648,7 +1648,7 @@
   }
   .toggle-track.on .toggle-thumb { transform: translateX(20px); }
 
-  /* Settings: taskbar (sidebar) position picker — four little mock
+  /* Settings. Taskbar (sidebar) position picker. Four little mock
     "device screens" showing where the bar will sit, rather than a
     plain radio list, so the choice is legible at a glance. */
   .pos-option {
@@ -1681,7 +1681,7 @@
   .pos-option-preview .pos-bar { background: rgb(var(--accent-rgb)); flex-shrink: 0; }
   .pos-option-preview .pos-page { flex: 1; background: rgba(128,128,128,0.1); margin: 3px; border-radius: 2px; }
 
-  /* Locked state — below the lg breakpoint the taskbar position setting
+  /* Locked state. Below the lg breakpoint the taskbar position setting
     has no effect (see the @media (min-width: 1024px) block further
     down), so the picker is shown disabled instead of pretending it's
     still a live control. Kept visible rather than hidden so people can
@@ -1717,13 +1717,13 @@
     box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
   }
 
-  /* Custom checkbox "card" — same glass-box + accent-fill language as
+  /* Custom checkbox "card". Same glass-box and accent-fill language as
     .cabang-chip and the kir-select checkbox mark, for any place a
     plain native checkbox needs to look like the rest of the design
-    system instead of the browser default (e.g. the "Tertarik dengan
+    system instead of the browser default (for example the "Tertarik dengan
     lomba" picks on the register form). The real <input type="checkbox">
     stays in the DOM (visually hidden via sr-only) so existing code that
-    reads/queries it keeps working untouched — this is pure CSS restyling,
+    reads or queries it keeps working untouched. This is pure CSS restyling,
     using :has() to react to its checked state, no JS required. */
   .kir-check-card {
     display: flex; align-items: center; gap: 0.6rem;
@@ -1781,13 +1781,13 @@
   }
   .modal-overlay.modal-open .modal-card { opacity: 1; transform: scale(1) translateY(0); }
 
-  /* Expedition (Voyages focus mode) — opaque black backdrop, no blur
+  /* Expedition (Voyages focus mode). Opaque black backdrop, no blur
     (nothing behind it to soften), and the comments pane hidden so the
     only thing on screen is the question itself. The backdrop fades to
-    black first; the question card is held back with a transition-delay
+    black first. The question card is held back with a transition-delay
     so it only starts fading in once the black is most of the way in,
     instead of both appearing at once. There's also no "X" close
-    button in this mode — "Keluar Ekspedisi" is the only way out. */
+    button in this mode. "Keluar Ekspedisi" is the only way out. */
   .modal-overlay.expedition-active {
     background: #000;
     backdrop-filter: none;
@@ -1801,26 +1801,26 @@
   .modal-overlay.expedition-active #vm-close-btn { display: none; }
 
   /* ==========================================================
-    Material viewer (#cmm-modal) — Google Drive/Docs-style
-    document preview instead of the usual centered dialog card:
-    a slim utility toolbar pinned to the top, and the material
+    Material viewer (#cmm-modal). Google Drive or Docs-style
+    document preview instead of the usual centered dialog card.
+    A slim utility toolbar pinned to the top, and the material
     itself rendered as a single opaque, A4-proportioned "page"
     below it. The page is solid (var(--bg-color), not the app's
     usual translucent glass) so content is always readable
     regardless of what's behind the modal, and it keeps real A4
     proportions (210:297) no matter how much or little content it
-    holds — content longer than one page scrolls inside the page
+    holds. Content longer than one page scrolls inside the page
     itself rather than stretching its shape.
-    Reuses .modal-overlay for the backdrop blur/fade + the
-    existing modal-open/modal-closing lifecycle from
-    kirLocalModalShow/Hide — only .modal-card is swapped out for
+    Reuses .modal-overlay for the backdrop blur or fade and the
+    existing modal-open or modal-closing lifecycle from
+    kirLocalModalShow or Hide. Only .modal-card is swapped out for
     .cmm-viewer-card, which fills the whole viewport instead of
     sizing to content. */
   .modal-overlay.cmm-viewer { padding: 0; }
   .cmm-viewer-card {
     width: 100%; height: 100%;
     display: flex; flex-direction: column;
-    /* Transparent on purpose — the overlay's own background/blur
+    /* Transparent on purpose. The overlay's own background or blur
       (see .modal-overlay above) is what's visible here. Only the
       toolbar (opaque, for legibility) and the page itself paint
       over it. */
@@ -1837,14 +1837,14 @@
     border-bottom: 1px solid var(--glass-border);
     background: var(--bg-color);
   }
-  /* Logo, title, extension chip and duration all sit in one row —
-    title is the only flexible/truncating piece so the ext + duration
+  /* Logo, title, extension chip and duration all sit in one row.
+    Title is the only flexible or truncating piece so the ext and duration
     (and the info button after them) never get pushed off-screen by a
     long material name. */
   .cmm-viewer-toolbar-left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1 1 auto; }
   .cmm-viewer-title { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cmm-viewer-duration { flex-shrink: 0; font-size: 0.78rem; color: var(--muted-500); }
-  /* Ext as a small badge (e.g. "PDF") rather than plain text — same
+  /* Ext as a small badge (for example "PDF") rather than plain text. Same
     file-type-chip idea Drive uses next to a document's name. */
   .cmm-viewer-ext {
     flex-shrink: 0; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em;
@@ -1869,8 +1869,8 @@
   .cmm-viewer-icon-btn:hover { background: var(--glass-bg); color: var(--text-color); }
   .cmm-viewer-icon-btn svg { width: 1.15rem; height: 1.15rem; }
 
-  /* Mark-as-done, reduced from a labeled pill to a single check glyph —
-    still kept as the one accent-colored action in the toolbar (a plain
+  /* Mark-as-done, reduced from a labeled pill to a single check glyph.
+    Still kept as the one accent-colored action in the toolbar (a plain
     muted icon would read as just another utility button, like Tutup) so
     it's still readable at a glance as *the* primary action here. */
   .cmm-viewer-finish-btn {
@@ -1884,18 +1884,18 @@
     padding: 2rem 1rem 3rem;
   }
 
-  /* The page itself is a solid, opaque surface — not the app's usual
-    translucent glass — same reasoning Drive/Docs uses for its page:
-    whatever's scrolled behind the toolbar (the blurred backdrop) should
+  /* The page itself is a solid, opaque surface, not the app's usual
+    translucent glass. This is the same reasoning Drive or Docs uses for its page.
+    Whatever's scrolled behind the toolbar (the blurred backdrop) should
     never show through the content you're actually reading. It's still
     themed via var(--bg-color) rather than a literal white sheet, so it
-    follows light/dark mode like the rest of the app.
+    follows light or dark mode like the rest of the app.
     aspect-ratio locks it to real A4 proportions (210:297) so it reads as
     an actual sheet of paper rather than an arbitrary box that happens to
-    fill the modal — same shape regardless of how much/little the material
-    actually contains. Content longer than one A4-height scrolls *inside*
+    fill the modal. Same shape regardless of how much or little the material
+    actually contains. Content longer than one A4-height scrolls inside
     the page itself (overflow-y here, not just on .cmm-viewer-stage), the
-    way a real single-page document viewer behaves — the page's outline
+    way a real single-page document viewer behaves. The page's outline
     never stretches to chase its content. */
   .cmm-viewer-page {
     width: 100%; max-width: 44rem; aspect-ratio: 210 / 297;
@@ -1908,17 +1908,17 @@
   }
   .cmm-viewer-page-inner { padding: 2rem 2.25rem; }
 
-  /* Document pages need the iframe to fill the whole page height —
-    there's no separate padded "inner" wrapper for this variant, the
-    iframe IS the page. The embedded preview (PDF/Docs) already renders
+  /* Document pages need the iframe to fill the whole page height.
+    There's no separate padded "inner" wrapper for this variant, the
+    iframe IS the page. The embedded preview (PDF or Docs) already renders
     its own A4-shaped page internally, so this variant drops the A4
-    aspect-ratio lock in favor of a tall, freely-sized frame — locking
+    aspect-ratio lock in favor of a tall, freely-sized frame. Locking
     it too would just crop or letterbox the iframe's own page. */
   .cmm-viewer-page.cmm-page-document { aspect-ratio: auto; min-height: 75vh; display: flex; overflow: hidden; }
   .cmm-viewer-doc-frame { flex: 1 1 auto; width: 100%; border: 0; min-height: 75vh; }
 
   /* Video keeps a plain black letterboxed look instead of the glass
-    tint — a translucent/blurred background would look wrong behind
+    tint. A translucent or blurred background would look wrong behind
     a video. Its own 16:9 ratio (set on .cmm-viewer-video-inner) replaces
     the base A4 ratio, since a video pretending to be a sheet of paper
     would look wrong. */
@@ -1929,8 +1929,8 @@
 
   /* .hidden alone (specificity 0,1,0) loses to the more specific
     .cmm-viewer-page.cmm-page-* display overrides above (0,2,0), so
-    without this the document/video/empty panes stayed visible even
-    while "hidden" — all three panes rendering stacked side by side
+    without this the document, video, or empty panes stayed visible even
+    while "hidden". All three panes rendering stacked side by side
     at once. This rule needs to out-specify all of them. */
   .cmm-viewer-stage .cmm-viewer-page.hidden { display: none; }
 
@@ -1940,8 +1940,8 @@
   }
 
   /* ==========================================================
-    Public marketing nav — shared by index.html, gallery.html,
-    program-kerja.html (guest-facing pages, no sidebar/app-shell).
+    Public marketing nav. Shared by index.html, gallery.html,
+    program-kerja.html (guest-facing pages, no sidebar or app-shell).
     ========================================================== */
   .public-nav-link {
     color: var(--text-color);
@@ -1953,7 +1953,7 @@
   .public-nav-link.active { opacity: 1; color: rgb(var(--accent-light-rgb)); }
 
   /* ==========================================================
-    Gallery — Finder-esque folder browser
+    Gallery. Finder-esque folder browser
     ========================================================== */
   .finder-window {
     background: var(--glass-bg);
@@ -2068,7 +2068,7 @@
   }
 
   /* ==========================================================
-    Program Kerja — scroll-reveal + orbit rail
+    Program Kerja. Scroll-reveal and orbit rail
     ========================================================== */
   .reveal {
     opacity: 0;
@@ -2138,10 +2138,10 @@
   .avatar-upload:hover .avatar-overlay { opacity: 1; }
 
   /* ==========================================================
-    Item thumbnails — diagonal-cut cover image used on Tasks,
-    Jadwal, and Materi cards/buttons when an item has an image.
-    Parent (the card/button) needs `relative overflow-hidden`;
-    text content inside needs `relative z-10` to paint above it.
+    Item thumbnails. Diagonal-cut cover image used on Tasks,
+    Jadwal, and Materi cards or buttons when an item has an image.
+    Parent (the card or button) needs `relative overflow-hidden`.
+    Text content inside needs `relative z-10` to paint above it.
     ========================================================== */
   .item-thumb-slot {
     position: absolute;
@@ -2171,8 +2171,8 @@
     background: linear-gradient(100deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0) 78%);
   }
 
-  /* 25% wider thumbnail — Tasks (Tugas) + Jadwal cards only.
-    Same slot, just scaled up (46% -> 57.5%, and the min/max
+  /* 25% wider thumbnail. Tasks (Tugas) and Jadwal cards only.
+    Same slot, just scaled up (46% to 57.5%, and the min or max
     bounds scaled with it). */
   .item-thumb-slot-wide {
     width: 57.5%;
@@ -2180,8 +2180,8 @@
     max-width: 250px;
   }
 
-  /* Dotted-grid variant — course.html's catalog cards, where the
-    thumbnail is a course_nodes/course_edges SVG snapshot (not a
+  /* Dotted-grid variant. course.html's catalog cards, where the
+    thumbnail is a course_nodes or course_edges SVG snapshot (not a
     photo), so the empty space around the graph reads as a blank
     void without it. Same dot pattern as the workspace canvas itself
     (#chart-viewport in workspace.html), just reused here so a
@@ -2194,8 +2194,8 @@
     background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
   }
 
-  /* Course detail modal — snapshot preview box. Same node-graph SVG as
-    the catalog card's .item-thumb-slot, just laid out full-width/
+  /* Course detail modal. Snapshot preview box. Same node-graph SVG as
+    the catalog card's .item-thumb-slot, just laid out full-width or
     in-flow instead of clipped into a corner, since the modal has room
     to show it properly. Pairs with .item-thumb-slot-dotted for the
     same dot-grid backdrop as the catalog cards. */
@@ -2212,7 +2212,7 @@
   }
 
   /* ==========================================================
-    Voyages — practice question cards + difficulty badges
+    Voyages. Practice question cards and difficulty badges
     ========================================================== */
   .voyage-card {
     transition: transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
@@ -2221,14 +2221,14 @@
   .voyage-card:hover { transform: translateY(-2px); }
   .voyage-card.completed { opacity: 0.72; }
 
-  /* Soal text shouldn't be trivially selectable/copyable (e.g. into an
-    AI chat) — applies to the voyage cards on the list page and to the
-    question/options/essay side of the modal. The comments panel
+  /* Soal text shouldn't be trivially selectable or copyable (for example into an
+    AI chat). Applies to the voyage cards on the list page and to the
+    question, options, or essay side of the modal. The comments panel
     (.modal-split-comments) is intentionally excluded, as are actual
-    form controls (inputs/textareas/selects), which need normal
-    selection/typing behavior to remain usable. This is a deterrent,
-    not a real security boundary — page source, screenshots, etc. still
-    work — but it stops casual copy-paste. */
+    form controls (inputs, textareas, or selects), which need normal
+    selection or typing behavior to remain usable. This is a deterrent,
+    not a real security boundary. Page source, screenshots, etc. still
+    work, but it stops casual copy-paste. */
   .voyage-card,
   .modal-split-main {
     user-select: none;
@@ -2386,7 +2386,7 @@
   .podium-place.rank-1 { min-height: 11rem; }
 
   /* Rank hierarchy built from the single per-user accent hue instead of
-    gold/silver/bronze — intensity + size step down from 1st to 3rd so
+    gold, silver, or bronze. Intensity and size step down from 1st to 3rd so
     it still reads instantly, but never clashes with the branch color. */
   .podium-place.rank-1 {
     background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.04));
@@ -2447,9 +2447,9 @@
     overflow: hidden; word-break: break-word; padding: 0 0.15rem; min-height: 2.1em;
   }
 
-  /* Podium cards animate positional swaps via JS-driven FLIP (transform +
+  /* Podium cards animate positional swaps via JS-driven FLIP (transform and
     transition set inline, see playFlip()). This entrance animation is only
-    for a member who's brand new to the top 3 — not for ones just moving
+    for a member who's brand new to the top 3, not for ones just moving
     between slots, since that's handled by the FLIP instead. */
   @keyframes podium-enter {
     from { opacity: 0; transform: translateY(18px) scale(0.92); }
@@ -2472,12 +2472,12 @@
   .lb-chip-divider { width: 1px; height: 1.25rem; background: var(--glass-border); flex-shrink: 0; margin: 0 0.15rem; }
 
   /* ==========================================================
-    Split modal layout — Tasks + Voyages modals put the item
+    Split modal layout. Tasks and Voyages modals put the item
     itself on the left and a dedicated comments column on the
     right, so the comment composer can stay pinned to the
     bottom of its own column instead of trailing after a long
     description. Mobile stacks the two panes instead (comments
-    pane gets its own capped height + internal scroll there too).
+    pane gets its own capped height and internal scroll there too).
     ========================================================== */
   .modal-card.modal-card-split {
     max-width: 44rem;
@@ -2538,17 +2538,17 @@
     border-top: 1px solid var(--glass-border);
   }
 
-  /* Course detail modal's main column (course.html) — mirrors the
-    comment column right next to it: .course-modal-body is a flex
+  /* Course detail modal's main column (course.html). Mirrors the
+    comment column right next to it. .course-modal-body is a flex
     column stretched to the same height as .comment-panel-inner (both
     are the sole flex child of their .modal-split-* parent, so the
     shared row's default align-items:stretch already equalizes their
-    heights — see .modal-card-split above). The description box is the
-    only flexible child, so it's what absorbs/scrolls extra content;
-    the take-button/reactions row is shrink-0 and therefore always
+    heights, see .modal-card-split above). The description box is the
+    only flexible child, so it's what absorbs or scrolls extra content.
+    The take-button or reactions row is shrink-0 and therefore always
     lands exactly at the column's bottom edge, level with the comment
     composer. Scoped to #course-modal rather than touching the shared
-    .modal-split-main/.p-6 rules, since Voyages/Tasks reuse the same
+    .modal-split-main or .p-6 rules, since Voyages or Tasks reuse the same
     split-modal classes without this internal flex structure. */
   #course-modal .modal-split-main {
     display: flex;
@@ -2570,7 +2570,7 @@
   }
 
   /* ==========================================================
-    Comments — shared mini widget on Tasks + Voyages modals
+    Comments. Shared mini widget on Tasks and Voyages modals
     ========================================================== */
   .comment-list { max-height: 15rem; overflow-y: auto; }
   .comment-item {
@@ -2709,7 +2709,7 @@
   .leaderboard-rank-num.rank-badge-3 { color: rgb(var(--accent-lighter-rgb)); }
 
   /* ==========================================================
-    Dashboard widget grid (Beranda) — editable, phone-widget-style
+    Dashboard widget grid (Beranda). Editable, phone-widget-style
     --------------------------------------------------------
     Every widget sits on a square-cell CSS grid. --dash-cols and
     --dash-cell are set from JS (dashboard.html) so cells stay
@@ -2945,13 +2945,13 @@
     z-index: 2;
   }
   /* ==========================================================
-    Programming voyages — IDE-style shell: toolbar (with the
+    Programming voyages. IDE-style shell. Toolbar (with the
     language switcher folded in, next to the file "tab"), the
-    CodeMirror host, and a tabbed console (Test Case / Output)
+    CodeMirror host, and a tabbed console (Test Case or Output)
     that reads like a real terminal. Deliberately a fixed dark
-    "console surface" rather than following the light/dark site
-    toggle, same convention already used by the black/30-black/50
-    <pre> blocks elsewhere on the site — code surfaces stay dark
+    "console surface" rather than following the light or dark site
+    toggle, same convention already used by the black, 30-black, or 50
+    <pre> blocks elsewhere on the site. Code surfaces stay dark
     even when the rest of the page is light.
     ========================================================== */
   .code-shell {
@@ -2990,7 +2990,7 @@
   }
   /* Purpose-built language DROPDOWN for the code editor toolbar. This is
     deliberately its own small component, not a reuse of the site-wide
-    kir-select (see kirRefreshCustomSelect in auth.js) — that one's a
+    kir-select (see kirRefreshCustomSelect in auth.js). That one's a
     generic <select> replacement sized and styled for regular form
     fields (full-width trigger, roomy option rows). This one only ever
     needs to show a handful of short language names inline in a dark
@@ -3045,7 +3045,7 @@
     background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.3);
     border-radius: 0.4rem; padding: 0.3rem 0.6rem;
   }
-  /* Terminal/IDE-flavored "run" action — monospace label + a subtle inset
+  /* Terminal or IDE-flavored "run" action. Monospace label and a subtle inset
     top highlight so it reads like a keycap sitting in the toolbar, rather
     than the site's generic solid accent-gradient CTA button (which is
     reserved for primary actions like Kirim Jawaban elsewhere). */
@@ -3067,7 +3067,7 @@
   .code-editor-host { border-bottom: 1px solid var(--glass-border); }
   .code-editor-host .cm-editor { outline: none; }
 
-  /* Shown briefly while the CodeMirror bundle is still loading — and, if
+  /* Shown briefly while the CodeMirror bundle is still loading. If
     it errors out instead, repurposed (via .code-editor-error) to explain
     why instead of just leaving the box empty. */
   .code-editor-loading {
@@ -3077,9 +3077,9 @@
   .code-editor-error { color: #f87171; font-style: normal; white-space: pre-wrap; }
 
   /* Plain-textarea stand-in for CodeMirror, used when the real editor
-    can't load (e.g. the esm.sh CDN is unreachable on the network). Kept
-    visually close to the real editor — same monospace font, same dark
-    surface, same 26rem height — so it doesn't read as a broken state,
+    can't load (for example the esm.sh CDN is unreachable on the network). Kept
+    visually close to the real editor. Same monospace font, same dark
+    surface, same 26rem height. So it doesn't read as a broken state,
     just a lighter-weight one. */
   .code-editor-fallback {
     display: block; width: 100%; height: 26rem; resize: vertical;
@@ -3090,8 +3090,8 @@
     tab-size: 4;
   }
 
-  /* Section header shared by the Test Case panel and the Console panel —
-    small, uppercase, icon-led labels that separate the two from each
+  /* Section header shared by the Test Case panel and the Console panel.
+    Small, uppercase, icon-led labels that separate the two from each
     other and from the editor above, like distinct panes in an IDE. */
   .code-panel-header {
     display: flex; align-items: center; gap: 0.45rem;
@@ -3114,10 +3114,10 @@
     overflow-y: auto;
     padding: 0.85rem 1rem;
   }
-  /* Sample test cases: their own scroll region, capped so a voyage with
+  /* Sample test cases. Their own scroll region, capped so a voyage with
     many samples doesn't push the console off-screen above it. */
-  /* The terminal/console: a real judge-output surface — solid near-black,
-    monospace, with its own idle "$" prompt + blinking cursor at rest so
+  /* The terminal or console. A real judge-output surface. Solid near-black,
+    monospace, with its own idle "$" prompt and blinking cursor at rest so
     it visibly reads as "ready", not just an empty panel. */
   .code-terminal-body {
     background: #0a0a0d;
@@ -3238,11 +3238,11 @@
     first block and leaving the rest visible.
 
     MathJax's own output (mjx-container and everything inside it) is
-    excluded via :not() rather than overridden afterwards — MathJax
-    relies on its own injected stylesheet (inline-block / table /
-    table-row / table-cell) to stack fraction numerators over
+    excluded via :not() rather than overridden afterwards. MathJax
+    relies on its own injected stylesheet (inline-block, table,
+    table-row, or table-cell) to stack fraction numerators over
     denominators and lift superscripts. `display: revert` does NOT
-    restore that: revert rolls back to the user-agent/user stylesheet,
+    restore that. Revert rolls back to the user-agent or user stylesheet,
     skipping MathJax's CSS entirely (it's an author stylesheet too),
     which is why that attempt still broke. Excluding these elements
     from our selector means our rule never applies to them at all, so
@@ -3250,7 +3250,7 @@
   .kir-markdown-clamp,
   .kir-markdown-clamp *:not(mjx-container, mjx-container *) { display: inline; }
 
-  /* Create a cutout halo effect around diagram text to prevent line overlap */
+  /* Create a cutout halo effect around diagram text to prevent line overlap. */
   .kir-diagram text {
     paint-order: stroke fill !important;
     stroke: var(--bg-color) !important;

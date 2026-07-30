@@ -1,17 +1,17 @@
 /* ==========================================================
-   Shared inline admin system — JS
+   Shared inline admin system. JS
    --------------------------------------------------------
    Generic, reusable building blocks so every page (Tasks,
    Schedule, Materials, Voyages, Members, ...) can bolt on
-   "add / edit / delete" without re-inventing a modal or a
-   confirm dialog each time. Nothing here is page-specific —
-   pages plug in a config object describing their fields and
-   a save/delete callback.
+   "add, edit, or delete" without re-inventing a modal or a
+   confirm dialog each time. Nothing here is page-specific.
+   Pages plug in a config object describing their fields and
+   a save or delete callback.
 
-   Load order: after js/auth.js (uses supabaseClient, kirIsAdmin,
-   kirEscapeHtml, I18N/lang) and after css/admin-shared.css.
+   Load order. After js/auth.js (uses supabaseClient, kirIsAdmin,
+   kirEscapeHtml, I18N or lang) and after css/admin-shared.css.
 
-   NOT wired into any page yet — this file only defines the
+   NOT wired into any page yet. This file only defines the
    building blocks below, it doesn't call any of them on load.
 
    --------------------------------------------------------
@@ -33,13 +33,13 @@
      })
      kirCloseAdminModal()
 
-   JSON editing (built into the create/edit modal above — adds a
+   JSON editing (built into the create or edit modal above. Adds a
    "</>" header button that swaps the form for a raw JSON textarea
    the caller can hand-edit, then "Terapkan" re-populates the form):
      kirAdminToggleJsonMode()   // wired to the header button automatically
 
-   JSON bulk import (separate, standalone modal — upload one or many
-   .json files, each a single object OR an array of objects, and
+   JSON bulk import (separate, standalone modal. Upload one or many
+   .json files, each a single object or an array of objects, and
    mass-insert them into a table):
      kirOpenJsonImportModal({ title, table, transform, itemLabel, onDone })
      kirCloseJsonImportModal()
@@ -58,21 +58,21 @@
    ========================================================== */
 
 /* ----------------------------------------------------------
-   Modal show/hide helpers — every modal-overlay in the app
-   (voyage/material/schedule/task detail modals, the admin
-   create/edit modal, the confirm dialog, the JSON import
+   Modal show or hide helpers. Every modal-overlay in the app
+   (voyage, material, schedule, or task detail modals, the admin
+   create or edit modal, the confirm dialog, the JSON import
    modal) should open and close through these instead of
    toggling `hidden` directly, so they all fade in/out the
    same way instead of popping instantly.
 
    Also tracks how many modals are currently open so the page
-   behind can be scroll-locked while at least one is up —
+   behind can be scroll-locked while at least one is up.
    otherwise a scrollable page behind a fullscreen/fixed overlay
    can still show its native scrollbar, which renders on top of
    even fixed-position content.
 
    Locking works by pinning <body> with position:fixed at its
-   current scroll offset (see .kir-scroll-locked in style.css) —
+   current scroll offset (see .kir-scroll-locked in style.css).
    just setting overflow:hidden on its own resets scrollTop to 0,
    which is what was yanking the page (and anything sticky, like
    the sidebar) up to the top the instant a modal opened. Fixing
@@ -82,11 +82,11 @@
 /* #sidebar is lg:sticky lg:top-0, and taller than the viewport, so at
    any given moment it could genuinely be anywhere: stuck flush at the
    top, or (near the bottom of the page) partway scrolled up within
-   itself so its own bottom — the "Keluar" tab — is in view. Sticky's
+   itself so its own bottom, the "Keluar" tab, is in view. Sticky's
    math breaks once the scroll-lock below freezes the real scroll
    offset, so instead of guessing we read the sidebar's actual
    getBoundingClientRect() the instant before locking and pin it there
-   with position:fixed — same spot, no snap. #sidebar-root (its flex
+   with position:fixed. Same spot, no snap. #sidebar-root (its flex
    parent) gets a matching inline width so removing the sidebar from
    flex flow doesn't collapse the space it was holding out from under
    <main>. */
@@ -127,7 +127,7 @@ function __kirModalLock(delta) {
 
   if (isLocked) {
     // Freeze the sidebar's real on-screen position first, while the
-    // page is still genuinely scrolled — before body gets yanked into
+    // page is still genuinely scrolled. Before body gets yanked into
     // position:fixed below and getBoundingClientRect() stops being
     // trustworthy.
     __kirFreezeSidebar(true);
@@ -137,12 +137,12 @@ function __kirModalLock(delta) {
   } else {
     document.documentElement.classList.remove('kir-scroll-locked');
     document.body.style.top = '';
-    // Explicit behavior:'instant' — html has scroll-behavior:smooth
+    // Explicit behavior:'instant'. html has scroll-behavior:smooth
     // globally, and the plain (x, y) form of scrollTo still respects
     // that, which would animate the snap-back into a visible glide.
     window.scrollTo({ top: __kirModalLockScrollY, left: 0, behavior: 'instant' });
     // Restore real scroll position first, then hand the sidebar back
-    // to position:sticky — it recalculates correctly once scrollY is
+    // to position:sticky. It recalculates correctly once scrollY is
     // genuine again.
     __kirFreezeSidebar(false);
     // If the taskbar position was changed via the Settings modal while
@@ -150,7 +150,7 @@ function __kirModalLock(delta) {
     // dimensions the whole time (see __kirFreezeSidebar), so the top/
     // bottom clearance variables in js/auth.js could've been computed
     // against stale/mid-freeze numbers. Recompute now that the sidebar
-    // is back in normal flow, once the browser's applied that — this
+    // is back in normal flow, once the browser's applied that. This
     // reads the CURRENT data-sidebar-pos, so it correctly clears
     // whichever side is no longer active as well as measuring whichever
     // side just became active.
@@ -167,7 +167,7 @@ function kirModalShow(el) {
   const wasHidden = el.classList.contains('hidden');
   el.classList.remove('hidden', 'modal-closing');
   if (wasHidden) __kirModalLock(1);
-  // Force a reflow between removing `hidden` and adding `modal-open` —
+  // Force a reflow between removing `hidden` and adding `modal-open`.
   // otherwise the browser coalesces both class changes into a single
   // paint and the opacity/transform transition never actually plays.
   void el.offsetWidth;
@@ -255,7 +255,7 @@ function kirRemoveAdminFab() {
 /* ----------------------------------------------------------
    Per-item edit / delete buttons
    --------------------------------------------------------
-   These return raw HTML strings — pages splice them into the
+   These return raw HTML strings. Pages splice them into the
    template literals they already build for each card/row. Pass
    an inline onclick EXPRESSION (a string of JS), same as the
    rest of the site's inline handlers, e.g.:
@@ -294,7 +294,7 @@ function kirAdminActionsHtml({ onEdit, onDelete, show } = {}) {
    Wraps an already-built card's HTML string so that, on hover
    (admin only), the card shrinks in slightly from the right and
    a stacked edit/delete pair slides in from just outside that
-   edge — inside the SAME footprint the card occupied before the
+   edge. Inside the SAME footprint the card occupied before the
    shrink, so nothing around it in the grid/list reflows.
 
    `cardHtml` should be the full card element (the thing that
@@ -302,7 +302,7 @@ function kirAdminActionsHtml({ onEdit, onDelete, show } = {}) {
    function does not alter that markup, it only wraps it.
 
    Returns cardHtml unchanged if the viewer isn't an admin, or if
-   neither onEdit nor onDelete is supplied — so call sites can use
+   neither onEdit nor onDelete is supplied. So call sites can use
    it unconditionally instead of branching themselves.
    ---------------------------------------------------------- */
 function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
@@ -331,8 +331,8 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
        default: initial value when creating (no `values` entry)
      }
 
-   `values` (optional): existing record when editing, keyed by
-   field id — presence of `values` is what callers use to decide
+   `values` (optional). Existing record when editing, keyed by
+   field id. Presence of `values` is what callers use to decide
    edit vs create, but this modal itself doesn't care; it just
    pre-fills whatever's given.
 

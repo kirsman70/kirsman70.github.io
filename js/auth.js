@@ -2008,10 +2008,10 @@ function kirRevealPage() {
 }
 
 /* ----------------------------------------------------------
-   Theme application — runs immediately (top-level, not inside
+   Theme application. Runs immediately (top-level, not inside
    a function) the instant this script loads, which is before
    the rest of <head> renders anything. This is what prevents
-   a flash of the wrong color/theme on page load. Every page
+   a flash of the wrong color or theme on page load. Every page
    includes this script as the very first thing in <head>.
    ---------------------------------------------------------- */
 (function applyThemeImmediately() {
@@ -2040,17 +2040,17 @@ function kirRevealPage() {
   kirApplyBrandAssets();
 })();
 
-// Safety net for kirRevealPage(): most pages reach it via
+// Safety net for kirRevealPage(). Most pages reach it via
 // kirApplyTranslations() (called either directly, inline near the end of
-// <body>, or indirectly through kirInjectSidebar()) — but a page like
+// <body>, or indirectly through kirInjectSidebar()). But a page like
 // auth.html has no [data-i18n] content and calls neither, so it would
 // otherwise never get `.kir-ready` and stay hidden behind the CSS rule
 // in style.css forever. `load` fires only after every resource on the
 // page (fonts, the Tailwind CDN script, images, etc.) has finished, so
 // by then it's always safe to reveal regardless of which path got us
-// here. Harmless to also fire on pages that already revealed themselves
-// earlier via kirApplyTranslations() — classList.add() on a class that's
-// already there is a no-op.
+// here. It's harmless to also fire on pages that already revealed
+// themselves earlier via kirApplyTranslations() because classList.add()
+// on a class that's already there is a no-op.
 window.addEventListener('load', () => {
   if (!document.documentElement.classList.contains('kir-ready')) kirRevealPage();
 });
@@ -2059,14 +2059,15 @@ window.addEventListener('load', () => {
    Session
    ---------------------------------------------------------- */
 function kirIsLoggedIn() {
-  // TODO(real auth): check a real session/cookie/token instead.
+  // I check localStorage for the session flag. With Supabase auth,
+  // this is set when the user successfully logs in.
   return localStorage.getItem(KIR_SESSION_KEY) === 'true';
 }
 
 function kirLogin(name, cabang) {
-  // TODO(real auth): call your API, store a real token, handle errors.
-  // cabang is optional here — if omitted (e.g. the Login tab, where
-  // there's no real account record to check yet) we fall back to
+  // I set the session flag and store user data in localStorage.
+  // cabang is optional here. If omitted (for example the Login tab,
+  // where there's no real account record to check yet) I fall back to
   // whatever cabang this browser last used.
   const resolvedCabang = cabang || kirLastKnownCabang();
   localStorage.setItem(KIR_SESSION_KEY, 'true');
@@ -2082,10 +2083,10 @@ function kirLastKnownCabang() {
 }
 
 // scope: 'local' (default) ends only this browser's session, leaving any
-// other logged-in devices/tabs untouched. Pass 'global' (see
+// other logged-in devices or tabs untouched. Pass 'global' (see
 // confirmLogoutAll below, gated behind its own confirmation modal) to
 // end every session everywhere instead. Supabase's own default for
-// signOut() is 'global', so this MUST be passed explicitly here — never
+// signOut() is 'global', so this MUST be passed explicitly here. I never
 // call supabaseClient.auth.signOut() bare, or a plain "Keluar" click would
 // silently sign the person out everywhere too.
 async function kirLogout(scope = 'local') {
@@ -2101,7 +2102,7 @@ async function kirLogout(scope = 'local') {
 }
 
 /* ----------------------------------------------------------
-   Log out of all sessions — signs out every device/tab the
+   Log out of all sessions. Signs out every device or tab the
    account is currently logged into (Supabase scope: 'global'),
    not just this browser. More far-reaching than the plain
    "Keluar" button above, so it lives behind its own lightweight
@@ -2156,31 +2157,31 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
    page paints. It sends logged-out visitors to auth.html. */
 // kirRequireAuth() lives in an inline <script> in every protected page's
 // <head>, and router.js re-runs EVERY inline head script on EVERY SPA
-// navigation (it has no way to know which ones are safe to skip — see
+// navigation (it has no way to know which ones are safe to skip, see
 // router.js's own header comment on why). Without this throttle, that
 // meant a full network round-trip to Supabase (kirRefreshCurrentProfile)
-// PLUS a re-apply of brand assets / cabang / several localStorage keys
+// plus a re-apply of brand assets, cabang, and several localStorage keys
 // fired on every single in-app navigation, landing asynchronously some
-// time after the page had already painted — which is what read as the
-// sidebar (and brand assets generally) "randomly flashing/rebuilding
+// time after the page had already painted. This read as the sidebar
+// (and brand assets generally) "randomly flashing or rebuilding
 // itself" a moment after each nav, and could also race with
 // kirInjectSidebar's admin-status check into an unwanted full
 // kirRenderSidebarNow() rebuild (which always positions the nav pill
-// instantly, never animated — see kirSettleNavPill), masking the pill's
+// instantly, never animated, see kirSettleNavPill), masking the pill's
 // intended slide animation. The revocation check this exists for
 // (catching an account a pengurus just un-approved) doesn't need to run
-// on every click to still be effective — recheck at most once per
-// interval instead, and just reuse the already-settled promise/profile
+// on every click to still be effective. I recheck at most once per
+// interval instead, and just reuse the already-settled promise or profile
 // otherwise, same as router.js already does for heavy shared assets.
 let kirLastProfileCheckAt = 0;
 const KIR_PROFILE_RECHECK_INTERVAL_MS = 60000;
 
 async function kirRequireAuth() {
   if (kirIsLoggedIn()) {
-    // Optimistic path: we already have a cached session, so let the page
-    // start painting immediately, then verify + refresh in the background.
-    // If a pengurus has since revoked/un-approved this account,
-    // kirRefreshCurrentProfile below will sign them out and redirect.
+    // Optimistic path. We already have a cached session, so I let the
+    // page start painting immediately, then verify and refresh in the
+    // background. If a pengurus has since revoked or un-approved this
+    // account, kirRefreshCurrentProfile below will sign them out and redirect.
     const isFreshEnough = window.__kirProfileReady
       && (Date.now() - kirLastProfileCheckAt < KIR_PROFILE_RECHECK_INTERVAL_MS);
     if (!isFreshEnough) {
@@ -2191,16 +2192,16 @@ async function kirRequireAuth() {
     return;
   }
 
-  // No cached session — but don't assume logged-out yet. If a real
-  // Supabase session already exists (e.g. they registered earlier and
-  // were waiting on approval, or logged in on another tab), this picks
-  // it up and — if the account is now approved — lets them straight in
+  // No cached session, but I don't assume logged-out yet. If a real
+  // Supabase session already exists (for example they registered earlier
+  // and were waiting on approval, or logged in on another tab), this picks
+  // it up. If the account is now approved, I let them straight in
   // with no re-entering credentials required.
   window.__kirProfileReady = kirRefreshCurrentProfile();
   const result = await window.__kirProfileReady;
   // 'pending' already triggered its own redirect inside
-  // kirRefreshCurrentProfile — only the "no session at all" case is
-  // still ours to handle, so we don't clobber that redirect with this one.
+  // kirRefreshCurrentProfile. Only the "no session at all" case is
+  // still ours to handle, so I don't clobber that redirect with this one.
   if (result !== 'approved' && result !== 'pending') {
     window.location.href = 'auth.html';
   }
@@ -2229,8 +2230,8 @@ async function kirRefreshCurrentProfile() {
     if (profileErr || !profile) return 'none';
 
     // Accounts that haven't been approved by a pengurus yet (or have had
-    // approval revoked) never get a live session on protected pages —
-    // send them back to the waiting screen instead.
+    // approval revoked) never get a live session on protected pages.
+    // I send them back to the waiting screen instead.
     if (profile.status && profile.status !== 'approved') {
       localStorage.removeItem(KIR_SESSION_KEY);
       if (!/\/?auth\.html/.test(window.location.pathname)) {
@@ -2375,7 +2376,7 @@ function kirSetReduceMotion(enabled) {
    Bahasa). Forces the --accent-* variables back to a neutral
    grayscale (see the html[data-disable-branch-color="true"] rules in
    css/style.css) regardless of the user's cabang, independent of
-   dark/light theme — the CSS picks white-ish vs. near-black neutrals
+   dark or light theme. The CSS picks white-ish versus near-black neutrals
    on its own based on data-theme. */
 function kirCurrentDisableBranchColor() {
   return localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
@@ -2388,14 +2389,14 @@ function kirSetDisableBranchColor(enabled) {
   // Most pages pick this up for free through the --accent-* CSS
   // variable cascade (see html[data-disable-branch-color="true"] in
   // css/style.css). Pages that compute colors in JS instead of pure
-  // CSS (e.g. js/course.html's per-node-type accent shades, baked into
+  // CSS (for example js/course.html's per-node-type accent shades, baked into
   // rendered inline styles) can't rely on that cascade and need to
-  // re-render themselves — this event is their hook to do so.
+  // re-render themselves. This event is their hook to do so.
   window.dispatchEvent(new CustomEvent('kir:branch-color-change', { detail: { enabled } }));
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
       // Requires a `disable_branch_color` boolean column on `profiles`.
-      // Harmless no-op error if that column doesn't exist yet — the
+      // Harmless no-op error if that column doesn't exist yet. The
       // setting still works locally via localStorage either way.
       if (userData?.user) supabaseClient.from('profiles').update({ disable_branch_color: enabled }).eq('id', userData.user.id).then();
     });
@@ -2403,12 +2404,12 @@ function kirSetDisableBranchColor(enabled) {
 }
 
 /* ----------------------------------------------------------
-   Taskbar (sidebar) position — 'left' (default), 'right',
+   Taskbar (sidebar) position. 'left' (default), 'right',
    'top', or 'bottom'. Applied as a data-attribute on <html> so
-   css/style.css can restyle #sidebar into a horizontal bar (top/
-   bottom) or mirror it (right) purely with CSS, without any of
+   css/style.css can restyle #sidebar into a horizontal bar (top
+   or bottom) or mirror it (right) purely with CSS, without any of
    the surrounding markup changing. The collapse-to-icons toggle
-   (KIR_SIDEBAR_COLLAPSED_KEY) is independent of position — it
+   (KIR_SIDEBAR_COLLAPSED_KEY) is independent of position. It
    works the same "show icons only" way on all four sides, so
    switching position never needs to touch it.
    ---------------------------------------------------------- */
@@ -2428,16 +2429,16 @@ function kirSetSidebarPosition(position) {
   // Ensure the pill catches the final settled dimensions after the 
   // internal navigation links finish morphing their CSS transitions.
   setTimeout(() => kirPositionNavPill(false), 350);
-  // Same reasoning for the top/bottom taskbar clearance: don't wait on
-  // the ResizeObserver alone (this setting is usually changed from
-  // inside the Settings modal, which freezes #sidebar's box via
-  // __kirFreezeSidebar while it's open — see admin-shared.js — so a
-  // resize triggered here can land before/without a clean observer
-  // tick). Recompute directly, both right away and once the new layout's
-  // definitely settled — kirUpdateTaskbarClearance() always reads
+  // I use the same reasoning for the top or bottom taskbar clearance.
+  // I don't wait on the ResizeObserver alone (this setting is usually
+  // changed from inside the Settings modal, which freezes #sidebar's box
+  // via __kirFreezeSidebar while it's open, see admin-shared.js). So a
+  // resize triggered here can land before or without a clean observer
+  // tick. I recompute directly, both right away and once the new layout's
+  // definitely settled. kirUpdateTaskbarClearance() always reads
   // data-sidebar-pos fresh (set just above, a few lines up), so both
-  // calls reflect the position we just switched TO, not whatever the
-  // clearance was before this change, and the side we switched AWAY
+  // calls reflect the position we just switched to, not whatever the
+  // clearance was before this change, and the side we switched away from.
   // FROM is correctly zeroed out rather than left stale.
   kirUpdateTaskbarClearance();
   kirUpdateNavScrollFade();
@@ -2546,12 +2547,12 @@ async function kirMarkVoyageCompleted(voyageId, deltas) {
 }
 
 /* ----------------------------------------------------------
-   Comments — shared mini widget used on Tasks and Voyages.
+   Comments. Shared mini widget used on Tasks and Voyages.
    --------------------------------------------------------
    Each comment: { id, author, avatar, text, attachment, createdAt }
    attachment (optional): { name, type, size, dataUrl }
    Stored per (scope, itemId) so 'task:t1' and 'voyage:v1' each
-   get their own thread. All in localStorage — prototype only.
+   get their own thread. All in localStorage for now.
    TODO(real backend): swap for a real comments API.
    ---------------------------------------------------------- */
 const KIR_COMMENTS_PREFIX = 'kir_comments_';
@@ -2621,7 +2622,7 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply,
   // still clear who it's actually replying to.
   const mentionHtml = mentionAuthor ? `<span class="comment-mention text-accent-300 font-medium">@${kirEscapeHtml(mentionAuthor)}</span> ` : '';
   // hasReplies is only true when this comment will actually be followed
-  // by a nested .comment-replies block (see renderThread) — the
+  // by a nested .comment-replies block (see renderThread). The
   // connector visually links this comment's own avatar down into that
   // thread's trunk, so it's only rendered when there's a trunk below to
   // link to (see .comment-thread-connector in style.css).
@@ -2749,8 +2750,8 @@ function kirToggleReplyBox(containerId, scope, itemId, commentId) {
   const box = document.getElementById(boxId);
   if (!box) return;
   const wasHidden = box.classList.contains('hidden');
-  // Scoped to .comment-reply-composer (not just an id-prefix match) —
-  // each box's own textarea has an id of the same "<boxId>-text" shape,
+  // Scoped to .comment-reply-composer (not just an id-prefix match).
+  // Each box's own textarea has an id of the same "<boxId>-text" shape,
   // which also starts with this prefix, so a bare `[id^=...]` selector
   // here would catch the textarea too and permanently stick a `hidden`
   // class on it the first time any reply box was ever opened.
@@ -2871,8 +2872,8 @@ function kirRenderUserChrome() {
 }
 
 /* ----------------------------------------------------------
-   Custom dropdown — replaces native <select> styling with a
-   themed trigger + option panel, shared by every dropdown on
+   Custom dropdown. Replaces native <select> styling with a
+   themed trigger and option panel, shared by every dropdown on
    the site (Voyages' answer dropdown, the registration "Kelas"
    selects, etc).
 
@@ -2882,19 +2883,19 @@ function kirRenderUserChrome() {
    selects, or right after re-populating options dynamically).
 
    Optional: set data-trigger-class="..." on the <select> to add
-   extra classes to the built trigger — e.g. "kir-select-pill
+   extra classes to the built trigger. For example "kir-select-pill
    bg-accent-15 text-accent-300 border border-accent-30" keeps a
    small colored status-pill look (see tasks.html's per-task status
    dropdown) instead of the default glass-input trigger.
 
    How it works: the real <select> stays in the DOM (hidden) so
    every bit of existing code that reads `.value` off it keeps
-   working untouched — kirRefreshCustomSelect just builds/updates
+   working untouched. kirRefreshCustomSelect just builds or updates
    a custom-styled sibling widget that mirrors it and writes back
    into it when the user picks an option.
    ---------------------------------------------------------- */
 /* Panels now size themselves to fit their content (see .kir-select-panel
-   in style.css — no more max-height/scrollbar, and width can exceed the
+   in style.css, no more max-height or scrollbar, and width can exceed the
    trigger's). That means a panel CAN spill past the viewport edge in a
    way the old fixed-to-trigger-width version never could: a narrow
    trigger near the right edge of the screen, or a trigger near the
@@ -2904,8 +2905,8 @@ function kirRenderUserChrome() {
 
    The panel is position: fixed (see style.css), so every measurement
    and every value written back here is in real VIEWPORT pixels off
-   trigger.getBoundingClientRect() — none of this can be expressed as a
-   percentage/keyword relative to the wrapper anymore, unlike the old
+   trigger.getBoundingClientRect(). None of this can be expressed as a
+   percentage or keyword relative to the wrapper anymore, unlike the old
    position: absolute version. */
 function kirPositionSelectPanel(panel, trigger) {
   const margin = 8;
@@ -2968,7 +2969,7 @@ function kirRefreshCustomSelect(selectId) {
   const options = Array.from(select.options);
   const selectedOption = select.options[select.selectedIndex] || null;
   const isPlaceholder = !select.value;
-  // Optional extra classes for the trigger itself — e.g.
+  // Optional extra classes for the trigger itself. For example
   // data-trigger-class="kir-select-pill bg-accent-15 text-accent-300
   // border border-accent-30" on the source <select> to keep a
   // status-style colored pill look. Kept as a data attribute (not just
@@ -2978,12 +2979,12 @@ function kirRefreshCustomSelect(selectId) {
   const triggerClassTokens = (select.dataset.triggerClass || '').split(/\s+/).filter(Boolean);
   const extraTriggerClass = triggerClassTokens.length ? ' ' + triggerClassTokens.join(' ') : '';
   // "kir-select-pill" also has to land on the WRAPPER (not just the
-  // trigger) — see the .kir-select.kir-select-pill rule in style.css —
-  // so the wrapper shrink-wraps to the pill's own content width instead
-  // of stretching to fill whatever layout slot it's sitting in. Synced
-  // with classList.toggle (not just .add) so re-running this on a select
-  // whose data-trigger-class changed can't leave a stale pill wrapper
-  // behind.
+  // trigger), see the .kir-select.kir-select-pill rule in style.css.
+  // This is so the wrapper shrink-wraps to the pill's own content width
+  // instead of stretching to fill whatever layout slot it's sitting in.
+  // Synced with classList.toggle (not just .add) so re-running this on a
+  // select whose data-trigger-class changed can't leave a stale pill
+  // wrapper behind.
   wrapper.classList.toggle('kir-select-pill', triggerClassTokens.includes('kir-select-pill'));
 
   const selectedI18n = selectedOption && selectedOption.getAttribute('data-i18n') ? ` data-i18n="${selectedOption.getAttribute('data-i18n')}"` : '';
@@ -2994,17 +2995,17 @@ function kirRefreshCustomSelect(selectId) {
       <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
     </button>`;
 
-  // The option panel is intentionally NOT nested inside the wrapper —
-  // it's appended straight to <body> (one reused element per select id,
+  // The option panel is intentionally NOT nested inside the wrapper.
+  // It's appended straight to <body> (one reused element per select id,
   // so refreshing the same select repeatedly doesn't pile up copies).
-  // Reason: it's position: fixed and measured in viewport pixels (see
-  // kirPositionSelectPanel), which only lines up correctly when nothing
-  // between it and <body> introduces a transform — any ancestor with a
+  // The reason is that it's position: fixed and measured in viewport pixels
+  // (see kirPositionSelectPanel), which only lines up correctly when nothing
+  // between it and <body> introduces a transform. Any ancestor with a
   // transform becomes the fixed element's containing block instead of
   // the viewport, silently breaking that math. Cards like the task list
   // rows animate in with a transform that lingers afterward (fill-mode
   // both) and are also overflow-hidden, so a panel left inside them ended
-  // up mispositioned and clipped — clicking the trigger looked like it
+  // up mispositioned and clipped. Clicking the trigger looked like it
   // did nothing. Living in <body> sidesteps both problems for every
   // dropdown that uses this component, not just this one.
   const panelId = 'kir-select-panel-' + selectId;
@@ -3039,7 +3040,7 @@ function kirRefreshCustomSelect(selectId) {
   };
 
   // Disabled options stay in the list (grayed out via CSS) so it's
-  // clear the choice exists — they just don't get a click handler,
+  // clear the choice exists. They just don't get a click handler,
   // same intent as the native <option disabled> they mirror.
   panel.querySelectorAll('.kir-select-option:not(.disabled)').forEach(opt => {
     opt.onclick = (e) => {
@@ -3052,12 +3053,12 @@ function kirRefreshCustomSelect(selectId) {
 }
 
 /* ----------------------------------------------------------
-   Multi-select variant — same visual shell as kirRefreshCustomSelect,
+   Multi-select variant. Same visual shell as kirRefreshCustomSelect,
    but for filters where more than one option can be active at once
-   (e.g. Voyages' subject filter). The backing <select multiple>
+   (for example Voyages' subject filter). The backing <select multiple>
    keeps working with .selectedOptions like normal, so existing
-   change-event listeners don't need to know anything changed —
-   the difference is the panel stays open across picks and each
+   change-event listeners don't need to know anything changed.
+   The difference is the panel stays open across picks and each
    row renders as a checkbox instead of swapping the trigger value.
 
    Usage: call kirRefreshMultiSelect('some-select-id') any time
@@ -3146,8 +3147,8 @@ function kirRefreshMultiSelect(selectId) {
 document.addEventListener('click', () => kirCloseAllCustomSelects());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') kirCloseAllCustomSelects(); });
 // The panel is position: fixed (see .kir-select-panel in style.css) so
-// it's anchored to the viewport, not to the trigger it opened from — if
-// the page (or some inner scroll container, e.g. a modal body) scrolls
+// it's anchored to the viewport, not to the trigger it opened from. If
+// the page (or some inner scroll container, for example a modal body) scrolls
 // while a panel's open, the trigger moves out from under it. Closing on
 // any scroll, captured so it also catches scroll events from inner
 // scroll containers (which don't bubble), is simpler and safer than
