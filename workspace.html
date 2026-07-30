@@ -1584,7 +1584,11 @@
   // SPA visit; without it, navigating away from workspace.html and
   // back left the graph container showing stale data from whichever
   // course loaded on the very first visit each session.
-  fetchCourseData();
+  if (window.__kirProfileReady) {
+    window.__kirProfileReady.then(() => fetchCourseData());
+  } else {
+    fetchCourseData();
+  }
 
 </script>
 <script src="js/router.js"></script>
