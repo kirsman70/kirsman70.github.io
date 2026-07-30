@@ -1,18 +1,16 @@
 /* ==========================================================
-   KIR (Karya Ilmiah Remaja) : prototype auth + theme
+   KIR (Karya Ilmiah Remaja) : auth + theme
    --------------------------------------------------------
-   There is no backend yet, so "being logged in" is just a
-   flag in localStorage. This is NOT secure and stores
-   nothing sensitive - it only exists so the multi-page site
-   can behave like a real app (redirects, session, logout,
-   profile, cabang, appearance) while you build without a
-   server.
+   I use Supabase for authentication and data storage. Session
+   management is handled through Supabase auth, with localStorage
+   used for UI preferences like theme, language, and sidebar
+   settings. These preferences are non-sensitive and only affect
+   how the interface looks and behaves.
 
-   WHEN YOU ADD A REAL BACKEND LATER:
-   Replace the storage-backed functions below with real calls
-   to your auth API / session cookies / database. Every page
-   calls these same function names, so the rest of the site
-   won't need to change — just swap what's inside this file.
+   The auth functions below integrate with Supabase to handle
+   login, logout, and session management. Every page calls these
+   same function names, so the rest of the site won't need to
+   change if I update the auth implementation later.
    ========================================================== */
 
 const SUPABASE_URL = 'https://qalkibuywgookvicnuhv.supabase.co';
@@ -27,12 +25,12 @@ const KIR_CABANG_KEY   = 'kir_user_cabang';   // 'robotik' | 'sains' | 'both'
 const KIR_AVATAR_KEY   = 'kir_user_avatar';   // base64 data URL, or absent
 const KIR_THEME_KEY    = 'kir_theme';         // 'dark' | 'light'
 const KIR_REDUCE_MOTION_KEY = 'kir_reduce_motion'; // 'true' | 'false'
-const KIR_DISABLE_BRANCH_COLOR_KEY = 'kir_disable_branch_color'; // 'true' | 'false' — see kirSetDisableBranchColor()
-const KIR_LAST_CABANG_KEY = 'kir_last_cabang'; // survives logout — see kirLogin()
+const KIR_DISABLE_BRANCH_COLOR_KEY = 'kir_disable_branch_color'; // 'true' | 'false', see kirSetDisableBranchColor()
+const KIR_LAST_CABANG_KEY = 'kir_last_cabang'; // survives logout, see kirLogin()
 const KIR_LANG_KEY     = 'kir_lang';          // 'id' | 'en'
-const KIR_SIDEBAR_COLLAPSED_KEY = 'kir_sidebar_collapsed'; // 'true' | 'false' — persists across page loads
-const KIR_SIDEBAR_POSITION_KEY = 'kir_sidebar_position'; // 'left' | 'right' | 'top' | 'bottom' — default 'left'
-const KIR_SIDEBAR_NAV_SCROLL_KEY = 'kir_sidebar_nav_scroll'; // JSON {top, left} — sessionStorage, see kirSaveNavScrollPos()
+const KIR_SIDEBAR_COLLAPSED_KEY = 'kir_sidebar_collapsed'; // 'true' | 'false', persists across page loads
+const KIR_SIDEBAR_POSITION_KEY = 'kir_sidebar_position'; // 'left' | 'right' | 'top' | 'bottom', default 'left'
+const KIR_SIDEBAR_NAV_SCROLL_KEY = 'kir_sidebar_nav_scroll'; // JSON {top, left}, sessionStorage, see kirSaveNavScrollPos()
 
 const I18N = {
   id: { 
@@ -603,16 +601,16 @@ function kirFormatActivityTime(date) {
 /* ----------------------------------------------------------
    Lightweight modal show/hide, self-contained in auth.js.
    admin-shared.js has a fuller equivalent (kirModalShow/Hide,
-   with scroll locking), but it isn't loaded on every page —
-   auth.js is, and the global settings + avatar-crop modals
+   with scroll locking), but it isn't loaded on every page.
+   auth.js is, and the global settings and avatar-crop modals
    need to work everywhere.
    ---------------------------------------------------------- */
 function kirLocalModalShow(el) {
   if (!el) return;
   el.classList.remove('hidden', 'modal-closing');
-  // Force a reflow between removing `hidden` and adding `modal-open` —
-  // otherwise the browser coalesces both class changes into a single
-  // paint and the opacity/transform transition never actually plays.
+  // I force a reflow between removing `hidden` and adding `modal-open`
+  // because otherwise the browser coalesces both class changes into a
+  // single paint and the opacity/transform transition never actually plays.
   void el.offsetWidth;
   el.classList.add('modal-open');
 }
@@ -646,7 +644,7 @@ function toggleSettingsModal() {
   }
 }
 
-/* Small local shake helper — auth.html has its own page-scoped
+/* Small local shake helper. auth.html has its own page-scoped
    shakeEl(), but this modal is injected on every page via
    kirRenderShell(), so it needs its own copy here. Same `.shake`
    CSS class from style.css either way. */
@@ -658,7 +656,7 @@ function kirShakeEl(el) {
 }
 
 /* ----------------------------------------------------------
-   Danger Zone — reset voyages. Wipes every voyage_completions
+   Danger Zone, reset voyages. Wipes every voyage_completions
    row for the current user (via the reset_my_voyages RPC, see
    migration_login_by_name.sql's sibling migration) and zeroes
    their deltas, letting them re-attempt everything from scratch.
@@ -735,8 +733,8 @@ function handleQuickAvatarUpload(event) {
 }
 
 /* ----------------------------------------------------------
-   Avatar cropper — opens whenever a new photo is picked (from
-   the sidebar avatar). Lets the person pan/zoom within a
+   Avatar cropper. Opens whenever a new photo is picked (from
+   the sidebar avatar). Lets the person pan and zoom within a
    circular frame before it's saved, instead of using the raw
    upload as-is.
 
@@ -790,9 +788,9 @@ function kirRenderCropTransform() {
   const displayH = s.naturalH * s.baseScale * s.zoom;
   const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
   const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
-  // background-size takes an explicit width/height pair here (not the
-  // 'cover' keyword) so zoom is driven entirely by our own math — the
-  // browser never gets a chance to re-fit/stretch it on its own.
+  // I use an explicit width/height pair for background-size here instead
+  // of the 'cover' keyword so zoom is driven entirely by my own math and
+  // the browser never gets a chance to re-fit or stretch it on its own.
   vp.style.backgroundSize = `${displayW}px ${displayH}px`;
   vp.style.backgroundPosition = `${imageLeft}px ${imageTop}px`;
 }
@@ -870,8 +868,8 @@ async function confirmAvatarCrop() {
     const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
     const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
 
-    // Map the visible circle-viewport window back into source-image
-    // pixel coordinates, so the canvas crop matches what was shown.
+    // I map the visible circle-viewport window back into source-image
+    // pixel coordinates so the canvas crop matches what was shown.
     const sx = -imageLeft / scaleFactor;
     const sy = -imageTop / scaleFactor;
     const sw = KIR_CROP_VIEWPORT / scaleFactor;
@@ -901,8 +899,9 @@ async function confirmAvatarCrop() {
       }
     }
 
-    // No active/known session (or storage unavailable) — fall back to
-    // keeping the cropped image locally rather than losing the edit.
+    // If there is no active or known session, or if storage is unavailable,
+    // I fall back to keeping the cropped image locally rather than losing
+    // the edit.
     if (!avatarUrl) avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
 
     kirSetUserAvatar(avatarUrl);
@@ -943,10 +942,10 @@ function handleDisableBranchColorToggle() {
 }
 
 function handleSidebarPositionChange(position) {
-  // Taskbar position only ever renders at the lg breakpoint (see
-  // css/style.css) — below that, the mobile top bar + drawer takes
-  // over regardless of this setting. Locked on mobile so there's no
-  // dead control that looks like it should do something but can't.
+  // Taskbar position only renders at the lg breakpoint (see css/style.css).
+  // Below that, the mobile top bar and drawer take over regardless of
+  // this setting. I lock it on mobile so there is no dead control that
+  // looks like it should do something but cannot.
   if (!window.matchMedia('(min-width: 1024px)').matches) return;
   if (position === kirCurrentSidebarPosition()) return;
   kirSetSidebarPosition(position);
@@ -980,8 +979,8 @@ function kirCloseMobileSidebar() {
   if (backdrop) backdrop.classList.remove('visible');
   document.documentElement.classList.remove('kir-mobile-nav-open');
   setTimeout(() => {
-    // Only actually hide once the slide-out transition (see
-    // .kir-sidebar-open in css/style.css) has had time to play —
+    // I only actually hide once the slide-out transition (see
+    // .kir-sidebar-open in css/style.css) has had time to play because
     // hiding immediately would just make it vanish instead of slide.
     if (!sidebar.classList.contains('kir-sidebar-open')) {
       sidebar.classList.add('hidden');
@@ -998,15 +997,15 @@ function kirToggleMobileSidebar() {
     backdrop.id = 'sidebar-mobile-backdrop';
     backdrop.className = 'kir-sidebar-backdrop';
     backdrop.onclick = () => kirCloseMobileSidebar();
-    // Insert into the same stacking context as #sidebar (the
+    // I insert into the same stacking context as #sidebar (the
     // .kir-app-shell wrapper, which is `relative z-10`) instead of
     // document.body. Appending to <body> puts the backdrop in the
     // ROOT stacking context, where its z-index:55 is compared against
-    // the *entire* z-10 wrapper (sidebar included) rather than against
-    // #sidebar individually — so the backdrop was painting over the
-    // wrapper as a whole, dimming the sidebar along with the page
-    // behind it, no matter how high #sidebar's own z-index (60) was
-    // set. Keeping both inside the same wrapper lets that z-index
+    // the entire z-10 wrapper (sidebar included) rather than against
+    // #sidebar individually. This was causing the backdrop to paint
+    // over the wrapper as a whole, dimming the sidebar along with the
+    // page behind it, no matter how high #sidebar's own z-index (60)
+    // was set. Keeping both inside the same wrapper lets that z-index
     // actually apply, so the sidebar renders above the dim overlay.
     const shell = document.querySelector('.kir-app-shell') || document.body;
     shell.appendChild(backdrop);
@@ -1020,23 +1019,24 @@ function kirToggleMobileSidebar() {
 
   sidebar.classList.remove('hidden');
   document.documentElement.classList.add('kir-mobile-nav-open');
-  // Force a reflow between removing `hidden` and adding the open class,
-  // same reasoning as kirModalShow — otherwise the browser can coalesce
-  // both changes into one paint and the slide-in transition never plays.
+  // I force a reflow between removing `hidden` and adding the open class
+  // for the same reason as kirModalShow. Otherwise the browser can
+  // coalesce both changes into one paint and the slide-in transition
+  // never plays.
   void sidebar.offsetWidth;
   sidebar.classList.add('kir-sidebar-open');
   document.getElementById('sidebar-mobile-backdrop').classList.add('visible');
 
-  // Reposition the pill once the drawer's slide-in transition (0.28s —
+  // I reposition the pill once the drawer's slide-in transition (0.28s,
   // see #sidebar.kir-sidebar-open in style.css) has actually finished.
   // Opening the drawer only ever changes #sidebar's transform, never its
   // width, so kirWatchNavPill's ResizeObserver (which only tracks
-  // offsetWidth) never fires for this case, and nothing else repositions
-  // the pill on drawer-open either — only on initial load, SPA nav, and
+  // offsetWidth) never fires for this case. Nothing else repositions
+  // the pill on drawer-open either, only on initial load, SPA nav, and
   // width changes. Left alone, the pill sits wherever it was last
   // measured, which can be from before the drawer was ever visible in
-  // its true on-screen position (i.e. floating outside the drawer).
-  // animate:false regardless — the mobile media query in style.css
+  // its true on-screen position (floating outside the drawer). I use
+  // animate:false regardless because the mobile media query in style.css
   // strips .nav-active-pill's top/left/width/height transition entirely
   // below the lg breakpoint, so this always lands as a plain snap, never
   // a visible glide.
@@ -1045,14 +1045,14 @@ function kirToggleMobileSidebar() {
 
 // If the viewport grows past the lg breakpoint while the mobile drawer
 // is open (rotating a tablet, resizing a browser window), #sidebar
-// becomes the normal always-visible desktop sidebar via `lg:flex` —
-// make sure the drawer-only state (backdrop, scroll lock, slide
+// becomes the normal always-visible desktop sidebar via `lg:flex`.
+// I make sure the drawer-only state (backdrop, scroll lock, slide
 // transform) doesn't linger into that layout.
-/* Collapse is a desktop-only affordance — #sidebar-collapse-btn is hidden
+/* Collapse is a desktop-only affordance. #sidebar-collapse-btn is hidden
    outright below 1024px (see the mobile media query in css/style.css), so
    there is no UI on mobile to undo a collapsed state. The persisted
    preference (KIR_SIDEBAR_COLLAPSED_KEY) should therefore only ever be
-   *applied* on desktop, even though it keeps being *stored* regardless of
+   applied on desktop, even though it keeps being stored regardless of
    viewport. Without this gate, a user who collapsed the sidebar on desktop
    would open the mobile drawer later and find it permanently squashed down
    to icon-only width with no button to expand it back out. */
@@ -1065,25 +1065,25 @@ function kirSidebarCollapsedClass() {
 if (typeof window !== 'undefined' && window.matchMedia) {
   window.matchMedia('(min-width: 1024px)').addEventListener('change', (e) => {
     if (e.matches) kirCloseMobileSidebar();
-    // Live-sync the collapsed class to whichever side of the breakpoint we
-    // just landed on (window resize / tablet rotation, not just a fresh
-    // page load) — same gate as kirSidebarCollapsedClass() above.
+    // I live-sync the collapsed class to whichever side of the breakpoint
+    // we just landed on (window resize or tablet rotation, not just a fresh
+    // page load) using the same gate as kirSidebarCollapsedClass() above.
     const sidebarEl = document.getElementById('sidebar');
     if (sidebarEl) {
       const shouldCollapse = e.matches && localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true';
       sidebarEl.classList.toggle('sidebar-collapsed', shouldCollapse);
     }
-    // Keep the Settings modal's taskbar-position picker in sync if it's
-    // open (or opened later) across the same crossing — e.g. rotating a
-    // tablet, or resizing a desktop window down past 1024px.
+    // I keep the Settings modal's taskbar-position picker in sync if it's
+    // open (or opened later) across the same crossing, for example rotating
+    // a tablet or resizing a desktop window down past 1024px.
     if (typeof kirUpdateSidebarPositionModalUI === 'function') kirUpdateSidebarPositionModalUI();
   });
 }
 
-// Close on Escape, and after using any link/nav-tab inside the drawer
-// itself (router.js keeps #sidebar's DOM node alive across same-shape
-// SPA navigations, so without this the drawer would stay open, backdrop
-// and all, over whatever page it just navigated to).
+// I close on Escape, and after using any link or nav-tab inside the drawer
+// itself. router.js keeps #sidebar's DOM node alive across same-shape
+// SPA navigations, so without this the drawer would stay open with the
+// backdrop over whatever page it just navigated to.
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') kirCloseMobileSidebar();
 });
@@ -1093,13 +1093,13 @@ document.addEventListener('click', (e) => {
 
 function kirInjectSidebar(activeTab) {
   // router.js preserves the actual #sidebar DOM node across same-shape
-  // SPA navigations (see navigate()'s sidebar-preservation block), so if
-  // it's already here, this is a client-side nav to a page we're already
-  // chrome-wise set up for — just move the active tab / pill instead of
-  // tearing the whole sidebar down and rebuilding it from scratch. That's
-  // what lets .nav-active-pill's CSS transition (and kirPositionNavPill's
-  // animate=true path) actually have something persistent to slide from,
-  // instead of always popping into place already correct.
+  // SPA navigations (see navigate()'s sidebar-preservation block). If it's
+  // already here, this is a client-side nav to a page we're already set up
+  // for, so I just move the active tab and pill instead of tearing the
+  // whole sidebar down and rebuilding it from scratch. This lets
+  // .nav-active-pill's CSS transition (and kirPositionNavPill's animate=true
+  // path) actually have something persistent to slide from, instead of
+  // always popping into place already correct.
   //
   // On a true hard page load #sidebar doesn't exist yet, so this always
   // falls through to the full kirRenderSidebarNow() build below.
@@ -1109,10 +1109,10 @@ function kirInjectSidebar(activeTab) {
       a.classList.toggle('active', a.dataset.tab === activeTab);
     });
     
-    // Exclude the sidebar from View Transitions and rely strictly on
-    // CSS transitions for the pill's physics. By avoiding VT snapshots 
-    // for the sidebar entirely, CSS naturally interpolates from its current 
-    // physical computed position, guaranteeing smooth mid-flight redirection 
+    // I exclude the sidebar from View Transitions and rely strictly on
+    // CSS transitions for the pill's physics. By avoiding VT snapshots
+    // for the sidebar entirely, CSS naturally interpolates from its current
+    // physical computed position, guaranteeing smooth mid-flight redirection
     // if a user clicks tabs rapidly before the animation finishes.
     requestAnimationFrame(() => kirPositionNavPill(true));
 
@@ -1123,11 +1123,11 @@ function kirInjectSidebar(activeTab) {
 
     if (window.__kirProfileReady) {
       window.__kirProfileReady.then(() => {
-        // Admin status can only change the *set* of nav links (the Admin
-        // Panel entry appearing/disappearing), which the lightweight
-        // class-toggle path above can't handle — fall back to a full
-        // rebuild in that one case. Otherwise just refresh the bits that
-        // could've changed (name/avatar/cabang).
+        // Admin status can only change the set of nav links (the Admin
+        // Panel entry appearing or disappearing), which the lightweight
+        // class-toggle path above can't handle. I fall back to a full
+        // rebuild in that one case. Otherwise I just refresh the bits that
+        // could have changed (name, avatar, cabang).
         const nowAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
         const hasAdminLink = !!existingSidebar.querySelector('.nav-link[data-tab="admin"]');
         if (nowAdmin !== hasAdminLink) {
@@ -1143,10 +1143,10 @@ function kirInjectSidebar(activeTab) {
 
   kirRenderSidebarNow(activeTab);
 
-  // Don't block the first paint on a network round-trip — render
+  // I don't block the first paint on a network round-trip. I render
   // instantly from whatever's cached, then quietly re-render only if
   // the authoritative profile (once it loads) actually changed
-  // something (e.g. an admin promotion). In the normal case nothing
+  // something (for example an admin promotion). In the normal case nothing
   // changed, so there's no visible flash on every page navigation.
   if (window.__kirProfileReady) {
     const before = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
@@ -1439,7 +1439,7 @@ function kirRenderSidebarNow(activeTab) {
 }
 
 /* ----------------------------------------------------------
-   Admin sidebar "ping" — a small red count badge on the Admin
+   Admin sidebar ping. A small red count badge on the Admin
    Panel link (Discord-style unread ping) so admins can tell at a
    glance, from any page, whether members are waiting to be
    approved without having to open Admin Panel first.
@@ -1481,16 +1481,16 @@ async function kirRefreshAdminPingBadge() {
    Settle the pill into place once layout is actually final.
    Tailwind's CDN runtime applies utility CSS for freshly-injected
    markup (like this sidebar, built via innerHTML) through an async
-   MutationObserver, not synchronously — so measuring nav-link
+   MutationObserver, not synchronously. This means measuring nav-link
    positions right after injection can catch them before their real
-   padding/spacing exists. That stale measurement was the cause of
+   padding or spacing exists. That stale measurement was the cause of
    the pill rendering near the top of the sidebar and then visibly
    animating down once Tailwind caught up a moment later.
 
    The pill starts invisible (its default CSS state), so waiting a
-   couple of frames before the first kirPositionNavPill/kirWatchNavPill
+   couple of frames before the first kirPositionNavPill or kirWatchNavPill
    call means it only ever becomes visible already in its correct
-   spot — it never has a wrong position to animate away from.
+   spot. It never has a wrong position to animate away from.
    ---------------------------------------------------------- */
 function kirSettleNavPill() {
   const sidebar = document.getElementById('sidebar');
@@ -1508,15 +1508,15 @@ function kirSettleNavPill() {
 
 /* ----------------------------------------------------------
    Remember where the nav list was scrolled to, so navigating away
-   and back (or a hard page load / refresh, which gets a brand-new
+   and back (or a hard page load or refresh, which gets a brand-new
    #sidebar with no scroll history of its own) doesn't reset it to
-   the top every time. sessionStorage rather than localStorage — this
-   is throwaway UI state tied to the current browsing session, not a
-   preference that should follow the user forever.
+   the top every time. I use sessionStorage rather than localStorage
+   because this is throwaway UI state tied to the current browsing
+   session, not a preference that should follow the user forever.
    Client-side nav between two sidebar-having pages actually reuses
    the same #sidebar DOM node (see router.js), so scrollTop already
-   survives that case for free without any of this — this exists for
-   the cases where it doesn't: a hard reload/direct URL load (always
+   survives that case for free without any of this. This exists for
+   the cases where it doesn't, a hard reload or direct URL load (always
    a fresh #sidebar), and the one full kirRenderSidebarNow() rebuild
    path in kirInjectSidebar (admin status changed mid-session).
    ---------------------------------------------------------- */
@@ -1525,7 +1525,7 @@ function kirSaveNavScrollPos() {
   if (!navScroll) return;
   try {
     sessionStorage.setItem(KIR_SIDEBAR_NAV_SCROLL_KEY, JSON.stringify({ top: navScroll.scrollTop, left: navScroll.scrollLeft }));
-  } catch (e) { /* sessionStorage unavailable (private mode, quota, etc.) — position just won't persist */ }
+  } catch (e) { /* sessionStorage unavailable (private mode, quota, etc.), position just won't persist */ }
 }
 
 function kirRestoreNavScrollPos() {
@@ -1539,15 +1539,16 @@ function kirRestoreNavScrollPos() {
 }
 
 /* ----------------------------------------------------------
-   Nav-scroll edge fade — see .kir-fade-start/.kir-fade-end in
-   css/style.css for the actual gradients. This just decides WHETHER
-   each edge should be faded right now: read the container's real
+   Nav-scroll edge fade. See .kir-fade-start/.kir-fade-end in
+   css/style.css for the actual gradients. This just decides whether
+   each edge should be faded right now. I read the container's real
    scroll offset against its scrollable range, on whichever axis is
-   actually active (vertical for the default/left/right bar,
-   horizontal once docked top/bottom), and toggle the two classes
+   actually active (vertical for the default, left, or right bar,
+   horizontal once docked top or bottom), and toggle the two classes
    accordingly. A list that fits with no overflow at all never gets
-   either class, so it never shows a fade — same "only when there's
-   really something cut off" rule the fade itself is meant to signal.
+   either class, so it never shows a fade. This follows the same
+   "only when there's really something cut off" rule the fade itself
+   is meant to signal.
    ---------------------------------------------------------- */
 function kirUpdateNavScrollFade() {
   const navScroll = document.querySelector('#sidebar .sidebar-nav-scroll');
@@ -1570,8 +1571,8 @@ function kirWatchNavScrollFade() {
     navScroll.__kirFadeScrollInit = true;
     navScroll.addEventListener('scroll', () => {
       kirUpdateNavScrollFade();
-      // Throttle the sessionStorage write to once per frame — 'scroll'
-      // can fire far more often than that during a fast fling.
+      // I throttle the sessionStorage write to once per frame because
+      // 'scroll' can fire far more often than that during a fast fling.
       if (navScroll.__kirScrollSaveScheduled) return;
       navScroll.__kirScrollSaveScheduled = true;
       requestAnimationFrame(() => {
@@ -1593,7 +1594,7 @@ function kirWatchNavScrollFade() {
 }
 
 /* ----------------------------------------------------------
-   Traveling nav highlight — one shared "pill" sits behind
+   Traveling nav highlight. One shared "pill" sits behind
    whichever .nav-link is active and gets repositioned to match
    it, instead of each link owning its own static background.
    Repositioning animates via CSS (.nav-active-pill in style.css),
@@ -1619,11 +1620,11 @@ function kirPositionNavPill(animate) {
   }
 
   // The pill is now a child of .sidebar-nav-scroll (a scroll container),
-  // not #sidebar directly, so its top/left need to be expressed in that
-  // container's unscrolled content coordinates — i.e. relative to its
-  // own box, with the current scroll offset added back in. Once placed
-  // there, the pill scrolls natively along with the rest of the nav
-  // links (being an absolutely-positioned descendant of the thing
+  // not #sidebar directly, so its top and left need to be expressed in
+  // that container's unscrolled content coordinates. This means relative
+  // to its own box, with the current scroll offset added back in. Once
+  // placed there, the pill scrolls natively along with the rest of the
+  // nav links (being an absolutely-positioned descendant of the thing
   // that's actually scrolling) with no further JS needed on scroll.
   const activeRect = active.getBoundingClientRect();
   pill.style.top = (activeRect.top - containerRect.top + navScroll.scrollTop) + 'px';
@@ -1663,42 +1664,42 @@ function kirWatchNavPill() {
 }
 
 /* ----------------------------------------------------------
-   Top/bottom-taskbar clearance for fixed-position UI.
-   When the taskbar is docked to the top OR bottom of the screen
+   Top or bottom taskbar clearance for fixed-position UI.
+   When the taskbar is docked to the top or bottom of the screen
    (Settings → Taskbar Position → Atas/Bawah), it's `position: fixed`
    (see the media query above) and no longer reserves any space in
-   .kir-app-shell's flex flow. <main>'s own padding-top/padding-bottom
+   .kir-app-shell's flex flow. <main>'s own padding-top or padding-bottom
    compensates for that (see the `html[data-sidebar-pos="top"/"bottom"]
-   main` rules in css/style.css) — without it the taskbar just renders
-   on top of whatever's at the very top of the page (e.g. the page's
-   <h1> heading) when docked to the top, or the very bottom otherwise.
-   The admin FABs (+ / Ekspedisi / Impor JSON / Tinjau integritas) and
-   the admin toast (both `position: fixed`, see css/admin-shared.css)
+   main` rules in css/style.css). Without it the taskbar just renders
+   on top of whatever's at the very top of the page (for example the
+   page's <h1> heading) when docked to the top, or the very bottom
+   otherwise. The admin FABs (+, Ekspedisi, Impor JSON, Tinjau integritas)
+   and the admin toast (both `position: fixed`, see css/admin-shared.css)
    have the exact same problem on the bottom side.
 
    Rather than hardcode a second offset per element (which would also
-   have to track collapsed-vs-expanded taskbar height, and only apply
-   above the lg breakpoint where top/bottom taskbars exist at all),
-   measure the taskbar's real rendered height and publish it as
+   have to track collapsed versus expanded taskbar height, and only apply
+   above the lg breakpoint where top or bottom taskbars exist at all),
+   I measure the taskbar's real rendered height and publish it as
    --kir-top-taskbar-h or --kir-bottom-taskbar-h on <html>, whichever
-   side it's actually docked to right now — the other one is reset to
+   side it's actually docked to right now. I reset the other one to
    0px on every call so a leftover clearance from before the position
    was last changed never lingers on the side that's no longer active.
    admin-shared.css and style.css both add these on top of each
    element's normal offset.
 
    A single ResizeObserver on #sidebar keeps this correct through
-   collapse/expand, switching taskbar position, and window resizes
-   crossing the lg breakpoint — every one of those changes #sidebar's
+   collapse or expand, switching taskbar position, and window resizes
+   crossing the lg breakpoint. Every one of those changes #sidebar's
    own rendered box size, which is exactly what ResizeObserver reports.
    ---------------------------------------------------------- */
 function kirUpdateTaskbarClearance() {
   const sidebar = document.getElementById('sidebar');
-  // Read the CURRENT position fresh on every call rather than caching
-  // which side was last measured — that's what makes switching directly
+  // I read the CURRENT position fresh on every call rather than caching
+  // which side was last measured. This is what makes switching directly
   // from "top" to "bottom" (or back) clear the side that's no longer
   // docked instead of leaving its old clearance applied underneath the
-  // newly-active side's.
+  // newly active side's.
   const position = document.documentElement.getAttribute('data-sidebar-pos');
   const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
   const height = (sidebar && isDesktop && (position === 'top' || position === 'bottom'))
@@ -1717,14 +1718,14 @@ function kirWatchTaskbarClearance() {
   ro.observe(sidebar);
   sidebar.__kirTaskbarClearanceObserver = ro;
 
-  // Belt-and-suspenders: a plain window resize listener as a fallback
-  // alongside the observer above and the explicit calls in
-  // kirSetSidebarPosition/kirToggleSidebarCollapse — window resize
+  // Belt and suspenders. I use a plain window resize listener as a
+  // fallback alongside the observer above and the explicit calls in
+  // kirSetSidebarPosition or kirToggleSidebarCollapse. Window resize
   // covers crossing the lg breakpoint even in the rare case the
-  // observer's own timing gets missed. Registered once per session
-  // (window/document listeners aren't torn down on SPA navigation —
-  // see router.js's header comment — so guard against piling up
-  // duplicates across repeat kirWatchTaskbarClearance() calls).
+  // observer's own timing gets missed. I register this once per session
+  // Window and document listeners aren't torn down on SPA navigation
+  // (see router.js's header comment), so I guard against piling up
+  // duplicates across repeat kirWatchTaskbarClearance() calls.
   if (!window.__kirTaskbarClearanceResizeInit) {
     window.__kirTaskbarClearanceResizeInit = true;
     window.addEventListener('resize', () => kirUpdateTaskbarClearance());
@@ -1788,8 +1789,8 @@ function kirToggleSidebarCollapse() {
   const sidebar = document.getElementById('sidebar');
   const collapsed = sidebar.classList.toggle('sidebar-collapsed');
   localStorage.setItem(KIR_SIDEBAR_COLLAPSED_KEY, collapsed ? 'true' : 'false');
-  // Collapsing/expanding changes the top- or bottom-docked taskbar's
-  // own height (slimmer padding when collapsed — see style.css), so the
+  // Collapsing or expanding changes the top or bottom docked taskbar's
+  // own height (slimmer padding when collapsed, see style.css), so the
   // clearance needs a fresh measurement too, not just the ResizeObserver.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     kirUpdateTaskbarClearance();
@@ -1918,11 +1919,11 @@ function resolveBrandAssetName(type = 'icon') {
   const invertedTheme = theme === 'light' ? 'dark' : 'light';
 
   // "Nonaktifkan Warna Cabang" ("Disable Branch Colouring") only
-  // neutralizes the *accent* colors (see tailwind-config.js /
-  // --accent-rgb overrides) — the logo/favicon stays the branded
+  // neutralizes the accent colors (see tailwind-config.js or
+  // --accent-rgb overrides). The logo and favicon stay the branded
   // cabang mark either way, it just switches from the plain version to
-  // the light/dark-inverted one so it still reads against the theme,
-  // same reasoning as the neutral mark below.
+  // the light or dark inverted one so it still reads against the theme,
+  // using the same reasoning as the neutral mark below.
   const disableBranchColor = localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
 
   if (loggedIn && cabang !== 'both') {
@@ -1930,10 +1931,10 @@ function resolveBrandAssetName(type = 'icon') {
     if (cabang === 'sains') return disableBranchColor ? `assets/sains_${invertedTheme}${suffix}.PNG` : `assets/sains${suffix}.PNG`;
   }
 
-  // Neutral kir mark: used for logged-out visitors (no settings to
-  // toggle, so always themed) and the "both"/hybrid cabang (no
-  // dedicated asset — it's the same plain mark, tinted purple via CSS
-  // accent vars instead). Inverted on purpose: light theme's white
+  // Neutral kir mark. Used for logged-out visitors (no settings to
+  // toggle, so always themed) and the "both" or hybrid cabang (no
+  // dedicated asset, it's the same plain mark, tinted purple via CSS
+  // accent vars instead). Inverted on purpose because light theme's white
   // background needs the dark-inked logo, and vice versa.
   return `assets/kir_${invertedTheme}${suffix}.PNG`;
 }
@@ -1958,12 +1959,12 @@ function kirApplyBrandAssets() {
 // Parametrized so router.js can call this on a detached, freshly-fetched
 // document (before it's ever attached to the live DOM, let alone painted)
 // as well as on the live `document` itself. Translating off-DOM content
-// means a page navigated to via the SPA router already has correct-
-// language text baked in the instant it's attached — no swap visible
-// after the fact, which is what running this only against the live
-// document (as it used to) couldn't avoid: the router's re-run of a
+// means a page navigated to via the SPA router already has correct
+// language text baked in the instant it's attached. This avoids a visible
+// swap after the fact, which is what running this only against the live
+// document (as it used to) couldn't avoid. The router's re-run of a
 // page's own inline scripts (which is what used to call this) only
-// happens AFTER the swap is already visible/mid-view-transition.
+// happens after the swap is already visible or mid-view-transition.
 function kirTranslateElements(root) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
   root.querySelectorAll('[data-i18n]').forEach(el => {
@@ -1983,13 +1984,13 @@ function kirApplyTranslations() {
   kirApplyBrandAssets();
   if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
 
-  // Not every piece of translated UI is covered by [data-i18n] — e.g.
-  // schedule.html's calendar grid (weekday headers, month title) is built
-  // by renderScheduleCalendar() using Intl.DateTimeFormat(locale, ...), so
-  // it needs an explicit re-render rather than a text-swap. Dispatch a
-  // page-agnostic event instead of reaching into page-specific globals
-  // here, so any page with its own locale-dependent rendering can listen
-  // and refresh itself.
+  // Not every piece of translated UI is covered by [data-i18n]. For
+  // example, schedule.html's calendar grid (weekday headers, month title)
+  // is built by renderScheduleCalendar() using Intl.DateTimeFormat(locale,
+  // ...), so it needs an explicit re-render rather than a text swap. I
+  // dispatch a page-agnostic event instead of reaching into page-specific
+  // globals here, so any page with its own locale-dependent rendering can
+  // listen and refresh itself.
   window.dispatchEvent(new CustomEvent('kir:lang-changed', { detail: { lang } }));
 
   kirRevealPage();
@@ -1997,8 +1998,8 @@ function kirApplyTranslations() {
 
 // Every page's body is hidden by default (see the `html:not(.kir-ready)
 // body { visibility: hidden }` rule in style.css) so it never paints the
-// hardcoded Indonesian default text, or Tailwind-CDN-unstyled icons at
-// their raw intrinsic size, before this runs. This is the same "apply
+// hardcoded Indonesian default text or Tailwind-CDN-unstyled icons at
+// their raw intrinsic size before this runs. This is the same "apply
 // before paint" idea as applyThemeImmediately() above, just finished
 // here instead, since translating [data-i18n] elements needs them to
 // actually exist in the DOM first, which theme attributes don't.

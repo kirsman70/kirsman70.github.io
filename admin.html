@@ -291,9 +291,11 @@
     renderApplicants();
   }
 
+  let applySearchDebounce = null;
   document.getElementById('apply-search-input').addEventListener('input', (e) => {
     applySearch = e.target.value.trim().toLowerCase();
-    renderApplicants();
+    clearTimeout(applySearchDebounce);
+    applySearchDebounce = setTimeout(renderApplicants, 150);
   });
 
   function applicantMatchesFilter(a) {

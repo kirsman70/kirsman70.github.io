@@ -1398,6 +1398,52 @@
     return { ...courseTelemetryData, time_spent_ms: courseVoyageOpenedAt ? Math.max(0, Date.now() - courseVoyageOpenedAt) : 0 };
   }
 
+  /* ----------------------------------------------------------
+     Anti-cheat: stable per-(user, voyage) option shuffle.
+     ----------------------------------------------------------
+     Same implementation as voyages.html - two students on the same
+     MC question would otherwise see "A/B/C/D" in the exact same DB
+     order, so "jawabannya C" travels fine between them. Instead we
+     derive a deterministic-but-unpredictable permutation from a hash
+     of (user id + voyage id): the same user always sees the same order
+     for the same question (so it doesn't reshuffle confusingly on
+     every reopen), but two different users almost never see the same
+     order, and nobody can predict their own order in advance without
+     already being logged in as themselves.
+     ---------------------------------------------------------- */
+  function kirHashSeed(str) {
+    let h = 2166136261 >>> 0; // FNV-1a
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function kirSeededRandom(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Returns an array `order` where order[displayPosition] = originalIndex.
+  function kirShuffledOptionOrder(voyageId, optionCount) {
+    const { data: userData } = supabaseClient.auth.getUser();
+    const currentUserId = userData?.user?.id || null;
+    const seed = kirHashSeed(`${currentUserId || 'anon'}:${voyageId}`);
+    const rand = kirSeededRandom(seed);
+    const order = Array.from({ length: optionCount }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+  }
+
   function courseVoyageIsDone(completion, type) {
     if (!completion) return false;
     // Essay completions get a row on first submit even before an AI/manual
@@ -1534,16 +1580,18 @@
     // itself is only ever rendered into the DOM on the last question.
 
     if (v.type === 'mc') {
+      const order = kirShuffledOptionOrder(v.id, v.options.length);
       const wrap = document.getElementById('cvm-mc-options');
-      wrap.innerHTML = (v.options || []).map((opt, i) => `
-        <button type="button" class="voyage-option w-full text-left flex items-center gap-3" data-idx="${i}" onclick="selectCourseVoyageMcOption(${i})">
+      wrap.innerHTML = order.map((origIdx, pos) => `
+        <button type="button" class="voyage-option w-full text-left flex items-center gap-3" data-orig-idx="${origIdx}" onclick="selectCourseVoyageMcOption(${origIdx})">
           <span class="voyage-option-dot"></span>
-          <span class="kir-markdown">${kirRenderCourseMarkdown(opt)}</span>
+          <span class="kir-markdown">${kirRenderCourseMarkdown(v.options[origIdx])}</span>
         </button>`).join('');
     } else if (v.type === 'dropdown') {
+      const order = kirShuffledOptionOrder(v.id, v.options.length);
       const select = document.getElementById('cvm-dropdown-select');
-      select.innerHTML = '<option value="">Pilih jawaban…</option>' +
-        (v.options || []).map((opt, i) => `<option value="${i}">${kirEscapeHtml(opt)}</option>`).join('');
+      select.innerHTML = '<option value="" disabled selected>Pilih jawaban…</option>' +
+        order.map(origIdx => `<option value="${origIdx}">${kirEscapeHtml(v.options[origIdx])}</option>`).join('');
       select.value = (typeof r.answers[r.currentIndex] === 'number') ? String(r.answers[r.currentIndex]) : '';
       select.onchange = () => {
         r.answers[r.currentIndex] = select.value === '' ? null : parseInt(select.value, 10);
@@ -1622,7 +1670,7 @@
     r.selectedMcIndex = i;
     r.answers[r.currentIndex] = i;
     document.querySelectorAll('#cvm-mc-options .voyage-option').forEach(el => {
-      el.classList.toggle('selected', parseInt(el.dataset.idx, 10) === i);
+      el.classList.toggle('selected', parseInt(el.dataset.origIdx, 10) === i);
     });
     renderCourseVoyageNavGrid(); // reflect the newly-answered state in the palette
   }

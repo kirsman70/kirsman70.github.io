@@ -214,9 +214,11 @@
     renderResources();
   }
 
+  let resourceSearchDebounce = null;
   document.getElementById('resource-search-input')?.addEventListener('input', (e) => {
     currentSearch = e.target.value;
-    renderResources();
+    clearTimeout(resourceSearchDebounce);
+    resourceSearchDebounce = setTimeout(renderResources, 150);
   });
 
   let currentResourceId = null;

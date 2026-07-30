@@ -75,6 +75,16 @@
     cursor: pointer;
   }
 
+  /* Reset cursor for non-interactive elements inside modals */
+  .modal-card > div:not([onclick]):not([role="button"]):not(button):not(a):not(select):not(label):not(input),
+  .modal-card p:not([onclick]):not([role="button"]),
+  .modal-card h1:not([onclick]):not([role="button"]),
+  .modal-card h2:not([onclick]):not([role="button"]),
+  .modal-card h3:not([onclick]):not([role="button"]),
+  .modal-card span:not([onclick]):not([role="button"]):not(button):not(a) {
+    cursor: default;
+  }
+
 
   /* Paired with kirRevealPage()/`.kir-ready` in auth.js. Without this,
     the browser paints <body> the instant it's parsed — showing the

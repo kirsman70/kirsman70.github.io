@@ -822,9 +822,11 @@
     renderCourseCatalogGrid();
   }
 
+  let courseSearchDebounce = null;
   document.getElementById('course-catalog-search-input')?.addEventListener('input', (e) => {
     COURSE_CATALOG_SEARCH = e.target.value;
-    renderCourseCatalogGrid();
+    clearTimeout(courseSearchDebounce);
+    courseSearchDebounce = setTimeout(renderCourseCatalogGrid, 150);
   });
 
   // 'robotik'/'sains' reuse the same badge-* colors as the catalog's
