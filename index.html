@@ -698,6 +698,27 @@
 
   @media (max-width: 900px) {
     .obt-hint { top: auto; bottom: 46vh; margin-bottom: 0.75rem; }
+
+    /* backdrop-filter is one of the most expensive CSS properties on
+       mobile GPUs, and these 7 nodes get repositioned every animation
+       frame (see the idle-drift loop in the script below) — blurring
+       AND moving 7 elements at once, forever, is a major source of the
+       jank reported on low-end phones. Swap to a plain translucent fill
+       on mobile; desktop keeps the real glass blur since it's cheap there. */
+    .obt-node {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    /* These run on an infinite loop regardless of interaction and add
+       continuous compositor work for very little visual payoff at
+       mobile sizes — pause them to lighten the steady-state load.
+       The moon orbits are excluded: they're small, cheap transform-only
+       animations (no backdrop-filter, no layout impact) and are worth
+       keeping on mobile for the visual payoff. */
+    .obt-guide-1, .obt-guide-2, .obt-hint-icon svg {
+      animation: none !important;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -739,6 +760,7 @@
   </a>
   <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
     <a href="index.html" class="public-nav-link active" data-i18n="nav_beranda">Beranda</a>
+    <a href="katalog.html" class="public-nav-link" data-i18n="nav_katalog">Katalog</a>
     <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
     <a href="program-kerja.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
   </nav>
@@ -802,25 +824,29 @@
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
           <span class="obt-node-label" data-i18n="nav_beranda">Beranda</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="60" data-scene="fitur">
+        <button type="button" class="obt-node glass" data-angle="51.43" data-scene="fitur">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           <span class="obt-node-label" data-i18n="nav_fitur">Fitur</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="120" data-scene="cabang">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>
+        <button type="button" class="obt-node glass" data-angle="102.86" data-scene="cabang">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           <span class="obt-node-label" data-i18n="nav_cabang">Cabang</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="180" data-scene="faq">
+        <button type="button" class="obt-node glass" data-angle="154.29" data-scene="faq">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <span class="obt-node-label" data-i18n="nav_faq">FAQ</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="240" data-scene="proker">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-          <span class="obt-node-label" data-i18n="nav_proker">Proker</span>
+        <button type="button" class="obt-node glass" data-angle="205.71" data-scene="katalog">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_katalog">Katalog</span>
         </button>
-        <button type="button" class="obt-node glass" data-angle="300" data-scene="galeri">
+        <button type="button" class="obt-node glass" data-angle="257.14" data-scene="galeri">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15.5l-5-5L5 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="obt-node-label" data-i18n="nav_galeri">Galeri</span>
+        </button>
+        <button type="button" class="obt-node glass" data-angle="308.57" data-scene="proker">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <span class="obt-node-label" data-i18n="nav_proker">Proker</span>
         </button>
       </div>
     </div>
@@ -838,7 +864,7 @@
     <div id="obt-panels">
 
       <div class="obt-panel is-active" data-scene="beranda">
-        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 06</span></p>
+        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 07</span></p>
         <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient obt-typehead" data-i18n="idx_hero_title">
           “In Harmonia Innovatio”
         </h1>
@@ -852,7 +878,7 @@
       </div>
 
       <div class="obt-panel" data-scene="fitur">
-        <p class="obt-eyebrow"><span data-i18n="nav_fitur">FITUR</span> <span class="obt-eyebrow-count">02 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_fitur">FITUR</span> <span class="obt-eyebrow-count">02 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
         <div>
           <div class="obt-feat-row">
@@ -880,7 +906,7 @@
       </div>
 
       <div class="obt-panel" data-scene="cabang">
-        <p class="obt-eyebrow"><span data-i18n="nav_cabang">CABANG</span> <span class="obt-eyebrow-count">03 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_cabang">CABANG</span> <span class="obt-eyebrow-count">03 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
           <div class="glass rounded-xl p-4">
@@ -896,7 +922,7 @@
       </div>
 
       <div class="obt-panel" data-scene="faq">
-        <p class="obt-eyebrow"><span data-i18n="nav_faq">FAQ</span> <span class="obt-eyebrow-count">04 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_faq">FAQ</span> <span class="obt-eyebrow-count">04 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
         <p class="text-zinc-500 text-sm mb-5" data-i18n="idx_faq_sub">Klik pertanyaan untuk melihat jawabannya.</p>
         <div>
@@ -939,18 +965,18 @@
       </div>
 
 
-      <div class="obt-panel" data-scene="proker">
-        <p class="obt-eyebrow"><span data-i18n="nav_proker">PROGRAM KERJA</span> <span class="obt-eyebrow-count">05 / 06</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
-        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
-        <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
-          <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
+      <div class="obt-panel" data-scene="katalog">
+        <p class="obt-eyebrow"><span data-i18n="nav_katalog">KATALOG</span> <span class="obt-eyebrow-count">05 / 07</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_katalog_heading">Karya Anggota</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_katalog_sub">Kumpulan karya, proyek, dan penelitian yang dihasilkan anggota Robotik dan Sains dari tahun ke tahun.</p>
+        <a href="katalog.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
+          <span data-i18n="idx_katalog_cta">Lihat Katalog</span>
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
         </a>
       </div>
 
       <div class="obt-panel" data-scene="galeri">
-        <p class="obt-eyebrow"><span data-i18n="nav_galeri">GALERI</span> <span class="obt-eyebrow-count">06 / 06</span></p>
+        <p class="obt-eyebrow"><span data-i18n="nav_galeri">GALERI</span> <span class="obt-eyebrow-count">06 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
         <div class="flex flex-wrap items-center gap-3">
@@ -960,6 +986,16 @@
           </a>
           <a href="auth.html?tab=register" id="final-cta" data-i18n="proker_cta_btn" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">Daftar Sekarang</a>
         </div>
+      </div>
+
+      <div class="obt-panel" data-scene="proker">
+        <p class="obt-eyebrow"><span data-i18n="nav_proker">PROGRAM KERJA</span> <span class="obt-eyebrow-count">07 / 07</span></p>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
+        <a href="program-kerja.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
+          <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+        </a>
       </div>
 
     </div>
@@ -983,6 +1019,7 @@
       <span class="obt-dot" data-index="3"></span>
       <span class="obt-dot" data-index="4"></span>
       <span class="obt-dot" data-index="5"></span>
+      <span class="obt-dot" data-index="6"></span>
     </div>
     <button type="button" class="obt-arrow-btn glass" id="obt-next" aria-label="Berikutnya">
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -1036,7 +1073,10 @@
   (function scatterDust() {
     const wrap = document.getElementById('obt-dust');
     if (!wrap) return;
-    const count = 22;
+    // Fewer particles on mobile: each one still gets a transform/opacity
+    // write every animation frame while the ring drifts, so trimming the
+    // count directly trims the steady-state per-frame work on phones.
+    const count = window.innerWidth <= 900 ? 10 : 22;
     let html = '';
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * 360 + (i % 2 === 0 ? 4 : -6);
@@ -1056,8 +1096,8 @@
      sweeping around the planet as you move through it.
      ---------------------------------------------------------- */
   (function () {
-    const scenes = ['beranda', 'fitur', 'cabang', 'faq', 'proker', 'galeri'];
-    const docks = ['obt-dock-tr', 'obt-dock-br', 'obt-dock-bl', 'obt-dock-tl', 'obt-dock-tr', 'obt-dock-br'];
+    const scenes = ['beranda', 'fitur', 'cabang', 'faq', 'katalog', 'galeri', 'proker'];
+    const docks = ['obt-dock-tr', 'obt-dock-br', 'obt-dock-bl', 'obt-dock-tl', 'obt-dock-tr', 'obt-dock-br', 'obt-dock-bl'];
     const stepAngle = 360 / scenes.length;
 
     const cosmos = document.getElementById('obt-cosmos');
@@ -1080,6 +1120,14 @@
     if (!cosmos || !stage) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The ambient idle drift is nice embellishment for a mouse-driven
+    // desktop session, but it forces every node (backdrop-filter blur
+    // and all) plus every dust particle to be repositioned every single
+    // animation frame, forever, with nothing ever settling. That's a
+    // steady, permanent per-frame cost with no functional purpose on a
+    // touch device, so it's switched off there — the ring still animates
+    // fully on tap/swipe, it just doesn't self-animate while left alone.
+    const allowIdleDrift = window.matchMedia('(pointer: fine)').matches;
 
     const nodes = Array.from(nodesWrap.querySelectorAll('.obt-node')).map(el => ({
       el,
@@ -1365,6 +1413,23 @@
        smooth curve toward the new destination rather than a jump or cut,
        which is what lets jumpTo() redirect instantly and safely below. */
     function commitStep(newStep) {
+      // `idleAngle` drifts forever, unbounded, as long as the ring sits
+      // untouched (see the rAF loop below) — it's what gives the ring its
+      // slow ambient float. But targetAngle here is computed in absolute
+      // terms (90 - step * stepAngle) with no idea how much drift has
+      // piled up. Left alone, the two fall out of sync the longer the
+      // ring was left spinning: currentAngle would lerp to the "right"
+      // target, but rendering (currentAngle + idleAngle) still adds
+      // whatever the drift had wandered to on top of that, which can be
+      // anywhere around the circle — sometimes landing the just-picked
+      // node in the back instead of front-center. Folding the current
+      // drift into currentAngle and zeroing it out here means the very
+      // next frame's render is unchanged (currentAngle + idleAngle stays
+      // the same instant), but going forward the lerp is chasing a clean,
+      // drift-free target — so the picked node always settles dead
+      // center, no matter how long the ring had been idly drifting first.
+      currentAngle += idleAngle;
+      idleAngle = 0;
       step = newStep;
       sceneIndex = sceneFor(step);
       targetAngle = 90 - step * stepAngle;
@@ -1431,12 +1496,14 @@
       if (e.deltaY > 0) next(); else prev();
     }, { passive: false });
 
+    let touchStartX = null;
     let touchStartY = null;
     cosmos.addEventListener('touchstart', (e) => {
       // A tap that starts on the card or on a nav node should always
       // be free to become a normal tap/click, and never swallowed into a
       // scene-swipe just because it happened over the rotating stage.
-      if (e.target.closest('.obt-card') || e.target.closest('.obt-node')) { touchStartY = null; return; }
+      if (e.target.closest('.obt-card') || e.target.closest('.obt-node')) { touchStartX = null; touchStartY = null; return; }
+      touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     }, { passive: true });
     cosmos.addEventListener('touchmove', (e) => {
@@ -1444,12 +1511,25 @@
       e.preventDefault();
     }, { passive: false });
     cosmos.addEventListener('touchend', (e) => {
-      if (touchStartY === null) return;
+      if (touchStartX === null || touchStartY === null) return;
+      const dx = touchStartX - e.changedTouches[0].clientX;
       const dy = touchStartY - e.changedTouches[0].clientY;
+      touchStartX = null;
       touchStartY = null;
-      if (Math.abs(dy) < 36) return;
-      hideHint();
-      if (dy > 0) next(); else prev();
+      // Whichever axis moved further wins, so a swipe left/right spins the
+      // ring exactly like a swipe up/down always has — the ring doesn't
+      // care which direction the finger dragged, only how far. Horizontal
+      // is inverted relative to vertical: dragging left feels like pulling
+      // the next scene in from the right, so it maps to prev(), not next().
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (Math.abs(dx) < 36) return;
+        hideHint();
+        if (dx > 0) prev(); else next();
+      } else {
+        if (Math.abs(dy) < 36) return;
+        hideHint();
+        if (dy > 0) next(); else prev();
+      }
     });
 
     function onKeydown(e) {
@@ -1461,6 +1541,10 @@
     window.addEventListener('keydown', onKeydown);
 
     updateActiveStates();
+    // Always position everything at least once on load — the settled-skip
+    // optimization in the loop below only makes sense once nodes/dust have
+    // already been placed correctly for the first time.
+    place(currentAngle + idleAngle);
 
     if (reduceMotion) {
       currentAngle = targetAngle;
@@ -1471,9 +1555,15 @@
       function loop(t) {
         const dt = Math.min(t - lastT, 48);
         lastT = t;
-        if (!driftPaused) idleAngle += dt * 0.0022;
+        if (!driftPaused && allowIdleDrift) idleAngle += dt * 0.0022;
         currentAngle += (targetAngle - currentAngle) * 0.055;
-        place(currentAngle + idleAngle);
+        // On touch devices there's no ambient drift to chase, so once
+        // currentAngle has actually caught up to targetAngle there is
+        // nothing left to move — skip re-writing every node/dust
+        // transform this frame instead of doing it forever regardless.
+        // (Desktop always re-renders since idleAngle keeps advancing.)
+        const settled = !allowIdleDrift && Math.abs(targetAngle - currentAngle) < 0.01;
+        if (!settled) place(currentAngle + idleAngle);
         loopRafId = requestAnimationFrame(loop);
       }
       loopRafId = requestAnimationFrame(loop);
