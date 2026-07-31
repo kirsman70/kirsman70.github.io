@@ -159,13 +159,8 @@
     js/admin-shared.js sets `top` to the negative of the current scroll
     offset before adding this class, and restores the real scroll
     position via window.scrollTo when it's removed. */
-  html.kir-scroll-locked {
-    overflow: hidden !important;
-  }
-  html.kir-scroll-locked body {
-    position: fixed;
-    left: 0;
-    right: 0;
+  html.kir-scroll-locked,
+  body.kir-scroll-locked {
     overflow: hidden !important;
   }
 
@@ -1765,6 +1760,7 @@
     backdrop-filter: blur(4px); z-index: 50;
     display: flex; align-items: center; justify-content: center;
     padding: 1rem;
+    padding-right: calc(1rem + var(--kir-scrollbar-w, 0px));
     opacity: 0;
     transition: opacity 0.2s ease;
   }

@@ -134,11 +134,11 @@ const I18N = {
     page_title_settings: 'Pengaturan', page_title_program_kerja: 'Program Kerja', page_title_gallery: 'Galeri', page_title_katalog: 'Katalog',
     page_title_auth: 'Masuk atau Daftar',
     idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
-    greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.'],
-    greeting_afternoon: ['Selamat siang, {name}', 'Masih fokus, {name}?', 'Lanjut nugas, {name}?', 'Jangan lupa minum, {name}.'],
-    greeting_evening: ['Selamat sore, {name}', 'Progres aman, {name}?', 'Hampir kelar, {name}?', 'Waktunya rehat bentar, {name}.'],
-    greeting_night: ['Selamat malam, {name}', 'Belum tidur, {name}?', 'Masih lanjut aja nih, {name}?', 'Waktunya log off, {name}.'],
-    greeting_late_night: ['Ngalong nih, {name}?', 'Masih melek aja, {name}?', 'Jangan lupa tidur, {name}.', 'Udah larut malam, {name}.'],
+    greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.', 'Sudah ngopi belum, {name}?'],
+    greeting_afternoon: ['Selamat siang, {name}', 'Masih fokus, {name}?', 'Lanjut nugas, {name}?', 'Jangan lupa minum, {name}.', 'Stay hydrated, {name}!'],
+    greeting_evening: ['Selamat sore, {name}', 'Progres aman, {name}?', 'Hampir kelar, {name}?', 'Waktunya rehat bentar, {name}.', 'Satu push lagi, {name}!'],
+    greeting_night: ['Selamat malam, {name}', 'Lagi dapet zone-nya ya, {name}?', 'Malam-malam gini emang paling pas ngide, {name}!', 'Tetap semangat, {name}!', 'Having a great time tonight, {name}?'],
+    greeting_late_night: ['Jam-jam produktif nih, {name}!', 'Koding / nugas jam segini emang tiada tanding, {name}!', 'Brain in peak condition, {name}?', 'Lagi enak-enaknya fokus ya, {name}?', 'Night mode activated, {name}!'],
     activity_today: 'Hari ini pukul', activity_yesterday: 'Kemarin pukul', activity_at: 'pukul',
     deltas_label: 'Deltas', this_week: 'minggu ini', all_time: 'sepanjang waktu', deltas_points: 'deltas',
     deltas_range_week: 'Minggu ini', deltas_range_lifetime: 'Sepanjang waktu',
@@ -391,11 +391,11 @@ const I18N = {
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja (KIR) · kirsman70@gmail.com',
     nav_fitur: 'Features', nav_cabang: 'Branches',
     idx_dashboard: 'Dashboard', idx_open_dashboard: 'Open Dashboard', idx_open_dashboard_hero: 'Open your dashboard',
-    greeting_morning: ['Good morning, {name}', 'Morning {name}! Awake yet?', 'Ready to brainstorm, {name}?', 'Let\'s get to it, {name}.'],
-    greeting_afternoon: ['Good afternoon, {name}', 'Still focused, {name}?', 'Back to work, {name}?', 'Don\'t forget to drink, {name}.'],
-    greeting_evening: ['Good evening, {name}', 'Making progress, {name}?', 'Almost done, {name}?', 'Time for a quick break, {name}.'],
-    greeting_night: ['Good night, {name}', 'Not asleep yet, {name}?', 'Still at it, {name}?', 'Time to log off, {name}.'],
-    greeting_late_night: ['Burning the midnight oil, {name}?', 'Night owl, {name}?', 'Don\'t forget to sleep, {name}.', 'It\'s getting really late, {name}.'],
+    greeting_morning: ['Good morning, {name}', 'Morning {name}! Awake yet?', 'Ready to brainstorm, {name}?', 'Let\'s get to it, {name}.', 'Coffee loaded, {name}?'],
+    greeting_afternoon: ['Good afternoon, {name}', 'Still focused, {name}?', 'Back to work, {name}?', 'Don\'t forget to drink, {name}.', 'Stay hydrated, {name}!'],
+    greeting_evening: ['Good evening, {name}', 'Making progress, {name}?', 'Almost done, {name}?', 'Time for a quick break, {name}.', 'One final push, {name}!'],
+    greeting_night: ['Good evening, {name}', 'In the zone tonight, {name}?', 'Having a great time cooking up ideas, {name}?', 'Prime focus hours, {name}!', 'Night mode activated, {name}!'],
+    greeting_late_night: ['Peak brain performance hours, {name}!', 'Having a great time building, {name}?', 'Midnight brilliance unlocked, {name}!', 'The quiet hours hit different, {name}.', 'Flow state engaged, {name}!'],
     activity_today: 'Today at', activity_yesterday: 'Yesterday at', activity_at: 'at',
     deltas_label: 'Deltas', this_week: 'this week', all_time: 'all time', deltas_points: 'deltas',
     deltas_range_week: 'This Week', deltas_range_lifetime: 'Lifetime',
@@ -609,29 +609,100 @@ function kirFormatActivityTime(date) {
 }
 
 /* ----------------------------------------------------------
-   Lightweight modal show/hide, self-contained in auth.js.
-   admin-shared.js has a fuller equivalent (kirModalShow/Hide,
-   with scroll locking), but it isn't loaded on every page.
-   auth.js is, and the global settings and avatar-crop modals
-   need to work everywhere.
+   Modal show/hide and scroll locking.
    ---------------------------------------------------------- */
+let __kirModalLockCount = 0;
+
+function __kirGetScrollbarWidth() {
+  const viewportGap = window.innerWidth - document.documentElement.clientWidth;
+  if (viewportGap <= 0) return 0;
+
+  const div = document.createElement('div');
+  div.style.width = '100px';
+  div.style.height = '100px';
+  div.style.overflow = 'scroll';
+  div.style.position = 'absolute';
+  div.style.top = '-9999px';
+  document.body.appendChild(div);
+  const physicalWidth = div.offsetWidth - div.clientWidth;
+  document.body.removeChild(div);
+
+  return Math.min(viewportGap, physicalWidth);
+}
+
+function __kirFreezeSidebar(freeze) {
+  const sidebar = document.getElementById('sidebar');
+  const root = document.getElementById('sidebar-root');
+  if (!sidebar || !root) return;
+  if (freeze) {
+    const rect = sidebar.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+    sidebar.classList.add('kir-sidebar-frozen');
+    sidebar.style.position = 'fixed';
+    sidebar.style.top = `${rect.top}px`;
+    sidebar.style.left = `${rect.left}px`;
+    sidebar.style.width = `${rect.width}px`;
+    sidebar.style.height = `${rect.height}px`;
+    root.style.width = `${rect.width}px`;
+    root.style.flexShrink = '0';
+  } else {
+    sidebar.classList.remove('kir-sidebar-frozen');
+    sidebar.style.position = '';
+    sidebar.style.top = '';
+    sidebar.style.left = '';
+    sidebar.style.width = '';
+    sidebar.style.height = '';
+    root.style.width = '';
+    root.style.flexShrink = '';
+  }
+}
+
+function __kirModalLock(delta) {
+  const wasLocked = __kirModalLockCount > 0;
+  __kirModalLockCount = Math.max(0, __kirModalLockCount + delta);
+  const isLocked = __kirModalLockCount > 0;
+  if (isLocked === wasLocked) return;
+
+  if (isLocked) {
+    __kirFreezeSidebar(true);
+    const scrollbarWidth = __kirGetScrollbarWidth();
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      document.documentElement.style.setProperty('--kir-scrollbar-w', `${scrollbarWidth}px`);
+    }
+    document.documentElement.classList.add('kir-scroll-locked');
+    document.body.classList.add('kir-scroll-locked');
+  } else {
+    document.documentElement.classList.remove('kir-scroll-locked');
+    document.body.classList.remove('kir-scroll-locked');
+    document.body.style.paddingRight = '';
+    document.documentElement.style.removeProperty('--kir-scrollbar-w');
+    __kirFreezeSidebar(false);
+
+    if (typeof kirUpdateTaskbarClearance === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(() => kirUpdateTaskbarClearance()));
+    }
+  }
+}
+
 function kirLocalModalShow(el) {
   if (!el) return;
+  const wasHidden = el.classList.contains('hidden');
   el.classList.remove('hidden', 'modal-closing');
-  // I force a reflow between removing `hidden` and adding `modal-open`
-  // because otherwise the browser coalesces both class changes into a
-  // single paint and the opacity/transform transition never actually plays.
+  if (wasHidden) __kirModalLock(1);
   void el.offsetWidth;
   el.classList.add('modal-open');
 }
 
 function kirLocalModalHide(el, durationMs = 200) {
   if (!el) return;
+  const wasVisible = !el.classList.contains('hidden');
   el.classList.remove('modal-open');
   el.classList.add('modal-closing');
   setTimeout(() => {
     el.classList.add('hidden');
     el.classList.remove('modal-closing');
+    if (wasVisible) __kirModalLock(-1);
   }, durationMs);
 }
 
@@ -989,9 +1060,10 @@ function kirCloseMobileSidebar() {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-mobile-backdrop');
   if (!sidebar || sidebar.classList.contains('hidden')) return;
+  const wasOpen = sidebar.classList.contains('kir-sidebar-open');
   sidebar.classList.remove('kir-sidebar-open');
   if (backdrop) backdrop.classList.remove('visible');
-  document.documentElement.classList.remove('kir-mobile-nav-open');
+  if (wasOpen) __kirModalLock(-1);
   setTimeout(() => {
     // I only actually hide once the slide-out transition (see
     // .kir-sidebar-open in css/style.css) has had time to play because
@@ -1032,7 +1104,7 @@ function kirToggleMobileSidebar() {
   }
 
   sidebar.classList.remove('hidden');
-  document.documentElement.classList.add('kir-mobile-nav-open');
+  __kirModalLock(1);
   // I force a reflow between removing `hidden` and adding the open class
   // for the same reason as kirModalShow. Otherwise the browser can
   // coalesce both changes into one paint and the slide-in transition

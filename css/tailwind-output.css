@@ -1863,13 +1863,8 @@
       overflow-x: clip;
       overflow-y: visible;
     }
-    html.kir-scroll-locked {
-      overflow: hidden !important;
-    }
-    html.kir-scroll-locked body {
-      position: fixed;
-      left: 0;
-      right: 0;
+    html.kir-scroll-locked,
+    body.kir-scroll-locked {
       overflow: hidden !important;
     }
     .kir-sidebar-frozen {
@@ -3287,6 +3282,7 @@
       align-items: center;
       justify-content: center;
       padding: 1rem;
+      padding-right: calc(1rem + var(--kir-scrollbar-w, 0px));
       opacity: 0;
       transition: opacity 0.2s ease;
     }

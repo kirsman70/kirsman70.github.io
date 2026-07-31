@@ -90,84 +90,9 @@
    parent) gets a matching inline width so removing the sidebar from
    flex flow doesn't collapse the space it was holding out from under
    <main>. */
-function __kirFreezeSidebar(freeze) {
-  const sidebar = document.getElementById('sidebar');
-  const root = document.getElementById('sidebar-root');
-  if (!sidebar || !root) return;
-  if (freeze) {
-    const rect = sidebar.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) return; // not rendered (e.g. mobile, sidebar hidden)
-    sidebar.classList.add('kir-sidebar-frozen');
-    sidebar.style.position = 'fixed';
-    sidebar.style.top = `${rect.top}px`;
-    sidebar.style.left = `${rect.left}px`;
-    sidebar.style.width = `${rect.width}px`;
-    sidebar.style.height = `${rect.height}px`;
-    root.style.width = `${rect.width}px`;
-    root.style.flexShrink = '0';
-  } else {
-    sidebar.classList.remove('kir-sidebar-frozen');
-    sidebar.style.position = '';
-    sidebar.style.top = '';
-    sidebar.style.left = '';
-    sidebar.style.width = '';
-    sidebar.style.height = '';
-    root.style.width = '';
-    root.style.flexShrink = '';
-  }
-}
+/* __kirFreezeSidebar and __kirModalLock are now defined in js/auth.js
+   to be available site-wide for all modals and the mobile nav. */
 
-let __kirModalLockCount = 0;
-let __kirModalLockScrollY = 0;
-function __kirModalLock(delta) {
-  const wasLocked = __kirModalLockCount > 0;
-  __kirModalLockCount = Math.max(0, __kirModalLockCount + delta);
-  const isLocked = __kirModalLockCount > 0;
-  if (isLocked === wasLocked) return;
-
-  if (isLocked) {
-    // Read the real scroll position FIRST, before anything below touches
-    // the DOM. __kirFreezeSidebar(true) flips #sidebar from sticky to
-    // fixed and sets an inline width on #sidebar-root — a real layout
-    // change. Browsers continuously clamp scrollY to
-    // document.scrollHeight - clientHeight, so if that max shrinks by
-    // even a sub-pixel at the moment we're already near the bottom of the
-    // page, scrollY silently snaps down before we'd get a chance to read
-    // it. Reading it first, before the mutation, means we capture the
-    // position the page was actually at.
-    __kirModalLockScrollY = window.scrollY || window.pageYOffset || 0;
-    // Freeze the sidebar's real on-screen position next, while the page
-    // is still genuinely scrolled. Before body gets yanked into
-    // position:fixed below and getBoundingClientRect() stops being
-    // trustworthy.
-    __kirFreezeSidebar(true);
-    document.body.style.top = `-${__kirModalLockScrollY}px`;
-    document.documentElement.classList.add('kir-scroll-locked');
-  } else {
-    document.documentElement.classList.remove('kir-scroll-locked');
-    document.body.style.top = '';
-    // Explicit behavior:'instant'. html has scroll-behavior:smooth
-    // globally, and the plain (x, y) form of scrollTo still respects
-    // that, which would animate the snap-back into a visible glide.
-    window.scrollTo({ top: __kirModalLockScrollY, left: 0, behavior: 'instant' });
-    // Restore real scroll position first, then hand the sidebar back
-    // to position:sticky. It recalculates correctly once scrollY is
-    // genuine again.
-    __kirFreezeSidebar(false);
-    // If the taskbar position was changed via the Settings modal while
-    // it was open, #sidebar was pinned at its OLD (pre-change) frozen
-    // dimensions the whole time (see __kirFreezeSidebar), so the top/
-    // bottom clearance variables in js/auth.js could've been computed
-    // against stale/mid-freeze numbers. Recompute now that the sidebar
-    // is back in normal flow, once the browser's applied that. This
-    // reads the CURRENT data-sidebar-pos, so it correctly clears
-    // whichever side is no longer active as well as measuring whichever
-    // side just became active.
-    if (typeof kirUpdateTaskbarClearance === 'function') {
-      requestAnimationFrame(() => requestAnimationFrame(() => kirUpdateTaskbarClearance()));
-    }
-  }
-}
 
 const KIR_MODAL_FADE_MS = 200;
 
