@@ -288,7 +288,12 @@ const I18N = {
     admin_error_need_2_options: 'Tambahkan minimal 2 opsi jawaban.', admin_error_need_correct: 'Pilih satu jawaban yang benar terlebih dahulu.',
     admin_error_need_date: 'Pilih tanggal terlebih dahulu.', admin_cal_today: 'Hari ini', admin_cal_clear: 'Hapus',
     voyages_difficulty: 'Rating', voyages_osn_level: 'Level OSN',
-    voyages_alt_precise_title: 'Geser presisi', voyages_alt_precise_body: 'Tahan Alt sambil menyeret untuk mengatur rating dengan presisi 2 desimal, bukan hanya angka bulat.'
+    voyages_alt_precise_title: 'Geser presisi', voyages_alt_precise_body: 'Tahan Alt sambil menyeret untuk mengatur rating dengan presisi 2 desimal, bukan hanya angka bulat.',
+    redirect_evaluasi_title: 'Mengarahkan ke Form Evaluasi...',
+    redirect_evaluasi_desc: 'Anda akan diarahkan ke form evaluasi pengurus KIR secara otomatis.',
+    redirect_pendataan_title: 'Mengarahkan ke Form Pendataan...',
+    redirect_pendataan_desc: 'Anda akan diarahkan ke form pendataan anggota KIR secara otomatis.',
+    redirect_click_here: 'Click here if you\'re not redirected yet'
   },
   en: {
     chart_hint: 'Pan to explore',
@@ -540,7 +545,12 @@ const I18N = {
     admin_error_need_2_options: 'Add at least 2 answer options.', admin_error_need_correct: 'Select a correct answer first.',
     admin_error_need_date: 'Please pick a date first.', admin_cal_today: 'Today', admin_cal_clear: 'Clear',
     voyages_difficulty: 'Rating', voyages_osn_level: 'Provincial OSN Level',
-    voyages_alt_precise_title: 'Precise drag', voyages_alt_precise_body: 'Hold Alt while dragging to set the rating with 2-decimal precision instead of snapping to whole numbers.'
+    voyages_alt_precise_title: 'Precise drag', voyages_alt_precise_body: 'Hold Alt while dragging to set the rating with 2-decimal precision instead of snapping to whole numbers.',
+    redirect_evaluasi_title: 'Redirecting to Evaluation Form...',
+    redirect_evaluasi_desc: 'You will be automatically redirected to the KIR officer evaluation form.',
+    redirect_pendataan_title: 'Redirecting to Data Collection Form...',
+    redirect_pendataan_desc: 'You will be automatically redirected to the KIR member data collection form.',
+    redirect_click_here: 'Click here if you\'re not redirected yet'
   }
 };
 
@@ -1894,9 +1904,9 @@ function kirPageTitleKey() {
     'members.html': 'page_title_members',
     'voyages.html': 'page_title_voyages',
     'leaderboard.html': 'page_title_leaderboard',
-    'program-kerja.html': 'page_title_program_kerja',
+    'work-programs.html': 'page_title_program_kerja',
     'gallery.html': 'page_title_gallery',
-    'katalog.html': 'page_title_katalog',
+    'catalog.html': 'page_title_katalog',
     'auth.html': 'page_title_auth',
   };
   return titleMap[filename] || 'page_title_home';

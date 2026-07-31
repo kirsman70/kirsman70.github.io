@@ -1941,7 +1941,7 @@
 
   /* ==========================================================
     Public marketing nav. Shared by index.html, gallery.html,
-    program-kerja.html (guest-facing pages, no sidebar or app-shell).
+    work-programs.html (guest-facing pages, no sidebar or app-shell).
     ========================================================== */
   .public-nav-link {
     color: var(--text-color);

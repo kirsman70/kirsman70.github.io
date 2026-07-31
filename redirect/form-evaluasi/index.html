@@ -1,107 +1,175 @@
-<!DOCTYPE html> 
- <style>
-     /* Set height to 100% for body and html to enable the background image to cover the whole page: */
-    body, html {
-    height: 100%
-    }
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta http-equiv="refresh" content="1; URL=https://forms.gle/GpU8UNZScWMLby578" />
+<title>Form Evaluasi Pengurus KIR</title>
 
-    .bgimg {
-        /* Background image */
-        background-image: url('https://i.imgur.com/4yYS8TT.jpeg');
-        /* Full-screen */
-        height: 100%;
-        /* Center the background image */
-        background-position: center;
-        /* Scale and zoom in the image */
-        background-size: cover;
-        /* Add position: relative to enable absolutely positioned elements inside the image (place text) */
-        position: relative;
-        /* Add a white text color to all elements inside the .bgimg container */
-        color: white;
-        /* Add a font */
-        font-family: "Courier New", Courier, monospace;
-        /* Set the font-size to 25 pixels */
-        font-size: 25px;
-    }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../js/auth.js"></script>
 
-    /* Overlay gelap */
-    .bgimg::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.65); /* 0.4 = 40% gelap */
-        z-index: 0;
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    /* Pastikan isi halaman ada di atas overlay */
-    .bgimg > * {
-        position: relative;
-        z-index: 1;
-    }
+<link rel="stylesheet" href="../../css/tailwind-output.css">
+<link rel="stylesheet" href="../../css/style.css">
 
-    /* Position text in the top-left corner */
-    .topleft {
-    position: absolute;
-    top: 7px;
-    left: 16px;
-    }
+<style id="kir-page-style">
+  html, body { height: 100%; overscroll-behavior: none; }
 
-    .topleft2 {
-        font-size: 20px;
-        position: absolute;
-        top: 5;
-        left: 86px;
-    }
+  body.obt-body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
 
-    /* Position text in the bottom-left corner */
-    .bottomleft {
-    position: absolute;
-    bottom: 0;
-    left: 16px;
-    }
+  .obt-stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      radial-gradient(1.5px 1.5px at 8% 18%, rgba(255,255,255,0.55), transparent),
+      radial-gradient(1px 1px at 22% 74%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 38% 32%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 52% 86%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 68% 22%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1px 1px at 80% 66%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1.5px 1.5px at 91% 40%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 14% 52%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1.5px 1.5px at 86% 88%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 30% 92%, rgba(255,255,255,0.28), transparent),
+      radial-gradient(1px 1px at 95% 15%, rgba(255,255,255,0.3), transparent);
+    opacity: 0.65;
+  }
+  html[data-theme="light"] .obt-stars { display: none; }
 
-    /* Position text in the middle */
-    .middle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  .obt-vignette {
+    position: fixed; inset: 0; z-index: 6; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,0.55) 100%);
+  }
+  html[data-theme="light"] .obt-vignette {
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
+  }
+
+  .obt-header { flex: 0 0 auto; position: relative; z-index: 50; }
+  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
+  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
+  @media (max-width: 560px) {
+    .obt-footer-meta { white-space: normal; text-align: left; }
+  }
+
+  header.obt-header { padding-left: 1rem; padding-right: 0.875rem; }
+  @media (min-width: 640px) {
+    header.obt-header { padding-left: 2rem; padding-right: 1.625rem; }
+  }
+
+  @media (max-width: 400px) {
+    .obt-header-tagline { display: none; }
+  }
+
+  @media (min-width: 768px) {
+    .obt-header-center-nav {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .obt-footer-mini { display: none; }
+  }
+
+  .obt-cosmos {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 2rem 1.5rem;
     text-align: center;
-    }
-    
-    .logo {
-    width: 50px;       /* ukuran gambar */
-    height: 50px;      /* pastikan lebar & tinggi sama */
-    border-radius: 45%; /* bikin bulat */
-    object-fit: cover;  /* pastikan gambar tidak gepeng */
-    }
-
-    /* Style the <hr> element */
-    hr {
-    margin: auto;
-    width: 40%;
-    } 
-
+  }
 </style>
+</head>
 
-<html>
-  <head>
-		<title>Form Evaluasi Pengurus KIR</title>
-  		<meta charset="UTF-8" />
-  		<meta http-equiv="refresh" content="1; URL=https://forms.gle/GpU8UNZScWMLby578" />
-  </head>
- <div class="bgimg">
-  <div class="topleft">
-    <img src="https://avatars.githubusercontent.com/u/224996646?s=200&v=4" alt="Logo KIR SMAN 70" class="logo">
+<body class="obt-body antialiased relative">
+
+<div class="obt-stars" id="obt-stars"></div>
+<div class="glow-layer">
+  <div class="glow-blob w-[560px] h-[560px] bg-accent-20" style="top:-16rem; left:-11rem;"></div>
+  <div class="glow-blob w-[460px] h-[460px] bg-accent-10" style="bottom:-13rem; right:-9rem;"></div>
+</div>
+<div class="obt-vignette"></div>
+
+<header class="obt-header w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-4">
+  <a href="../../index.html" class="flex items-center gap-2.5 shrink-0">
+    <div class="w-9 h-9 shrink-0 flex items-center justify-center">
+      <img data-kir-brand-logo="glow" src="../../assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
+    </div>
+    <div>
+      <div class="flex items-center gap-1.5">
+        <span class="font-display font-semibold text-lg block leading-none tracking-wider text-gradient-accent">orbit.io</span>
+        <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="12" cy="12" rx="10" ry="3" transform="rotate(-25 12 12)" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="obt-header-tagline text-[10px] text-zinc-500 tracking-wide block mt-1" data-i18n="kir_long">Karya Ilmiah Remaja</span>
+    </div>
+  </a>
+  <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
+    <a href="../../index.html" class="public-nav-link" data-i18n="nav_beranda">Beranda</a>
+    <a href="../../catalog.html" class="public-nav-link" data-i18n="nav_katalog">Katalog</a>
+    <a href="../../gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
+    <a href="../../work-programs.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+  </nav>
+  <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
+    <a href="../../auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="../../auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+  </nav>
+</header>
+
+<main class="obt-cosmos" id="obt-cosmos">
+  <div class="max-w-lg">
+    <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
+      <span data-i18n="redirect_evaluasi_title">Mengarahkan ke Form Evaluasi...</span>
+    </h1>
+    <p class="text-zinc-500 text-sm sm:text-base mb-7" data-i18n="redirect_evaluasi_desc">
+      Anda akan diarahkan ke form evaluasi pengurus KIR secara otomatis.
+    </p>
+
+    <a href="https://forms.gle/GpU8UNZScWMLby578" class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-white transition">
+      <span data-i18n="redirect_click_here">Click here if you're not redirected yet</span>
+    </a>
   </div>
-  <div class="topleft2">
-    <p>KIR SMAN 70 JAKARTA</p>
-  </div>
-  <div class="middle">
-    <h1>click <a href="https://forms.gle/GpU8UNZScWMLby578">disini</a> kalo ga ke redirect.</h1>
-  </div>
-  </div>
+</main>
+
+<footer class="obt-footer-mini w-full px-4 sm:px-8 py-3 text-[11px] text-zinc-600 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <span class="obt-footer-tagline" data-i18n="idx_footer">KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.</span>
+  <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
+</footer>
+
+<script>
+  kirApplyTranslations();
+  if (kirIsLoggedIn()) {
+    const authLink = document.getElementById('nav-auth-link');
+    const ctaLink = document.getElementById('nav-cta-link');
+    authLink.remove();
+    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+    ctaLink.className = 'flex items-center justify-center shrink-0';
+    ctaLink.removeAttribute('data-i18n');
+    ctaLink.href = '../../dashboard.html';
+    kirRenderUserChrome();
+  }
+</script>
+<script src="../../js/router.js"></script>
+</body>
 </html> 

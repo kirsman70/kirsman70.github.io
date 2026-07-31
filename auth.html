@@ -290,6 +290,17 @@
   <div class="glow-blob w-[400px] h-[400px] bg-accent-10 top-1/3 -right-32"></div>
   <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 </div>
+
+<style>
+  /* Optimize glow blobs on mobile for better performance while keeping visual appeal */
+  @media (max-width: 768px) {
+    .glow-blob {
+      opacity: 0.5;
+      transform: scale(0.7);
+    }
+  }
+</style>
+
 <div class="obt-vignette"></div>
 
 <div class="auth-page-shell relative z-10">

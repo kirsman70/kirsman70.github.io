@@ -3038,12 +3038,36 @@
   let panX = 0, panY = 0, scale = 1;
   let isDragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
   let didDrag = false;
+  let rafId = null;
+  let pendingTransform = false;
 
   function applyTransform() {
-    document.getElementById('chart-canvas').style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-    const viewport = document.getElementById('chart-viewport');
-    viewport.style.backgroundPosition = `${panX}px ${panY}px`;
-    viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+    // Batch transform updates using requestAnimationFrame
+    if (rafId !== null) {
+      pendingTransform = true;
+      return;
+    }
+    
+    rafId = requestAnimationFrame(() => {
+      const canvas = document.getElementById('chart-canvas');
+      const viewport = document.getElementById('chart-viewport');
+      
+      // Use CSS custom properties for better performance
+      canvas.style.setProperty('--pan-x', `${panX}px`);
+      canvas.style.setProperty('--pan-y', `${panY}px`);
+      canvas.style.setProperty('--scale', scale);
+      canvas.style.transform = `translate3d(var(--pan-x), var(--pan-y), 0) scale(var(--scale))`;
+      
+      viewport.style.backgroundPosition = `${panX}px ${panY}px`;
+      viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+      
+      rafId = null;
+      
+      if (pendingTransform) {
+        pendingTransform = false;
+        applyTransform();
+      }
+    });
   }
 
   function chartZoom(factor) {
@@ -3155,7 +3179,8 @@
     panX = panStartX + dx;
     panY = panStartY + dy;
     applyTransform();
-    if (e.cancelable) e.preventDefault();
+    // Only prevent default if we're actually dragging to avoid blocking scroll
+    if (didDrag && e.cancelable) e.preventDefault();
   }
 
   function chartPointerUp() {
@@ -3169,9 +3194,11 @@
     window.addEventListener('mousemove', chartPointerMove);
     window.addEventListener('mouseup', chartPointerUp);
 
+    // Use passive: true for touchstart to allow browser optimizations
     viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
+    // Keep passive: false for touchmove to allow preventDefault during drag
     viewport.addEventListener('touchmove', chartPointerMove, { passive: false });
-    viewport.addEventListener('touchend', chartPointerUp);
+    viewport.addEventListener('touchend', chartPointerUp, { passive: true });
 
     viewport.addEventListener('wheel', (e) => {
       if (e.target.closest('#course-inspector') || e.target.closest('.modal-overlay')) {

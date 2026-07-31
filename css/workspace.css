@@ -1,0 +1,1052 @@
+/* ==========================================================
+   Workspace page styles - extracted from inline styles for better caching
+   ========================================================== */
+  /* Same pan/zoom viewport treatment as members.html — kept as its
+     own copy here (rather than sharing selectors) since Course will
+     likely grow its own canvas content that isn't org-chart shaped. */
+  #chart-viewport {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    background-image: radial-gradient(circle, rgba(148,163,184,0.16) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    background-position: 0px 0px;
+    /* Light inner shadow so the pannable box itself reads as slightly
+       recessed (depth on the container, not the cards inside it). */
+    box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.18), inset 0 -1px 8px rgba(0, 0, 0, 0.10);
+  }
+  #chart-viewport.dragging { cursor: grabbing; }
+
+  /* Nothing to pan/zoom until a course is actually loaded — see the
+     .no-course toggle in courseShowEmptyState()/courseShowWorkspace()
+     in js/workspace.js. Pointer/wheel handlers already bail out in
+     that state (chartPointerDown / the wheel listener in
+     initChartInteractions), this just stops the cursor from
+     advertising a drag that won't do anything. */
+  #chart-viewport.no-course { cursor: default; }
+
+  [data-theme="light"] #chart-viewport {
+    background-image: radial-gradient(circle, rgba(15,23,42,0.22) 1.3px, transparent 1.8px);
+    box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.08), inset 0 -1px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  @media (max-width: 1023.98px) {
+    #chart-viewport, [data-theme="light"] #chart-viewport {
+      box-shadow: none !important;
+    }
+  }
+
+  #chart-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .chart-ctrl-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+  }
+  .chart-ctrl-btn:hover { background: rgba(128,128,128,0.12); }
+  .chart-ctrl-btn:active { transform: scale(0.94); }
+
+  .chart-hint {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Casino-style roll on #workspace-deltas-total — see
+     animateWorkspaceDeltasRoll() below. tabular-nums keeps digit
+     width stable while the number is rolling so the pill doesn't
+     jitter horizontally; the pulse is a plain scale wobble (no
+     color change — up and down look the same) while it's mid-roll,
+     settling back to rest once it lands on the real total.
+     .deltas-rolling is only ever added when motion is allowed —
+     refreshWorkspaceDeltasHeader() skips straight to the final value
+     under reduced motion — but the reduce-motion backstop further
+     down this file still zeroes the animation out too if that ever
+     changes. */
+  #workspace-deltas-total {
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+  }
+  #workspace-deltas-total.deltas-rolling {
+    animation: deltas-roll-pulse 0.5s ease-in-out infinite;
+  }
+  @keyframes deltas-roll-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  /* Fullscreen mode: viewport fills the screen, corners go square,
+     canvas gets re-centered by chartResetView() on the resulting
+     resize event (see initChartInteractions). */
+  #chart-viewport:fullscreen {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+  }
+  #chart-viewport:-webkit-full-screen {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+  }
+
+  #chart-viewport:fullscreen .chart-hint {
+    bottom: 1rem;
+    left: 1.25rem;
+  }
+  #chart-viewport:-webkit-full-screen .chart-hint {
+    bottom: 1rem;
+    left: 1.25rem;
+  }
+
+  /* Modals get moved inside #chart-viewport for the duration of
+     fullscreen (see kirMoveModalsIntoFullscreen in the script below —
+     the Fullscreen API doesn't paint anything outside the fullscreen
+     element, so this is required, not just cosmetic). This rule is
+     the belt-and-suspenders part: #chart-viewport's backdrop-filter
+     makes it the containing block for its fixed-position descendants,
+     so pin the modal back to the full fullscreen box explicitly and
+     keep it above every other chart layer. */
+  #chart-viewport:fullscreen > .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+  }
+  #chart-viewport:-webkit-full-screen > .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+  }
+
+  /* Voyage modal, flag nodes only: same "our style" surfaces/colors
+     (var(--bg-color), var(--glass-*), same fonts, same badges/buttons)
+     but laid out like a locked-down exam shell (Safe Exam Browser)
+     instead of a floating dialog — no backdrop gap, no rounded card,
+     title+badges pinned top-left with the close button top-right, and
+     the body split into a question/answer column on the left and a
+     question-navigator column on the right, so nothing else is ever
+     visible while a flag is in progress.
+
+     Used to be scoped to fullscreen (#chart-viewport:fullscreen >
+     #cvm-modal) so *any* voyage got the exam shell once the chart went
+     fullscreen. Now it's keyed off the .cvm-flag class instead, which
+     courseOpenVoyageRunner() toggles onto #cvm-modal based on node.type
+     — so a flag gets this look everywhere (windowed or fullscreen), and
+     a regular voyage_group never does, even in fullscreen: it always
+     stays the plain floating dialog below.
+
+     .cvm-main/.cvm-nav-grid also get base (non-flag) rules right below
+     so voyage_group's layout stays exactly as it was: single column,
+     nav grid hidden, submit button right-aligned at the bottom. */
+  .cvm-main { display: flex; flex-direction: column; }
+  .cvm-nav-grid { display: none; }
+
+  #cvm-modal.cvm-flag {
+    padding: 0;
+    background: var(--bg-color);
+    backdrop-filter: none;
+  }
+  /* Reduce blur on mobile for better performance */
+  @media (max-width: 768px) {
+    #cvm-modal.cvm-flag .cvm-nav-col {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+  }
+  #cvm-modal.cvm-flag .modal-card {
+    width: 100%;
+    height: 100%;
+    max-width: none !important;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    transform: none;
+  }
+  #cvm-modal.cvm-flag .cvm-header {
+    flex: 0 0 auto;
+    /* Was 1.1rem 1.75rem: the subject/rating/type badge row that used
+       to live under the title is gone now (see the courseCardFooterHtml
+       rating/soal pills below for where that info moved instead), so
+       the header is just the title bar — tighten the vertical padding
+       to match, rather than leaving space sized for a row that no
+       longer renders. */
+    padding: 0.8rem 1.75rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+  }
+
+  /* Submit button: was accidentally losing its right-alignment wrapper
+     in an earlier pass, leaving it flush left in both voyage_group and
+     flag layouts. Always-on fix, not scoped to .cvm-flag. */
+  .cvm-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+  /* Body: question/answers on the left, question navigator on the
+     right — overriding the column-stack base rule above. */
+  #cvm-modal.cvm-flag .cvm-main {
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #cvm-modal.cvm-flag .cvm-question-col {
+    flex: 1.7 1 0%;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  /* Soal loses its own boxed card in the exam shell — just the "Soal"
+     label and the question text sitting directly on the page, sized
+     up a bit since there's no card to frame it anymore. The answer
+     controls (mc/dropdown/essay/programming + feedback) are grouped
+     in .cvm-answer-group so justify-content: space-between above can
+     push them down to the bottom of the column instead of sitting
+     right under the question. */
+  #cvm-modal.cvm-flag .cvm-soal-box {
+    background: none;
+    backdrop-filter: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  #cvm-modal.cvm-flag .cvm-soal-box #cvm-question {
+    font-size: 1rem;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-col {
+    flex: 1 1 0%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+    padding: 1.75rem;
+    border-left: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+  }
+
+  /* Question-number navigator grid: up to 5 per row, starting top-left
+     of the right column. One cell per voyage in the node's group, built
+     by renderCourseVoyageNavGrid() in the script below — .cvm-nav-cell is
+     the unanswered default, .cvm-nav-cell-active (+ Tailwind's
+     bg-accent-gradient) is the currently-open question, and
+     .cvm-nav-cell-answered marks ones already filled in so progress
+     through the set is visible without needing to click through each. */
+  #cvm-modal.cvm-flag .cvm-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    max-width: 16rem;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell {
+    aspect-ratio: 1;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgb(161, 161, 170); /* zinc-400 */
+    border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  #cvm-modal.cvm-flag .cvm-nav-cell-answered {
+    background: rgba(var(--accent-rgb), 0.12);
+    border-color: rgba(var(--accent-rgb), 0.35);
+    color: rgb(var(--accent-rgb));
+  }
+
+  /* ---------- Course graph: nodes & connectors ---------- */
+  #course-workspace {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  #chart-viewport {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #course-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .course-edge {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  /* Optional side branches (extra practice voyages, etc.) get a
+     dashed, slightly softer line so they read as "not required" next
+     to the solid main-progression curves. */
+  .course-edge-branch {
+    stroke-dasharray: 5 5;
+    opacity: 0.8;
+  }
+  .course-edge-dot {
+    fill: var(--bg-color, #0a0a0b);
+    stroke-width: 2.5;
+  }
+  /* A connector that just became visible (its node just finished, or
+     the far end just unlocked) draws itself in rather than appearing
+     instantly. pathLength="1" on the <path> normalizes its length to
+     1 unit so "1"/"0" dash values work regardless of the curve's
+     actual pixel length. */
+  .course-edge-animate {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: courseEdgeDraw 0.75s ease forwards;
+  }
+  @keyframes courseEdgeDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  .course-edge-dot-animate {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: courseDotPop 0.3s ease forwards;
+    animation-delay: 0.6s;
+  }
+  @keyframes courseDotPop {
+    from { opacity: 0; transform: scale(0.3); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .course-node {
+    position: absolute;
+    width: 15rem;
+  }
+  .course-node-inner {
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  /* Reduce blur on mobile for better performance */
+  @media (max-width: 768px) {
+    .course-node-inner {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  }
+  [data-theme="light"] .course-node-inner {
+    background: rgba(255, 255, 255, 0.65);
+  }
+  .course-node-inner:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.55);
+  }
+  .course-node.is-selected .course-node-inner {
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Title bar — a soft frosted strip, tinted by node type */
+  .course-node-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid var(--glass-border);
+    border-radius: 1rem 1rem 0 0;
+  }
+  .course-node-header svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .course-node-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+  }
+  .course-node-icon-badge svg { width: 0.75rem !important; height: 0.75rem !important; }
+  .course-node-header-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(212, 212, 216, 0.8);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .course-node-header-id {
+    font-size: 9.5px;
+    opacity: 0.4;
+    flex-shrink: 0;
+  }
+  .course-node-thumb {
+    height: 4.5rem;
+    background: rgba(128, 128, 128, 0.06);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .course-node-thumb svg { width: 1.4rem; height: 1.4rem; opacity: 0.5; }
+  .course-node-body { padding: 0.6rem 0.7rem 0.7rem; }
+  .course-node-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .course-node-type svg { width: 0.85rem; height: 0.85rem; display: block; }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ---------- Per-node-type card treatments ----------
+     Each node type gets its own footer/CTA + a couple of layout
+     tweaks, on top of the shared .course-node-inner shell. Colors
+     stay inline (computed per-node in JS) since they can vary node
+     to node (see material color progression), not just by type. */
+  .course-node-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border-top: 1px solid var(--glass-border);
+  }
+  .course-node-meta {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .course-node-meta svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+
+  /* Rating (avg. difficulty) + soal-count meta on voyage_group/flag
+     card footers — see courseVoyageNodeMetaHtml(). Same plain gray
+     .course-node-meta treatment material nodes use for their duration
+     text, just two of them side by side with a small gray divider bar
+     between — not a typed "|" character — instead of the old
+     accent-colored pill badges. */
+  .course-node-meta-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .course-node-meta-sep {
+    width: 1px;
+    height: 0.7rem;
+    flex-shrink: 0;
+    background: rgba(148, 163, 184, 0.3);
+  }
+
+  .course-node-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .course-node-action-btn svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+  .course-node-action-btn:hover { filter: brightness(1.15); }
+  .course-node-action-btn:active { transform: scale(0.95); }
+
+  /* Course — the hub node. Bigger footprint, richer header/thumb,
+     a stats row + overall progress bar instead of a single CTA. */
+  .course-card-course .course-node-header { padding: 0.55rem 0.8rem; }
+  .course-card-course .course-node-header svg { width: 1rem; height: 1rem; }
+  .course-card-course .course-node-header-label { font-size: 10.5px; }
+  .course-card-course .course-node-thumb { height: 6rem; }
+  .course-card-course .course-node-thumb svg { width: 2.1rem; height: 2.1rem; }
+  .course-card-course .course-node-body { padding-bottom: 0.4rem; }
+  .course-card-course .course-node-title { font-size: 0.95rem; }
+  .course-course-stats {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0 0.7rem 0.6rem;
+  }
+  .course-course-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(148, 163, 184, 0.9);
+  }
+  .course-course-stat svg { width: 0.8rem; height: 0.8rem; flex-shrink: 0; }
+  .course-progress-track {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+    margin: 0 0.7rem 0.75rem;
+  }
+  .course-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  /* Course — hub node gets a circular icon medallion in its header
+     (instead of a plain inline glyph) plus a heavier border, on top
+     of its already-larger footprint/stats/progress bar, so it reads
+     unmistakably as "the anchor" of the whole graph. */
+  .course-card-course .course-node-inner { border-width: 1.5px; }
+  .course-course-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .course-course-icon-badge svg { width: 0.9rem !important; height: 0.9rem !important; }
+
+  /* Module — a chapter divider, not a piece of content: no thumb, no
+     footer/CTA, just a numbered chip in a slim dashed-border strip so
+     it visually reads as organizing structure rather than a lesson to
+     open. Height/width fall out of its own content instead of
+     matching the content-node shell. See courseNodeCardHtml's
+     module-specific branch for the markup this styles. */
+  .course-card-module .course-node-inner { border-style: dashed; }
+  .course-module-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 0.85rem;
+  }
+  .course-module-number {
+    font-size: 0.85rem;
+    font-weight: 700;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+  .course-module-text { min-width: 0; flex: 1 1 auto; }
+  .course-module-text .course-node-title { -webkit-line-clamp: unset; line-clamp: unset; display: block; overflow: visible; }
+
+  /* Material — compact thumb, meta (duration) + "Buka Materi" CTA,
+     plus a page/document motif: a colored spine along the card's
+     left edge and a folded-corner triangle in the top-right of the
+     thumbnail, evoking a printed page rather than a generic tile. */
+  .course-card-material .course-node-thumb { height: 3.75rem; }
+  .course-card-material .course-node-inner { border-left-width: 3px; }
+  .course-material-foldcorner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 1.1rem 1.1rem 0;
+    border-color: transparent currentColor transparent transparent;
+    opacity: 0.4;
+  }
+
+  /* Voyages — compact thumb, meta (question count) + "Mulai Voyage"
+     CTA. Plain thumb, no extra motif needed — a voyage is just a set
+     of questions, not a group activity. */
+  .course-card-voyage .course-node-thumb { height: 3.75rem; }
+
+  /* Flag — the final exam, a reskin of voyage group's footer, but
+     with its own silhouette: a pennant notch clipped out of the
+     bottom-right corner (like a torn flag edge) plus a thin
+     checkered ribbon under the header, so it stands out as "the big
+     one" rather than a routine voyage. */
+  .course-card-flag .course-node-thumb { height: 3.75rem; }
+  .course-card-flag .course-node-inner {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  }
+  .course-flag-ribbon {
+    height: 6px;
+    background-image: repeating-linear-gradient(45deg, currentColor 0 6px, transparent 6px 12px);
+    opacity: 0.45;
+  }
+
+  /* Connector ports — little pins poking out of the top/bottom edge,
+     the same visual language as Unity's input/output sockets. */
+  .course-port {
+    position: absolute;
+    left: 50%;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-left: -0.3rem;
+    border-radius: 50%;
+    border: 2px solid var(--bg-color, #0a0a0b);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    z-index: 2;
+  }
+  .course-port-in { top: -0.3rem; }
+  .course-port-out { bottom: -0.3rem; }
+  /* Side ports for branch connections (optional nodes hanging off to
+     the left/right of their anchor) — same pin, just rotated onto the
+     card's side edge instead of top/bottom. */
+  .course-port-left { left: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+  .course-port-right { left: auto; right: -0.3rem; top: 50%; margin-left: 0; margin-top: -0.3rem; }
+
+  /* "Opsional" pill in the header of a branch node — dashed border to
+     echo the dashed connector leading into it. */
+  .course-node-optional-badge {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    border: 1px dashed;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ---------- Progress state: completed / current / locked ----------
+     Every node carries a `state` (see applyCourseProgressState) driving
+     one of these three looks. Completed/current stay fully visible —
+     just a status pill in the header — since those are exactly what
+     the person already has access to. Locked is the interesting one:
+     rather than removing the card or graying text, a full blurred
+     dark overlay sits over the whole card, hiding title/description/
+     thumb/CTA completely while the card's shape, port, and position
+     in the graph stay put — so the overall course structure still
+     reads at a glance, just without spoiling what's in it. */
+  .course-node-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .course-node-status-icon svg { width: 0.65rem; height: 0.65rem; display: block; }
+
+  .course-node.is-current .course-node-inner {
+    box-shadow: 0 0 0 2px var(--course-current-glow, rgba(255,255,255,0.4)), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  .course-node.is-locked .course-node-inner { cursor: default; }
+  .course-node.is-locked .course-node-inner:hover {
+    border-color: var(--glass-border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 26px -14px rgba(0,0,0,0.65);
+  }
+  .course-node-lock-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: rgba(6, 6, 8, 0.82);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+  /* Reduce blur on mobile for better performance */
+  @media (max-width: 768px) {
+    .course-node-lock-overlay {
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+  }
+  [data-theme="light"] .course-node-lock-overlay { background: rgba(20, 20, 24, 0.72); }
+  /* One-shot: plays once on the render where a node transitions out
+     of locked, then the element is gone by the next render (a fresh
+     card without this class). forwards keeps it invisible/inert at
+     the end instead of snapping back to opaque after the keyframe. */
+  .course-node-lock-overlay.course-lock-fading {
+    animation: courseLockFade 0.7s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes courseLockFade {
+    0% { opacity: 1; filter: blur(0); }
+    100% { opacity: 0; filter: blur(3px); }
+  }
+  .course-node-lock-overlay svg { width: 1.15rem; height: 1.15rem; opacity: 0.55; color: #e5e7eb; }
+  .course-node-lock-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  /* ---------- Inspector panel (NOT a modal — graph stays visible/interactive) ----------
+     Lives inside #chart-canvas — the same panned/zoomed coordinate
+     space as the node cards — so once positioned beside a node it
+     stays locked to it: panning/zooming moves it exactly like a node,
+     including going offscreen. See coursePositionInspector() for how
+     the side (left/right) is chosen. Styled like a node card
+     (.course-node-inner) so it reads as an extension of the node. */
+  #course-inspector {
+    position: absolute;
+    width: 280px;
+    max-height: 420px;
+    z-index: 25;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    overflow: hidden;
+    display: flex;
+    transition: opacity 0.16s ease, transform 0.2s ease, visibility 0.16s ease;
+  }
+  /* Reduce blur on mobile for better performance */
+  @media (max-width: 768px) {
+    #course-inspector {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  }
+  [data-theme="light"] #course-inspector {
+    background: rgba(255, 255, 255, 0.65);
+  }
+  #course-inspector.is-beside-right { transform: translateX(-10px); }
+  #course-inspector.is-beside-left { transform: translateX(10px); }
+  #course-inspector.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+  /* Actual scrolling happens here, one layer in from the rounded
+     border — keeps the (thin) scrollbar inset from the corners
+     instead of overlapping/poking past the outer radius. */
+  #course-inspector-body {
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+  #course-inspector-body::-webkit-scrollbar { width: 6px; }
+  #course-inspector-body::-webkit-scrollbar-track { background: transparent; }
+  #course-inspector-body::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 3px;
+  }
+  #course-inspector-body::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.55); }
+  .course-inspector-thumb {
+    height: 9rem;
+    border-radius: 0.75rem;
+    background: rgba(128, 128, 128, 0.08);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border);
+  }
+  .course-inspector-thumb svg { width: 2.25rem; height: 2.25rem; opacity: 0.5; }
+  .course-relation-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-input-bg);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+  }
+  .course-relation-chip:hover { background: rgba(128,128,128,0.1); }
+
+  /* Same copy-paste deterrent voyages.html puts on .voyage-card/
+     .modal-split-main (see style.css) — the voyage_group/flag runner's
+     soal/options text shouldn't be trivially selectable and dropped
+     into an AI chat. The member's own answer surface (mc/dropdown
+     inputs and the essay's contenteditable editor) is carved back out
+     below so answering still works normally. */
+  #cvm-modal .modal-card {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+  }
+  #cvm-modal .modal-card input,
+  #cvm-modal .modal-card textarea,
+  #cvm-modal .modal-card select,
+  #cvm-modal .modal-card .wce-surface {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+  }
+
+  /* Static diagram renderer (see kirRenderCourseDiagrams further
+     down the page) — "kir-diagram", never "kir-graph"/"kir-chart":
+     this page already uses "graph" everywhere for the unrelated
+     course node-tree (#course-graph, COURSE_GRAPH, ...), so this
+     picks a different word on purpose. These rules aren't next to
+     .kir-markdown's own rules (those live in css/style.css, shared
+     across pages) — kept here instead since every other course.html-
+     specific selector lives in this same inline block. */
+  .kir-diagram {
+    display: flex;
+    justify-content: center;
+    margin: 0.75em 0;
+  }
+  .kir-diagram-svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .kir-diagram-error {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.6em 0.9em;
+    border-radius: 0.5rem;
+    border: 1px dashed var(--glass-border);
+    color: var(--muted-500);
+    font-size: 0.85em;
+  }
+  .kir-diagram-error-icon { opacity: 0.8; }
+  /* Default theme color for shape strokes/fills/arrowheads — always
+     the page's plain foreground text color (--text-color: near-white
+     on dark theme, near-black on light theme), deliberately NOT
+     --accent-rgb. These are meant to read as a neutral textbook
+     diagram (axes, plotted lines, points) regardless of which cabang
+     accent (red/blue/purple) happens to be active, rather than
+     re-tinting itself every time the theme changes. Any shape with an
+     explicit style.color in its JSON still overrides this via an
+     inline stroke/fill attribute set in kirDiagram*() above — this
+     default only applies when a shape doesn't ask for its own color. */
+  .kir-diagram-shapes line,
+  .kir-diagram-shapes polygon,
+  .kir-diagram-shapes polyline,
+  .kir-diagram-shapes path,
+  .kir-diagram-shapes circle {
+    stroke: var(--text-color);
+  }
+  .kir-diagram-point { stroke: none; fill: var(--text-color); }
+  .kir-diagram-grid-line { stroke: var(--glass-border); stroke-width: 1; }
+  .kir-diagram-axis-line { stroke-width: 1.5; }
+  .kir-diagram-arrowhead { fill: var(--text-color); }
+  .kir-diagram-plot { stroke-linecap: round; }
+  .kir-diagram-angle-arc { stroke-width: 1.5; }
+  /* The foreignObject box each label sits in is a 1x1 dummy
+     positioned at the label's anchor point (see kirDiagramMakeLabel)
+     — this is what actually centers the label's real, natural-sized
+     content on that point regardless of how long the text turns out
+     to be. */
+  .kir-diagram-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    font-size: 12.5px;
+    line-height: 1.2;
+    color: var(--text-color);
+    pointer-events: none;
+  }
+
+  /* ==========================================================
+     "Kursus Saya" picker cards — redesigned so each enrolled
+     course reads as: title/status up top, description, then an
+     explicit "Buka Kursus Ini" button paired with its own
+     progress bar (rather than a whole-card click target and a
+     bare "X langkah selesai" line of text).
+     ========================================================== */
+  .course-picker-card {
+    position: relative;
+    border-radius: 0.9rem;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .course-picker-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.3;
+  }
+  .course-picker-card-desc {
+    font-size: 0.76rem;
+    color: var(--muted-500);
+    line-height: 1.45;
+    margin: 0.35rem 0 1rem;
+  }
+  .course-picker-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: auto;
+  }
+  .course-picker-open-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.55rem;
+    color: #fff;
+    background-image: linear-gradient(135deg, rgb(var(--accent-rgb)), rgba(var(--accent-rgb), 0.75));
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25);
+    transition: filter 0.12s ease, transform 0.12s ease;
+    white-space: nowrap;
+  }
+  .course-picker-open-btn svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+  .course-picker-open-btn:hover { filter: brightness(1.12); }
+  .course-picker-open-btn:active { transform: scale(0.96); }
+  .course-picker-open-btn:disabled {
+    background-image: none;
+    background: rgba(128, 128, 128, 0.14);
+    color: var(--muted-500);
+    box-shadow: none;
+    cursor: default;
+  }
+  .course-picker-progress { flex: 1 1 auto; min-width: 0; }
+  .course-picker-progress-track {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+  }
+  .course-picker-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: rgb(var(--accent-rgb));
+    transition: width 0.3s ease;
+  }
+  .course-picker-progress-label {
+    display: block;
+    font-size: 10.5px;
+    color: var(--muted-500);
+    margin-top: 0.35rem;
+  }
+
+  /* Per-card "⋮" menu — top-right of each course-picker-card, opens a
+     small popover with a single, permanently-red "Drop Course" action.
+     Kept visually separate from course-picker-open-btn/progress so it
+     doesn't compete with the primary "open this course" action. */
+  .course-picker-menu-wrap {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 5;
+  }
+  .course-picker-menu-btn {
+    width: 1.65rem;
+    height: 1.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: var(--muted-500);
+    background: transparent;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .course-picker-menu-btn:hover,
+  .course-picker-menu-btn.menu-active { background: rgba(128, 128, 128, 0.16); color: var(--text-color); }
+  .course-picker-menu-btn svg { width: 1.05rem; height: 1.05rem; pointer-events: none; }
+  .course-picker-menu {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    right: 0;
+    min-width: 10.5rem;
+    padding: 0.35rem;
+    border-radius: 0.65rem;
+    background: var(--bg-color);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .course-picker-menu.open { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+  .course-picker-drop-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.45rem;
+    text-align: left;
+    white-space: nowrap;
+    /* Always red — this is a destructive action, never themed to accent. */
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+    transition: background 0.12s ease;
+  }
+  .course-picker-drop-btn:hover { background: rgba(248, 113, 113, 0.22); }
+  .course-picker-drop-btn svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+
+  /* Touch optimization for canvas on mobile */
+  @media (max-width: 768px) {
+    #chart-viewport {
+      touch-action: none;
+    }
+    .course-node {
+      width: 12rem;
+    }
+    .course-node-inner {
+      transition: none;
+    }
+    /* Disable backdrop-filter entirely on mobile for maximum performance */
+    .course-node-inner,
+    #course-inspector,
+    .course-node-lock-overlay,
+    #cvm-modal.cvm-flag .cvm-nav-col {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }

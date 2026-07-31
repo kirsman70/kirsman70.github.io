@@ -662,13 +662,13 @@ function handleResizeMove(e) {
   if (resizeDir.includes('w')) {
     const proposedW = targetW - dx;
     const clampedW = Math.max(minPxW, Math.min(maxPxW, proposedW));
-    targetX = targetW - clampedW;
+    targetX = dx;
     targetW = clampedW;
   }
   if (resizeDir.includes('n')) {
     const proposedH = targetH - dy;
     const clampedH = Math.max(minPxH, Math.min(maxPxH, proposedH));
-    targetY = targetH - clampedH;
+    targetY = dy;
     targetH = clampedH;
   }
 
@@ -701,8 +701,9 @@ function handleResizeMove(e) {
     if (dist < minDistance) { minDistance = dist; bestSize = [vw, vh]; }
   });
 
-  if (resizeDir.includes('w')) newX = initialX + (initialW - bestSize[0]);
-  if (resizeDir.includes('n')) newY = initialY + (initialH - bestSize[1]);
+  // After snapping to bestSize, adjust position to keep the opposite edge anchored
+  if (resizeDir.includes('w')) newX = newX - (bestSize[0] - newW);
+  if (resizeDir.includes('n')) newY = newY - (bestSize[1] - newH);
   if (newX + bestSize[0] - 1 > cols) newX = cols - bestSize[0] + 1;
   newX = Math.max(1, newX); newY = Math.max(1, newY);
 
