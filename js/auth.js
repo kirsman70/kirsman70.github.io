@@ -59,7 +59,7 @@ const I18N = {
     admin_search_placeholder: 'Cari nama, email, atau kelas…',
     clock_label: 'Jam', dash_heatmap: 'Kontribusi', dash_heatmap_less: 'Sedikit', dash_heatmap_more: 'Banyak', dash_heatmap_active_days: 'Hari aktif',
     dash_quicklinks: 'Tautan Cepat', dash_roster_title: 'Anggota Aktif', dash_roster_online: 'Sedang aktif',
-    dash_edit: 'Edit', dash_edit_hint: 'Seret widget untuk memindahkan, tekan ikon ukuran untuk mengubah besarnya.', dash_reset: 'Kembalikan ke tampilan awal', dash_remove_widget: 'Hapus widget',
+    dash_edit: 'Edit', dash_save: 'Simpan', dash_edit_hint: 'Seret widget untuk memindahkan, tekan ikon ukuran untuk mengubah besarnya.', dash_reset: 'Kembalikan ke tampilan awal', dash_remove_widget: 'Hapus widget',
     dash_add_widget: 'Tambah Widget', dash_add_widget_desc: 'Pilih widget untuk ditambahkan ke dasbor kamu.', dash_no_more_widgets: 'Semua widget sudah ada di dasbor kamu.',
     empty_dash_tasks_title: 'Bebas tugas!', empty_dash_tasks_desc: 'Semua tugas sudah selesai atau belum ada tugas baru.',
     empty_dash_events_title: 'Belum ada acara', empty_dash_events_desc: 'Harap sabar, pengurus akan segera mengatur jadwal baru.',
@@ -321,7 +321,7 @@ const I18N = {
     admin_search_placeholder: 'Search by name, email, or class…',
     clock_label: 'Clock', dash_heatmap: 'Contributions', dash_heatmap_less: 'Less', dash_heatmap_more: 'More', dash_heatmap_active_days: 'Active days',
     dash_quicklinks: 'Quick Links', dash_roster_title: 'Active Members', dash_roster_online: 'Currently active',
-    dash_edit: 'Edit', dash_edit_hint: 'Drag widgets to move them, tap the resize icon to change their size.', dash_reset: 'Reset to default layout', dash_remove_widget: 'Remove widget',
+    dash_edit: 'Edit', dash_save: 'Save', dash_edit_hint: 'Drag widgets to move them, tap the resize icon to change their size.', dash_reset: 'Reset to default layout', dash_remove_widget: 'Remove widget',
     dash_add_widget: 'Add Widget', dash_add_widget_desc: 'Choose a widget to add to your dashboard.', dash_no_more_widgets: 'All widgets are already on your dashboard.',
     empty_dash_tasks_title: 'All caught up!', empty_dash_tasks_desc: 'All tasks are done, or there aren\u2019t any new ones yet.',
     empty_dash_events_title: 'No events yet', empty_dash_events_desc: 'Hang tight, organizers will schedule something new soon.',
@@ -898,6 +898,10 @@ async function confirmAvatarCrop() {
     if (window.supabaseClient) {
       const { data: userData } = await supabaseClient.auth.getUser();
       if (userData?.user) {
+        // The old avatar file is cleaned up automatically by a DB trigger
+        // (trg_cleanup_profile_avatar_on_update) the moment the profiles
+        // row below is updated with the new avatar_url — no client-side
+        // storage.remove() needed here anymore.
         const filePath = `avatars/${userData.user.id}-${Date.now()}.jpg`;
         const { error: uploadError } = await supabaseClient.storage
           .from('assets')
@@ -1244,7 +1248,7 @@ function kirRenderSidebarNow(activeTab) {
     <div class="mt-auto pt-6 border-t border-white/10 hidden lg:flex lg:flex-col">
       <div class="flex items-center gap-2.5 px-2 py-2">
         <label class="cursor-pointer shrink-0" data-kir="avatar-wrapper">
-          <div data-kir="avatar" class="w-8 h-8 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-xs shrink-0 hover:brightness-110 transition">A</div>
+          <div data-kir="avatar" class="w-8 h-8 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-xs shrink-0 hover:brightness-110 transition">A</div>
           <input type="file" class="hidden" accept="image/*" onchange="handleQuickAvatarUpload(event)" />
         </label>
         <div class="min-w-0">
@@ -2676,7 +2680,7 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply,
   const threadConnectorHtml = hasReplies ? `<span class="comment-thread-connector"></span>` : '';
   return `
     <div class="comment-item${isReply ? ' comment-item-reply' : ''}">
-      <div class="comment-avatar bg-accent-gradient" ${avatarStyle}>${c.avatar ? '' : initial}</div>
+      <div class="comment-avatar bg-white/10 text-zinc-300" ${avatarStyle}>${c.avatar ? '' : initial}</div>
       ${threadConnectorHtml}
       <div class="comment-body min-w-0">
         <div class="flex items-baseline gap-2 flex-wrap">
@@ -2885,6 +2889,9 @@ async function kirSubmitComment(containerId, scope, itemId) {
 }
 
 async function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId) {
+  // Any attachment on this comment is cleaned up automatically by a DB
+  // trigger (trg_cleanup_comment_attachment_on_delete) as soon as the row
+  // below is deleted — no need to fetch/remove it from storage here first.
   await supabaseClient.from('comments').delete().eq('id', commentId);
   await kirRenderCommentSection(containerId, scope, itemId);
 }

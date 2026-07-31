@@ -431,10 +431,11 @@ function updateCellSize() {
    ---------------------------------------------------------- */
 function toggleDashboardEdit() {
   editMode = !editMode;
-  document.getElementById('edit-dashboard-label').textContent = editMode
-    ? (I18N[localStorage.getItem('kir_lang') || 'id'].dash_done || 'Selesai')
+  const editLabelEl = document.getElementById('edit-dashboard-label');
+  editLabelEl.textContent = editMode
+    ? (I18N[localStorage.getItem('kir_lang') || 'id'].dash_save || 'Simpan')
     : (I18N[localStorage.getItem('kir_lang') || 'id'].dash_edit || 'Edit');
-  document.getElementById('edit-dashboard-btn').classList.toggle('shadow-glow-sm', editMode);
+  editLabelEl.setAttribute('data-i18n', editMode ? 'dash_save' : 'dash_edit');
   const footer = document.getElementById('edit-mode-footer');
   footer.classList.toggle('hidden', !editMode);
   footer.classList.toggle('flex', editMode);
@@ -630,9 +631,9 @@ function handleResizeMove(e) {
   let allowedSizes = validSizes.filter(([vw, vh]) => {
     if (!resizeDir.includes('e') && !resizeDir.includes('w') && vw !== initialW) return false;
     if (!resizeDir.includes('s') && !resizeDir.includes('n') && vh !== initialH) return false;
-    if (resizeDir.includes('w') && !resizeDir.includes('e') && vw > cols - initialX + 1) return false;
+    if (resizeDir.includes('w') && !resizeDir.includes('e') && vw > initialX + initialW - 1) return false;
     if (resizeDir.includes('e') && !resizeDir.includes('w') && vw > cols - initialX + 1) return false;
-    if (resizeDir.includes('n') && !resizeDir.includes('s') && vh > 8 - initialY + 1) return false;
+    if (resizeDir.includes('n') && !resizeDir.includes('s') && vh > initialY + initialH - 1) return false;
     if (resizeDir.includes('s') && !resizeDir.includes('n') && vh > 8 - initialY + 1) return false;
     return true;
   });
@@ -662,13 +663,13 @@ function handleResizeMove(e) {
   if (resizeDir.includes('w')) {
     const proposedW = targetW - dx;
     const clampedW = Math.max(minPxW, Math.min(maxPxW, proposedW));
-    targetX = dx;
+    targetX = targetW - clampedW; // anchor the right edge, not the raw pointer delta
     targetW = clampedW;
   }
   if (resizeDir.includes('n')) {
     const proposedH = targetH - dy;
     const clampedH = Math.max(minPxH, Math.min(maxPxH, proposedH));
-    targetY = dy;
+    targetY = targetH - clampedH; // anchor the bottom edge, not the raw pointer delta
     targetH = clampedH;
   }
 
@@ -1090,7 +1091,7 @@ function profileAvatarHtml(sizeCls) {
   if (avatar) {
     return `<div class="${sizeCls} rounded-full shrink-0 bg-cover bg-center border border-white/10" style="background-image:url('${avatar}')"></div>`;
   }
-  return `<div class="${sizeCls} rounded-full shrink-0 bg-accent-gradient flex items-center justify-center font-display font-semibold shadow-glow-sm">${initial}</div>`;
+  return `<div class="${sizeCls} rounded-full shrink-0 bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold">${initial}</div>`;
 }
 function profileCabangBadge() {
   const label = kirCabangLabel(kirCurrentUserCabang());

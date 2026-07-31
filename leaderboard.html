@@ -269,7 +269,7 @@
       <div class="podium-place ${rankClass[i]} glass${isNew ? ' podium-enter' : ''}" data-key="${key}" style="${isNew ? `animation-delay:${i * 60}ms` : ''}">
         ${rank === 1 ? `<svg class="podium-crown" width="26" height="20" viewBox="0 0 26 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 7l4.5 3.5L13 3l6.5 7.5L24 7l-2.5 10h-17L2 7z" fill="currentColor"/></svg>` : ''}
         <span class="podium-rank-icon ${badgeCls[i]}">${rankIconSvg(rank)}</span>
-        <div class="podium-avatar bg-accent-gradient"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>${m.avatar ? '' : m.name.charAt(0).toUpperCase()}</div>
+        <div class="podium-avatar bg-white/10 text-zinc-300"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>${m.avatar ? '' : m.name.charAt(0).toUpperCase()}</div>
         <p class="podium-name">${m.name}${m.isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</p>
         <p class="font-display font-bold text-lg mt-0.5">${rangeValue(m).toLocaleString('id-ID')}</p>
       </div>`;
@@ -295,7 +295,7 @@
       return `
         <div class="leaderboard-row ${m.isYou ? 'you' : ''}${isNew ? ' animate-stagger-in' : ''}" data-key="${key}" style="${isNew ? `animation-delay: ${i * 45}ms` : ''}">
           ${rankMarkup}
-          <div class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
+          <div class="w-9 h-9 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-sm shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
             ${m.avatar ? '' : m.name.charAt(0).toUpperCase()}
           </div>
           <div class="min-w-0 flex-1">

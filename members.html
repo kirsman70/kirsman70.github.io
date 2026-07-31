@@ -235,7 +235,7 @@
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
     return `
       <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg">
-        <div class="w-12 h-12 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold shrink-0 shadow-glow-sm"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
+        <div class="w-12 h-12 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
           ${m.avatar ? '' : m.name.charAt(0).toUpperCase()}
         </div>
         <div class="min-w-0 w-full">

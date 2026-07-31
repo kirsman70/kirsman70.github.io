@@ -126,12 +126,21 @@ function __kirModalLock(delta) {
   if (isLocked === wasLocked) return;
 
   if (isLocked) {
-    // Freeze the sidebar's real on-screen position first, while the
-    // page is still genuinely scrolled. Before body gets yanked into
+    // Read the real scroll position FIRST, before anything below touches
+    // the DOM. __kirFreezeSidebar(true) flips #sidebar from sticky to
+    // fixed and sets an inline width on #sidebar-root — a real layout
+    // change. Browsers continuously clamp scrollY to
+    // document.scrollHeight - clientHeight, so if that max shrinks by
+    // even a sub-pixel at the moment we're already near the bottom of the
+    // page, scrollY silently snaps down before we'd get a chance to read
+    // it. Reading it first, before the mutation, means we capture the
+    // position the page was actually at.
+    __kirModalLockScrollY = window.scrollY || window.pageYOffset || 0;
+    // Freeze the sidebar's real on-screen position next, while the page
+    // is still genuinely scrolled. Before body gets yanked into
     // position:fixed below and getBoundingClientRect() stops being
     // trustworthy.
     __kirFreezeSidebar(true);
-    __kirModalLockScrollY = window.scrollY || window.pageYOffset || 0;
     document.body.style.top = `-${__kirModalLockScrollY}px`;
     document.documentElement.classList.add('kir-scroll-locked');
   } else {
