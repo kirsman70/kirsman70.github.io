@@ -2111,6 +2111,26 @@ async function kirLogout(scope = 'local') {
   window.location.href = 'index.html';
 }
 
+async function kirRequestPasswordReset(email) {
+  if (!window.supabaseClient) return { success: false, error: 'Supabase client unavailable.' };
+  
+  // Use the exact clean path so Supabase strictly matches your Redirect URLs whitelist
+  const redirectUrl = window.location.origin + window.location.pathname; 
+  
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true, error: null };
+}
+
+async function kirUpdatePassword(newPassword) {
+  if (!window.supabaseClient) return { success: false, error: 'Supabase client unavailable.' };
+  const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+  if (error) return { success: false, error: error.message };
+  return { success: true, error: null };
+}
+
 /* ----------------------------------------------------------
    Log out of all sessions. Signs out every device or tab the
    account is currently logged into (Supabase scope: 'global'),
@@ -2159,6 +2179,23 @@ async function confirmLogoutAll() {
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT' || !session) {
     localStorage.removeItem(KIR_SESSION_KEY);
+  }
+  if (event === 'PASSWORD_RECOVERY') {
+    localStorage.setItem('kir_password_recovery_mode', 'true');
+    
+    if (window.location.pathname.indexOf('auth.html') === -1) {
+      // Safely route to auth.html regardless of Github Pages subdirectories
+      let basePath = window.location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '').replace(/\/$/, '');
+      let targetUrl = basePath + '/auth.html';
+      if (window.location.hash) targetUrl += window.location.hash;
+      window.location.href = targetUrl;
+    } else {
+      // Race condition fix: the page already loaded, so force the UI to swap immediately
+      if (typeof switchAuthPanel === 'function') {
+        document.getElementById('auth-tabs').classList.add('hidden');
+        switchAuthPanel('update', { instant: true });
+      }
+    }
   }
 });
 

@@ -557,6 +557,35 @@
         </div>
       </div>
 
+      <!-- ============= Update password card (single, wider) ============= -->
+      <div id="panel-update-password" class="auth-single-card glass hidden">
+        <h2 class="font-display text-lg font-semibold mb-1">Buat kata sandi baru</h2>
+        <p class="text-zinc-400 text-sm mb-6">Masukkan kata sandi baru untuk akun kamu.</p>
+
+        <form onsubmit="return false;" class="space-y-4">
+          <div class="auth-field-in" style="animation-delay: 60ms">
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">KATA SANDI BARU</label>
+            <div class="relative">
+              <input id="update-password" type="password" placeholder="••••••••"
+                class="glass-input w-full rounded-lg pl-3.5 pr-10 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition" onkeydown="if(event.key==='Enter') handleUpdatePassword()" />
+              <button type="button" onclick="togglePasswordVisibility('update-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition" aria-label="Lihat kata sandi">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <p id="update-password-status" class="hidden text-xs text-accent-300 -mt-1"></p>
+
+          <button type="button" onclick="handleUpdatePassword()" id="update-password-btn"
+            class="w-full mt-2 rounded-lg py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 active:brightness-95 shadow-glow-sm transition auth-field-in" style="animation-delay: 110ms">
+            Simpan Kata Sandi
+          </button>
+        </form>
+      </div>
+
     </div>
 
     <!-- ============= Forgot password modal ============= -->
@@ -730,6 +759,8 @@
       document.getElementById('auth-viewport').classList.toggle('hidden', target !== 'register');
       document.getElementById('panel-login').classList.toggle('hidden', target !== 'login');
       document.getElementById('panel-pending').classList.toggle('hidden', target !== 'pending');
+      const updatePanel = document.getElementById('panel-update-password');
+      if (updatePanel) updatePanel.classList.toggle('hidden', target !== 'update');
       activePanel = target;
       return;
     }
@@ -739,7 +770,7 @@
         showRegisterCarousel();
         activePanel = target;
       } else {
-        const panelId = target === 'login' ? 'panel-login' : 'panel-pending';
+        const panelId = target === 'login' ? 'panel-login' : (target === 'update' ? 'panel-update-password' : 'panel-pending');
         showSingleCard(panelId);
         activePanel = target;
       }
@@ -748,7 +779,8 @@
     if (activePanel === 'register') {
       collapseRegisterCarousel(enterTarget);
     } else {
-      hideSingleCard(activePanel === 'login' ? 'panel-login' : 'panel-pending', enterTarget);
+      const activeId = activePanel === 'login' ? 'panel-login' : (activePanel === 'update' ? 'panel-update-password' : 'panel-pending');
+      hideSingleCard(activeId, enterTarget);
     }
   }
 
@@ -1161,12 +1193,10 @@
     btn.textContent = 'Memproses...';
     btn.disabled = true;
 
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname + '?tab=login'
-    });
+    const result = await kirRequestPasswordReset(email);
 
-    if (error) {
-      statusEl.textContent = error.message;
+    if (!result.success) {
+      statusEl.textContent = result.error;
       statusEl.classList.remove('hidden');
       shakeEl(modalCard);
     } else {
@@ -1177,6 +1207,46 @@
 
     btn.textContent = originalText;
     btn.disabled = false;
+  }
+
+  async function handleUpdatePassword() {
+    const password = document.getElementById('update-password').value;
+    const statusEl = document.getElementById('update-password-status');
+    
+    statusEl.className = 'text-xs text-accent-300 -mt-1';
+
+    if (password.length < 8) {
+      statusEl.textContent = 'Kata sandi harus terdiri dari minimal 8 karakter.';
+      statusEl.classList.remove('hidden');
+      shakeEl(document.getElementById('panel-update-password'));
+      return;
+    }
+
+    statusEl.classList.add('hidden');
+
+    const btn = document.getElementById('update-password-btn');
+    const originalText = btn.textContent;
+    btn.textContent = 'Menyimpan...';
+    btn.disabled = true;
+
+    const result = await kirUpdatePassword(password);
+
+    if (!result.success) {
+      statusEl.textContent = result.error;
+      statusEl.classList.remove('hidden');
+      shakeEl(document.getElementById('panel-update-password'));
+      btn.textContent = originalText;
+      btn.disabled = false;
+    } else {
+      localStorage.removeItem('kir_password_recovery_mode');
+      statusEl.textContent = 'Kata sandi berhasil diperbarui.';
+      statusEl.className = 'text-xs text-emerald-400 -mt-1';
+      statusEl.classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('auth-tabs').classList.remove('hidden');
+        setAuthTab('login');
+      }, 2000);
+    }
   }
 
   function togglePasswordVisibility(inputId) {
@@ -1204,11 +1274,17 @@
   // pending screen immediately instead of flashing the carousel first.
   if (new URLSearchParams(window.location.search).get('pending') === '1') {
     showPendingPanel(undefined, true);
+  } else if (localStorage.getItem('kir_password_recovery_mode') === 'true') {
+    document.getElementById('auth-tabs').classList.add('hidden');
+    switchAuthPanel('update', { instant: true });
   }
+
   // Either way, verify against the real session, which is also what
   // instantly logs an approved visitor straight into the dashboard when
   // they open this page again with no form at all.
-  checkExistingSessionAndRoute();
+  if (localStorage.getItem('kir_password_recovery_mode') !== 'true') {
+    checkExistingSessionAndRoute();
+  }
 </script>
 <script src="js/router.js"></script>
 </body>
