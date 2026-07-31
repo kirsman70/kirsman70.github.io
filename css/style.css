@@ -551,7 +551,7 @@
 
   #sidebar.sidebar-collapsed > a:first-of-type,
   #sidebar.sidebar-collapsed > a[href="index.html"],
-  #sidebar.sidebar-collapsed .mt-auto > div {
+  #sidebar.sidebar-collapsed .mt-auto > button {
     padding-left: 0.75rem !important;
     padding-right: 0.75rem !important;
     gap: 0 !important;
@@ -578,7 +578,7 @@
   }
 
   #sidebar.sidebar-collapsed > a:first-of-type > div:first-child,
-  #sidebar.sidebar-collapsed [data-kir="avatar-wrapper"] {
+  #sidebar.sidebar-collapsed [data-kir="avatar"] {
     width: 2rem !important;
     height: 2rem !important;
     min-width: 2rem !important;
@@ -941,9 +941,9 @@
       justify-content: center !important;
     }
     html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed > a:first-of-type,
-    html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > div,
+    html[data-sidebar-pos="top"] #sidebar.sidebar-collapsed .mt-auto > button,
     html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed > a:first-of-type,
-    html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > div {
+    html[data-sidebar-pos="bottom"] #sidebar.sidebar-collapsed .mt-auto > button {
       width: auto !important;
       padding: 0 !important;
       gap: 0 !important;
@@ -2483,7 +2483,7 @@
   }
   @media (min-width: 768px) {
     .modal-card.modal-card-split {
-      max-width: 56rem;
+      max-width: 58rem;
       flex-direction: row;
     }
   }
@@ -3253,5 +3253,124 @@
     stroke-width: 6px !important;
     stroke-linecap: round !important;
     stroke-linejoin: round !important;
+  }
+
+  /* ==========================================================
+     Profile Modal (#kir-profile-modal)
+     Discord-style profile card with banner, avatar, name,
+     role/cabang, and an editable "About Me" section.
+     ========================================================== */
+
+  /* ---- Profile Main Pane ---- */
+  .kir-profile-main {
+    width: 100%;
+    padding: 0 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ---- Banner ---- */
+  .kir-profile-banner {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    border-radius: 1rem 1rem 0 0;
+    background: linear-gradient(135deg, var(--accent-600, #6366f1) 0%, var(--accent-900, #1e1b4b) 100%);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  @media (min-width: 768px) {
+    .kir-profile-modal-card.modal-card-split {
+      max-width: 50rem;
+    }
+    .kir-profile-banner {
+      border-radius: 1rem 0 0 0;
+    }
+  }
+
+  /* ---- Avatar ring — sits between banner and body ---- */
+  .kir-profile-avatar-ring {
+    position: relative;
+    z-index: 3;
+    margin-top: -50px;       /* pull up into the banner */
+    display: flex;
+    justify-content: flex-start;
+    padding-left: 1.25rem;
+    width: 100%;
+    pointer-events: none;    /* let the label inside handle clicks */
+  }
+  .kir-profile-avatar-ring label { pointer-events: auto; }
+
+  .kir-profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 9999px;
+    border: 5px solid var(--bg-color, #18181b);
+    background-color: var(--zinc-800, #27272a);
+    color: var(--zinc-300, #d4d4d8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display, 'Inter', sans-serif);
+    font-weight: 700;
+    font-size: 2.25rem;
+    flex-shrink: 0;
+    transition: filter 0.15s ease;
+    background-size: cover;
+    background-position: center;
+  }
+  .kir-profile-avatar-ring label:hover .kir-profile-avatar {
+    filter: brightness(0.85);
+  }
+
+  /* Camera overlay on avatar hover */
+  #kir-profile-modal label.cursor-pointer {
+    position: relative;
+    display: inline-block;
+  }
+  #kir-profile-modal label.cursor-pointer::after {
+    content: '';
+    position: absolute;
+    inset: 5px;  /* inset by border width */
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.5)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z'/%3E%3Ccircle cx='12' cy='13' r='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 28px 28px no-repeat;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 2;
+  }
+  #kir-profile-modal label.cursor-pointer:hover::after {
+    opacity: 1;
+  }
+
+
+  /* ---- Body (below avatar) ---- */
+  .kir-profile-body {
+    width: 100%;
+    padding: 12px 24px 24px;
+  }
+
+  /* ---- Info card (no background — contents render directly) ---- */
+  .kir-profile-info-card {
+    padding: 4px 0 8px;
+  }
+
+  /* About Me sub-section */
+  .kir-profile-about-section {
+  }
+
+  /* Stats row (Bergabung / Cabang) */
+  .kir-profile-stats-row {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    gap: 2.5rem;
+    margin-top: 16px;
+    margin-bottom: 8px;
   }
 }

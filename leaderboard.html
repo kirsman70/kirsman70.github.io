@@ -123,7 +123,7 @@
 
     ROSTER = data.map((p, i) => ({
       id: p.id ?? i,
-      name: p.name,
+      name: p.nickname || p.name,
       cabang: p.cabang,
       avatar: p.avatar_url || '',
       deltas: p.deltas_total || 0,
@@ -266,7 +266,7 @@
       const key = String(m.id);
       const isNew = !oldKeys.has(key);
       return `
-      <div class="podium-place ${rankClass[i]} glass${isNew ? ' podium-enter' : ''}" data-key="${key}" style="${isNew ? `animation-delay:${i * 60}ms` : ''}">
+      <div class="podium-place ${rankClass[i]} glass${isNew ? ' podium-enter' : ''} cursor-pointer hover:bg-white/5 transition" onclick="kirOpenProfileModal('${m.id}')" data-key="${key}" style="${isNew ? `animation-delay:${i * 60}ms` : ''}">
         ${rank === 1 ? `<svg class="podium-crown" width="26" height="20" viewBox="0 0 26 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 7l4.5 3.5L13 3l6.5 7.5L24 7l-2.5 10h-17L2 7z" fill="currentColor"/></svg>` : ''}
         <span class="podium-rank-icon ${badgeCls[i]}">${rankIconSvg(rank)}</span>
         <div class="podium-avatar bg-white/10 text-zinc-300"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>${m.avatar ? '' : m.name.charAt(0).toUpperCase()}</div>
@@ -293,7 +293,7 @@
         ? `<span class="leaderboard-rank-num rank-badge-${rank}" style="width:1.6rem;height:1.6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;">${rank}</span>`
         : `<span class="leaderboard-rank-num">${rank}</span>`;
       return `
-        <div class="leaderboard-row ${m.isYou ? 'you' : ''}${isNew ? ' animate-stagger-in' : ''}" data-key="${key}" style="${isNew ? `animation-delay: ${i * 45}ms` : ''}">
+        <div class="leaderboard-row ${m.isYou ? 'you' : ''}${isNew ? ' animate-stagger-in' : ''} cursor-pointer hover:bg-white/5 transition" onclick="kirOpenProfileModal('${m.id}')" data-key="${key}" style="${isNew ? `animation-delay: ${i * 45}ms` : ''}">
           ${rankMarkup}
           <div class="w-9 h-9 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-sm shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
             ${m.avatar ? '' : m.name.charAt(0).toUpperCase()}

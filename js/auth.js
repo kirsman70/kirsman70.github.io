@@ -20,6 +20,7 @@ window.supabaseClient = supabaseClient;
 
 const KIR_SESSION_KEY  = 'kir_session';
 const KIR_NAME_KEY     = 'kir_user_name';
+const KIR_NICKNAME_KEY = 'kir_user_nickname';
 const KIR_ROLE_KEY     = 'kir_user_role';
 const KIR_CABANG_KEY   = 'kir_user_cabang';   // 'robotik' | 'sains' | 'both'
 const KIR_AVATAR_KEY   = 'kir_user_avatar';   // base64 data URL, or absent
@@ -31,6 +32,8 @@ const KIR_LANG_KEY     = 'kir_lang';          // 'id' | 'en'
 const KIR_SIDEBAR_COLLAPSED_KEY = 'kir_sidebar_collapsed'; // 'true' | 'false', persists across page loads
 const KIR_SIDEBAR_POSITION_KEY = 'kir_sidebar_position'; // 'left' | 'right' | 'top' | 'bottom', default 'left'
 const KIR_SIDEBAR_NAV_SCROLL_KEY = 'kir_sidebar_nav_scroll'; // JSON {top, left}, sessionStorage, see kirSaveNavScrollPos()
+const KIR_ABOUT_ME_KEY = 'kir_user_about_me';   // free-form text, stored locally + synced to profiles.about_me
+const KIR_BANNER_KEY   = 'kir_user_banner';      // CSS gradient string or data URL for the profile banner
 
 const I18N = {
   id: { 
@@ -38,6 +41,9 @@ const I18N = {
     tugas: 'Tugas', resources: 'Resources', course: 'Kursus', jadwal: 'Jadwal', anggota: 'Anggota', pengaturan: 'Pengaturan', beranda: 'Beranda', keluar: 'Keluar',
     robotik: 'Robotik', sains: 'Sains', both: 'Robotik & Sains',
     menu: 'Menu', akun: 'Akun', kir_long: 'Karya Ilmiah Remaja',
+    profile_nickname_placeholder: 'Atur nama panggilan...', profile_about_empty: 'Klik untuk menambahkan sesuatu tentang diri kamu…',
+    profile_about_placeholder: 'Ceritakan sesuatu tentang diri kamu…', profile_joined: 'Bergabung', profile_branch: 'Cabang',
+    profile_role: 'Peran', profile_delta: 'Delta', profile_change_picture: 'Ganti foto profil',
     settings_desc: 'Kelola profil, cabang, dan tampilan akun kamu.',
     active_branch: 'Cabang Aktif', branch_desc: 'Cabang terdaftar kamu saat ini.',
     appearance_lang: 'Tampilan & Bahasa', change_lang: 'Ubah Bahasa',
@@ -146,6 +152,9 @@ const I18N = {
     streak_label: 'Beruntun', streak_days: 'hari beruntun',
     galeri: 'Galeri', program_kerja: 'Program Kerja',
     nav_beranda: 'Beranda', nav_galeri: 'Galeri', nav_proker: 'Program Kerja', nav_katalog: 'Katalog',
+    profile_nickname_placeholder: 'Set a nickname...', profile_about_empty: 'Click to add something about yourself…',
+    profile_about_placeholder: 'Tell people something about yourself…', profile_joined: 'Joined', profile_branch: 'Branch',
+    profile_role: 'Role', profile_delta: 'Delta', profile_change_picture: 'Change profile picture',
     gallery_title: 'Galeri', gallery_desc: 'Dokumentasi kegiatan ekstrakurikuler, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
     gallery_up: '.. Kembali', gallery_empty: 'Folder ini belum berisi file. Foto akan segera diunggah.',
     gallery_items_one: 'item', gallery_items_other: 'item',
@@ -990,6 +999,18 @@ async function confirmAvatarCrop() {
     if (!avatarUrl) avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
 
     kirSetUserAvatar(avatarUrl);
+    // Invalidate cached banner colour so next modal open re-derives it
+    __kirCachedBannerAvatarSrc = null;
+    __kirCachedBannerColor = null;
+    // If the profile modal is currently showing, live-update its banner
+    const bannerEl = document.getElementById('kir-profile-banner');
+    if (bannerEl && !document.getElementById('kir-profile-modal')?.classList.contains('hidden')) {
+      kirExtractDominantColor(avatarUrl).then(rgb => {
+        __kirCachedBannerColor = rgb;
+        __kirCachedBannerAvatarSrc = avatarUrl;
+        kirApplyBannerFromColor(bannerEl, rgb);
+      });
+    }
     kirRenderUserChrome();
     kirLocalModalHide(document.getElementById('avatar-crop-modal'));
     kirCropState = null;
@@ -1318,16 +1339,13 @@ function kirRenderSidebarNow(activeTab) {
     </nav>
     </div>
     <div class="mt-auto pt-6 border-t border-white/10 hidden lg:flex lg:flex-col">
-      <div class="flex items-center gap-2.5 px-2 py-2">
-        <label class="cursor-pointer shrink-0" data-kir="avatar-wrapper">
-          <div data-kir="avatar" class="w-8 h-8 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-xs shrink-0 hover:brightness-110 transition">A</div>
-          <input type="file" class="hidden" accept="image/*" onchange="handleQuickAvatarUpload(event)" />
-        </label>
+      <button onclick="kirOpenProfileModal()" class="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white/5 transition w-full text-left cursor-pointer group">
+        <div data-kir="avatar" class="w-8 h-8 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-xs shrink-0 group-hover:brightness-110 transition">A</div>
         <div class="min-w-0">
           <p data-kir="name" class="text-sm font-medium truncate">Anggota</p>
           <p id="sidebar-cabang-badge" class="text-[11px] text-zinc-500">Robotik</p>
         </div>
-      </div>
+      </button>
     </div>
   </aside>
   `;
@@ -1463,7 +1481,7 @@ function kirRenderSidebarNow(activeTab) {
   `;
 
   const avatarCropModalHtml = `
-  <div id="avatar-crop-modal" class="modal-overlay hidden" onclick="if(event.target===this) cancelAvatarCrop()">
+  <div id="avatar-crop-modal" class="modal-overlay hidden" style="z-index: 9999;" onclick="if(event.target===this) cancelAvatarCrop()">
     <div class="modal-card p-6" style="max-width:22rem;">
       <div class="flex items-center justify-between mb-5">
         <h2 class="font-display text-lg font-semibold" data-i18n="crop_title">Sesuaikan Foto</h2>
@@ -1507,7 +1525,94 @@ function kirRenderSidebarNow(activeTab) {
   </div>
   `;
 
-  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + resetVoyagesModalHtml + logoutAllModalHtml + avatarCropModalHtml;
+  const profileModalHtml = `
+  <div id="kir-profile-modal" class="modal-overlay hidden" onclick="if(event.target===this) kirCloseProfileModal()">
+    <div class="modal-card modal-card-split p-0 kir-profile-modal-card">
+      <div class="modal-split-main kir-profile-main flex flex-col overflow-hidden">
+        <div class="w-full flex-1 overflow-y-auto custom-scrollbar relative">
+          <!-- Banner -->
+          <div id="kir-profile-banner" class="kir-profile-banner">
+            <button onclick="kirCloseProfileModal()" class="absolute top-3 right-3 text-white/70 hover:text-white p-1 rounded-full bg-black/20 hover:bg-black/40 transition" style="line-height:0;z-index:2;">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <!-- Avatar (centered, overlapping banner/card boundary) -->
+          <div class="kir-profile-avatar-ring">
+            <label class="cursor-pointer inline-block group" title="Change profile picture" data-i18n-title="profile_change_picture">
+              <div id="kir-profile-modal-avatar" data-kir="profile-modal-avatar" class="kir-profile-avatar">A</div>
+              <input type="file" class="hidden" accept="image/*" onchange="handleQuickAvatarUpload(event)" />
+            </label>
+          </div>
+          <!-- Profile info card -->
+          <div class="kir-profile-body pb-4">
+            <div class="kir-profile-info-card">
+              <div class="kir-profile-name-section mb-0.5 flex flex-col items-start">
+                <div id="kir-profile-name-view" onclick="kirToggleProfileNameEdit()" class="cursor-pointer rounded-lg px-1.5 py-1 ml-[1px] hover:bg-white/5 transition inline-block">
+                  <h2 id="kir-profile-modal-name" class="font-display text-lg font-semibold leading-tight">Anggota</h2>
+                </div>
+                <div id="kir-profile-name-edit" class="hidden relative ml-[1px]">
+                  <input type="text" id="kir-profile-name-input" 
+                    class="glass-input font-display text-lg font-semibold leading-tight rounded-lg px-1.5 py-1 text-zinc-100 placeholder-zinc-500 transition" 
+                    style="field-sizing: content; min-width: 10rem;"
+                    placeholder="Set a nickname..." maxlength="30" data-i18n-placeholder="profile_nickname_placeholder" />
+                </div>
+              </div>
+              <p id="kir-profile-modal-username" class="text-xs text-zinc-500 mt-0.5 mb-3 ml-[7px]"></p>
+              <!-- About Me -->
+              <div class="kir-profile-about-section">
+                <div id="kir-profile-about-view" onclick="kirToggleProfileAboutEdit()" class="kir-profile-about-view text-sm text-zinc-300 min-h-[2rem] cursor-pointer rounded-lg px-2 py-1.5 -mx-2 hover:bg-white/5 transition group">
+                  <div id="kir-profile-about-text" class="break-words leading-relaxed pl-[7px] kir-markdown"></div>
+                  <p id="kir-profile-about-empty" class="text-zinc-600 italic hidden pl-[7px]" data-i18n="profile_about_empty">Click to add something about yourself…</p>
+                </div>
+                <div id="kir-profile-about-edit" class="hidden">
+                  <textarea id="kir-profile-about-input"
+                    class="glass-input w-full rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 resize-none transition"
+                    rows="3" maxlength="200"
+                    placeholder="Tell people something about yourself…" data-i18n-placeholder="profile_about_placeholder"></textarea>
+                  <div class="flex items-center justify-between mt-2">
+                    <span id="kir-profile-about-counter" class="text-[11px] text-zinc-600">0/200</span>
+                    <div class="flex gap-2">
+                      <button onclick="kirCancelProfileAboutEdit()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition">Cancel</button>
+                      <button onclick="kirSaveProfileAbout()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-accent-gradient hover:brightness-110 transition">Save</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Stats row (Fixed to bottom) -->
+        <div class="kir-profile-stats-row w-full shrink-0 border-t border-white/5 pt-5 pb-6 mt-auto mb-0 bg-zinc-900/50 backdrop-blur-md relative z-10 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_joined">Bergabung</p>
+            <p id="kir-profile-modal-createdat" class="text-sm text-zinc-200 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_branch">Cabang</p>
+            <p id="kir-profile-modal-cabang" class="text-sm text-zinc-200 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_role">Peran</p>
+            <p id="kir-profile-modal-role" class="text-sm text-zinc-200 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_delta">Delta</p>
+            <div class="flex items-center justify-center gap-1 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+              <p id="kir-profile-modal-deltas" class="text-sm font-semibold font-display text-zinc-200">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-split-comments flex-col">
+        <div id="profile-comments-root" class="comment-panel-inner flex-1 overflow-hidden"></div>
+      </div>
+    </div>
+  </div>
+  `;
+
+  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + resetVoyagesModalHtml + logoutAllModalHtml + avatarCropModalHtml + profileModalHtml;
   kirApplyTranslations();
   kirApplyBrandAssets();
   
@@ -2061,6 +2166,10 @@ function kirTranslateElements(root) {
     const key = el.getAttribute('data-i18n-placeholder');
     if (I18N[lang][key]) el.setAttribute('placeholder', I18N[lang][key]);
   });
+  root.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if (I18N[lang][key]) el.setAttribute('title', I18N[lang][key]);
+  });
   return lang;
 }
 
@@ -2372,6 +2481,11 @@ async function kirRefreshCurrentProfile() {
     kirApplyBrandAssets();
     if (profile.avatar_url) localStorage.setItem(KIR_AVATAR_KEY, profile.avatar_url);
     else localStorage.removeItem(KIR_AVATAR_KEY);
+    if (profile.about_me != null) localStorage.setItem(KIR_ABOUT_ME_KEY, profile.about_me);
+    if (profile.nickname) localStorage.setItem(KIR_NICKNAME_KEY, profile.nickname);
+    else localStorage.removeItem(KIR_NICKNAME_KEY);
+    if (profile.kelas) localStorage.setItem('kir_user_kelas', profile.kelas);
+    else localStorage.removeItem('kir_user_kelas');
     
     if (profile.dashboard_layout) localStorage.setItem('kir_dashboard_layout_v1', JSON.stringify(profile.dashboard_layout));
     if (profile.dashboard_note) localStorage.setItem('kir_dashboard_note', profile.dashboard_note);
@@ -2420,8 +2534,31 @@ function kirSetUserName(name) {
   localStorage.setItem(KIR_NAME_KEY, name || 'Anggota');
 }
 
+function kirCurrentUserNickname() {
+  return localStorage.getItem(KIR_NICKNAME_KEY) || null;
+}
+
+function kirSetUserNickname(nick) {
+  const trimmed = (nick || '').trim();
+  if (!trimmed) {
+    localStorage.removeItem(KIR_NICKNAME_KEY);
+  } else {
+    localStorage.setItem(KIR_NICKNAME_KEY, trimmed);
+  }
+  // Sync to Supabase profiles.nickname if available
+  if (window.supabaseClient) {
+    supabaseClient.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) supabaseClient.from('profiles').update({ nickname: trimmed || null }).eq('id', userData.user.id).then();
+    });
+  }
+}
+
 function kirCurrentUserRole() {
   return localStorage.getItem(KIR_ROLE_KEY) || 'Anggota';
+}
+
+function kirCurrentUserKelas() {
+  return localStorage.getItem('kir_user_kelas') || '';
 }
 
 function kirIsAdmin() {
@@ -2461,6 +2598,22 @@ function kirSetUserAvatar(dataUrl) {
 
 function kirClearUserAvatar() {
   localStorage.removeItem(KIR_AVATAR_KEY);
+}
+
+function kirCurrentUserAboutMe() {
+  return localStorage.getItem(KIR_ABOUT_ME_KEY) || '';
+}
+
+function kirSetUserAboutMe(text) {
+  const trimmed = (text || '').trim().slice(0, 200);
+  if (trimmed) localStorage.setItem(KIR_ABOUT_ME_KEY, trimmed);
+  else localStorage.removeItem(KIR_ABOUT_ME_KEY);
+  // Sync to Supabase profiles.about_me if available
+  if (window.supabaseClient) {
+    supabaseClient.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) supabaseClient.from('profiles').update({ about_me: trimmed || null }).eq('id', userData.user.id).then();
+    });
+  }
 }
 
 /* ----------------------------------------------------------
@@ -2984,9 +3137,9 @@ function kirRenderUserChrome() {
   document.querySelectorAll('[data-kir="greeting"]').forEach(el => {
     el.textContent = kirTimeGreeting(name);
   });
-  document.querySelectorAll('[data-kir="avatar"]').forEach(el => {
-    if (avatar) {
-      el.style.backgroundImage = `url("${avatar}")`;
+  const applyAvatar = (el, avatarUrl) => {
+    if (avatarUrl) {
+      el.style.backgroundImage = `url("${avatarUrl}")`;
       el.style.backgroundSize = 'cover';
       el.style.backgroundPosition = 'center';
       el.textContent = '';
@@ -2994,7 +3147,402 @@ function kirRenderUserChrome() {
       el.style.backgroundImage = '';
       el.textContent = name.charAt(0).toUpperCase();
     }
+  };
+  document.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
+  // Also refresh the profile modal avatar if it's open
+  const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
+  if (modalAvatar) applyAvatar(modalAvatar, avatar);
+}
+
+/* ----------------------------------------------------------
+   Profile Modal — Discord-style profile card accessible from
+   clicking the sidebar user card. Shows banner, avatar
+   (clickable to change), name, role, cabang, and about me.
+
+   The banner auto-derives its colour from the dominant tone in
+   the user's profile picture using a tiny canvas sample. If
+   there's no avatar, it falls back to the accent gradient.
+   ---------------------------------------------------------- */
+
+/* Cached banner colour so we don't re-sample on every open.
+   Invalidated whenever the avatar changes (see confirmAvatarCrop). */
+let __kirCachedBannerColor = null;
+let __kirCachedBannerAvatarSrc = null;
+
+function kirExtractDominantColor(imgSrc) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const size = 8; // sample at a tiny resolution for speed
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+
+        // Weighted average — skip very dark and very bright pixels,
+        // which are usually background or specular highlights.
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const pr = data[i], pg = data[i + 1], pb = data[i + 2], pa = data[i + 3];
+          if (pa < 128) continue;        // transparent
+          const luma = pr * 0.299 + pg * 0.587 + pb * 0.114;
+          if (luma < 15 || luma > 240) continue; // too dark / too bright
+          r += pr; g += pg; b += pb; count++;
+        }
+        if (count === 0) { resolve(null); return; }
+        r = Math.round(r / count);
+        g = Math.round(g / count);
+        b = Math.round(b / count);
+        resolve({ r, g, b });
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imgSrc;
   });
+}
+
+function kirApplyBannerFromColor(bannerEl, rgb) {
+  if (!bannerEl) return;
+  if (rgb) {
+    const { r, g, b } = rgb;
+    bannerEl.style.background = `rgb(${r},${g},${b})`;
+  } else {
+    // Fallback to neutral solid color
+    bannerEl.style.background = 'var(--zinc-700, #3f3f46)';
+  }
+}
+
+async function kirOpenProfileModal(targetUserId = null) {
+  const modal = document.getElementById('kir-profile-modal');
+  if (!modal) return;
+
+  const { data: userData } = await supabaseClient.auth.getUser();
+  const currentUserId = userData?.user?.id;
+  const isSelf = !targetUserId || targetUserId === currentUserId;
+  const actualTargetId = targetUserId || currentUserId;
+
+  let name, nickname, avatar, cabang, role, about, kelas, deltasTotal, createdAt;
+
+  if (isSelf) {
+    name   = kirCurrentUserName();
+    nickname = kirCurrentUserNickname();
+    avatar = kirCurrentUserAvatar();
+    cabang = kirCurrentUserCabang();
+    role   = kirCurrentUserRole();
+    about  = kirCurrentUserAboutMe();
+    kelas  = kirCurrentUserKelas();
+    deltasTotal = kirDeltasTotal();
+    createdAt = userData?.user?.created_at;
+  } else {
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', actualTargetId)
+      .single();
+    
+    if (!profile) return;
+    
+    name = profile.name;
+    nickname = profile.nickname;
+    avatar = profile.avatar_url;
+    cabang = profile.cabang;
+    role = profile.role;
+    about = profile.about_me;
+    kelas = profile.kelas;
+    deltasTotal = profile.deltas_total || 0;
+    createdAt = profile.created_at || profile.joined_at || null;
+  }
+
+  // Populate fields
+  const nameEl = document.getElementById('kir-profile-modal-name');
+  if (nameEl) nameEl.textContent = nickname || name;
+  const usernameEl = document.getElementById('kir-profile-modal-username');
+  if (usernameEl) {
+    usernameEl.textContent = kelas ? `${name} ${kelas}` : name;
+  }
+  const cabangEl = document.getElementById('kir-profile-modal-cabang');
+  if (cabangEl) cabangEl.textContent = kirCabangLabel(cabang);
+  const roleEl = document.getElementById('kir-profile-modal-role');
+  if (roleEl) {
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    let displayRole = role || 'Anggota';
+    
+    if (displayRole === 'Ketua Ekstrakurikuler') {
+      displayRole = lang === 'en' ? 'President' : 'Ketua';
+    } else if (displayRole === 'Wakil Ketua') {
+      displayRole = I18N[lang]?.role_wakil || displayRole;
+    } else if (displayRole === 'Bendahara') {
+      displayRole = I18N[lang]?.role_bendahara || displayRole;
+    } else if (displayRole === 'Anggota') {
+      displayRole = I18N[lang]?.role_anggota || displayRole;
+    }
+    
+    roleEl.textContent = displayRole;
+  }
+  const deltasEl = document.getElementById('kir-profile-modal-deltas');
+  if (deltasEl) {
+    const formatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+    deltasEl.textContent = formatter.format(deltasTotal || 0);
+  }
+
+  // Handle Edit/Readonly UI states
+  const nameView = document.getElementById('kir-profile-name-view');
+  const aboutView = document.getElementById('kir-profile-about-view');
+  const avatarLabel = document.querySelector('#kir-profile-modal .kir-profile-avatar-ring label');
+  const avatarInput = document.querySelector('#kir-profile-modal .kir-profile-avatar-ring input');
+
+  if (isSelf) {
+    if (nameView) {
+      nameView.setAttribute('onclick', 'kirToggleProfileNameEdit()');
+      nameView.classList.add('cursor-pointer', 'hover:bg-white/5');
+      nameView.title = "Edit nickname";
+    }
+    if (aboutView) {
+      aboutView.setAttribute('onclick', 'kirToggleProfileAboutEdit()');
+      aboutView.classList.add('cursor-pointer', 'hover:bg-white/5');
+      aboutView.title = "Edit about me";
+    }
+    if (avatarLabel) {
+      avatarLabel.classList.add('cursor-pointer');
+      avatarLabel.title = "Change profile picture";
+    }
+    if (avatarInput) avatarInput.disabled = false;
+  } else {
+    if (nameView) {
+      nameView.removeAttribute('onclick');
+      nameView.classList.remove('cursor-pointer', 'hover:bg-white/5');
+      nameView.title = "";
+    }
+    if (aboutView) {
+      aboutView.removeAttribute('onclick');
+      aboutView.classList.remove('cursor-pointer', 'hover:bg-white/5');
+      aboutView.title = "";
+    }
+    if (avatarLabel) {
+      avatarLabel.classList.remove('cursor-pointer');
+      avatarLabel.title = "";
+    }
+    if (avatarInput) avatarInput.disabled = true;
+  }
+
+  // Apply avatar to modal avatar element
+  const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
+  if (modalAvatar) {
+    if (avatar) {
+      modalAvatar.style.backgroundImage = `url("${avatar}")`;
+      modalAvatar.style.backgroundSize = 'cover';
+      modalAvatar.style.backgroundPosition = 'center';
+      modalAvatar.textContent = '';
+    } else {
+      modalAvatar.style.backgroundImage = '';
+      modalAvatar.textContent = name.charAt(0).toUpperCase();
+    }
+  }
+
+  // Apply banner — dominant-colour extraction from avatar
+  const bannerEl = document.getElementById('kir-profile-banner');
+  const customBanner = localStorage.getItem(KIR_BANNER_KEY);
+  if (customBanner) {
+    // User has an explicit custom banner override
+    if (bannerEl) bannerEl.style.background = customBanner;
+  } else if (avatar) {
+    // Derive from avatar: use cache if the source hasn't changed
+    if (__kirCachedBannerAvatarSrc === avatar && __kirCachedBannerColor !== undefined) {
+      kirApplyBannerFromColor(bannerEl, __kirCachedBannerColor);
+    } else {
+      // Apply accent fallback instantly so the modal doesn't look blank
+      kirApplyBannerFromColor(bannerEl, null);
+      // Then async-extract and re-paint
+      kirExtractDominantColor(avatar).then(rgb => {
+        __kirCachedBannerColor = rgb;
+        __kirCachedBannerAvatarSrc = avatar;
+        kirApplyBannerFromColor(bannerEl, rgb);
+      });
+    }
+  } else {
+    kirApplyBannerFromColor(bannerEl, null);
+  }
+
+  // Populate about me view
+  kirRefreshProfileAboutView(about);
+
+  // Populate created-at
+  const createdAtEl = document.getElementById('kir-profile-modal-createdat');
+  if (createdAtEl) {
+    if (createdAt) {
+      const d = new Date(createdAt);
+      createdAtEl.textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    } else {
+      createdAtEl.textContent = '—';
+    }
+  }
+
+  if (actualTargetId) {
+    kirRenderCommentSection('profile-comments-root', 'profile', actualTargetId);
+  }
+
+  kirLocalModalShow(modal);
+}
+
+function kirCloseProfileModal() {
+  kirCancelProfileAboutEdit();
+  kirCancelProfileNameEdit();
+  kirLocalModalHide(document.getElementById('kir-profile-modal'));
+}
+
+let _kirMarkdownDependenciesLoading = false;
+
+function kirRefreshProfileAboutView(text) {
+  const textEl  = document.getElementById('kir-profile-about-text');
+  const emptyEl = document.getElementById('kir-profile-about-empty');
+  if (!textEl || !emptyEl) return;
+  const val = (text || '').trim();
+  if (val) {
+    if (typeof kirRenderMarkdownWithMath === 'function' && window.marked && window.DOMPurify) {
+      textEl.innerHTML = kirRenderMarkdownWithMath(val);
+    } else {
+      textEl.textContent = val;
+      
+      if (!_kirMarkdownDependenciesLoading) {
+        _kirMarkdownDependenciesLoading = true;
+        const loadJs = (src) => new Promise(r => {
+          if (document.querySelector(`script[src="${src}"]`)) return r();
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = r;
+          document.head.appendChild(s);
+        });
+        
+        Promise.all([
+          loadJs('https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js'),
+          loadJs('https://cdn.jsdelivr.net/npm/marked/marked.min.js'),
+          loadJs('js/admin-shared.js')
+        ]).then(() => {
+          if (typeof kirRenderMarkdownWithMath === 'function' && window.marked) {
+            marked.setOptions({ gfm: true, breaks: true });
+            textEl.innerHTML = kirRenderMarkdownWithMath(val);
+          }
+        }).catch(err => console.error("Failed to load markdown", err));
+      }
+    }
+    textEl.classList.remove('hidden');
+    emptyEl.classList.add('hidden');
+  } else {
+    textEl.textContent = '';
+    textEl.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
+  }
+}
+
+function kirToggleProfileAboutEdit() {
+  const viewEl  = document.getElementById('kir-profile-about-view');
+  const editEl  = document.getElementById('kir-profile-about-edit');
+  const editBtn = document.getElementById('kir-profile-edit-btn');
+  const input   = document.getElementById('kir-profile-about-input');
+  if (!viewEl || !editEl || !input) return;
+  const isEditing = !editEl.classList.contains('hidden');
+  if (isEditing) {
+    kirCancelProfileAboutEdit();
+  } else {
+    input.value = kirCurrentUserAboutMe();
+    kirUpdateAboutMeCounter();
+    viewEl.classList.add('hidden');
+    editEl.classList.remove('hidden');
+    if (editBtn) editBtn.textContent = 'Cancel';
+    input.focus();
+  }
+}
+
+function kirCancelProfileAboutEdit() {
+  const viewEl  = document.getElementById('kir-profile-about-view');
+  const editEl  = document.getElementById('kir-profile-about-edit');
+  const editBtn = document.getElementById('kir-profile-edit-btn');
+  if (viewEl) viewEl.classList.remove('hidden');
+  if (editEl) editEl.classList.add('hidden');
+  if (editBtn) editBtn.textContent = 'Edit';
+}
+
+function kirCancelProfileNameEdit() {
+  const viewEl = document.getElementById('kir-profile-name-view');
+  const editEl = document.getElementById('kir-profile-name-edit');
+  if (viewEl) {
+    viewEl.classList.remove('hidden');
+    viewEl.classList.add('inline-block');
+  }
+  if (editEl) editEl.classList.add('hidden');
+}
+
+function kirToggleProfileNameEdit() {
+  const viewEl = document.getElementById('kir-profile-name-view');
+  const editEl = document.getElementById('kir-profile-name-edit');
+  const input  = document.getElementById('kir-profile-name-input');
+  if (!viewEl || !editEl || !input) return;
+
+  const isEditing = !editEl.classList.contains('hidden');
+  if (isEditing) {
+    kirCancelProfileNameEdit();
+  } else {
+    input.value = kirCurrentUserNickname() || kirCurrentUserName();
+    viewEl.classList.add('hidden');
+    viewEl.classList.remove('inline-block');
+    editEl.classList.remove('hidden');
+    input.focus();
+    input.select();
+    
+    // Bind enter/esc if not bound
+    if (!input._kirBound) {
+      input._kirBound = true;
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') kirSaveProfileName();
+        if (e.key === 'Escape') kirCancelProfileNameEdit();
+      });
+      input.addEventListener('blur', () => kirSaveProfileName());
+    }
+  }
+}
+
+function kirSaveProfileName() {
+  const input = document.getElementById('kir-profile-name-input');
+  if (!input) return;
+  const nameVal = input.value.trim().slice(0, 30);
+  // Only save as nickname if it's not the original name
+  if (nameVal && nameVal !== kirCurrentUserName()) {
+    kirSetUserNickname(nameVal);
+  } else {
+    kirSetUserNickname(null); // Clear nickname
+  }
+  
+  // Refresh view
+  const nameEl = document.getElementById('kir-profile-modal-name');
+  if (nameEl) nameEl.textContent = kirCurrentUserNickname() || kirCurrentUserName();
+  kirCancelProfileNameEdit();
+}
+
+function kirSaveProfileAbout() {
+  const input = document.getElementById('kir-profile-about-input');
+  if (!input) return;
+  const text = input.value.trim().slice(0, 200);
+  kirSetUserAboutMe(text);
+  kirRefreshProfileAboutView(text);
+  kirCancelProfileAboutEdit();
+}
+
+function kirUpdateAboutMeCounter() {
+  const input   = document.getElementById('kir-profile-about-input');
+  const counter = document.getElementById('kir-profile-about-counter');
+  if (input && counter) counter.textContent = `${input.value.length}/200`;
+  // Bind oninput if not already
+  if (input && !input._kirBound) {
+    input._kirBound = true;
+    input.addEventListener('input', kirUpdateAboutMeCounter);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) kirSaveProfileAbout();
+      if (e.key === 'Escape') kirCancelProfileAboutEdit();
+    });
+  }
 }
 
 /* ----------------------------------------------------------
