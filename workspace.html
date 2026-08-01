@@ -172,7 +172,14 @@
             </g>
           </svg>
           <span class="font-display font-semibold text-lg" id="workspace-streak-count">0</span>
-          <span class="text-zinc-500 text-xs" data-i18n="streak_days">hari beruntun</span>
+          <span class="text-zinc-500 text-xs" data-i18n="streak_days">streak</span>
+        </div>
+        <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+          <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 21V4m0 1h13l-2.2 3.2L18 11.5H5" />
+          </svg>
+          <span class="font-display font-semibold text-lg" id="workspace-flags-total">0</span>
+          <span class="text-zinc-500 text-xs" data-i18n="profile_flags">bendera</span>
         </div>
         <div class="glass rounded-xl px-4 py-2.5 flex items-center gap-2.5 shrink-0">
           <svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
@@ -474,10 +481,31 @@
   // same as before this animation existed.
   let workspaceDeltasKnown = null;
   let workspaceDeltasRollFrame = null;
+  let workspaceFlagsKnown = null;
+
+  function refreshWorkspaceFlagsHeader() {
+    const el = document.getElementById('workspace-flags-total');
+    if (!el) return;
+
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const loc = lang === 'en' ? 'en-US' : 'id-ID';
+    const target = kirFlagsTotal();
+    if (workspaceFlagsKnown === null || workspaceFlagsKnown === target) {
+      el.textContent = target.toLocaleString(loc);
+      workspaceFlagsKnown = target;
+      return;
+    }
+
+    el.textContent = target.toLocaleString(loc);
+    workspaceFlagsKnown = target;
+  }
 
   function refreshWorkspaceDeltasHeader() {
     const el = document.getElementById('workspace-deltas-total');
+    if (!el) return;
     const target = kirDeltasTotal();
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const loc = lang === 'en' ? 'en-US' : 'id-ID';
 
     // Same two reduced-motion sources as renderWorkspaceStreak() below
     // (OS media query + the site's own Settings toggle) — either one
@@ -486,7 +514,7 @@
       || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (workspaceDeltasKnown === null || reducedMotion || workspaceDeltasKnown === target) {
-      el.textContent = target.toLocaleString('id-ID');
+      el.textContent = target.toLocaleString(loc);
       workspaceDeltasKnown = target;
       return;
     }
@@ -505,6 +533,8 @@
   function animateWorkspaceDeltasRoll(el, from, to) {
     if (workspaceDeltasRollFrame) cancelAnimationFrame(workspaceDeltasRollFrame);
 
+    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+    const loc = lang === 'en' ? 'en-US' : 'id-ID';
     const goingUp = to > from;
     el.classList.add('deltas-rolling');
 
@@ -532,12 +562,12 @@
         current += (goingUp ? 1 : -1) * Math.floor(Math.random() * jitterRange);
       }
 
-      el.textContent = current.toLocaleString('id-ID');
+      el.textContent = current.toLocaleString(loc);
 
       if (t < 1) {
         workspaceDeltasRollFrame = requestAnimationFrame(tick);
       } else {
-        el.textContent = to.toLocaleString('id-ID');
+        el.textContent = to.toLocaleString(loc);
         el.classList.remove('deltas-rolling');
         workspaceDeltasRollFrame = null;
       }
@@ -610,11 +640,22 @@
     }, 110);
   }
   if (window.__kirProfileReady) {
-    window.__kirProfileReady.then(() => refreshWorkspaceDeltasHeader());
+    window.__kirProfileReady.then(() => {
+      refreshWorkspaceDeltasHeader();
+      refreshWorkspaceFlagsHeader();
+    });
   } else {
     refreshWorkspaceDeltasHeader();
+    refreshWorkspaceFlagsHeader();
   }
   renderWorkspaceStreak();
+
+  window.addEventListener('kir:lang-changed', () => {
+    refreshWorkspaceDeltasHeader();
+    refreshWorkspaceFlagsHeader();
+    if (typeof renderWorkspaceStreak === 'function') renderWorkspaceStreak();
+    if (typeof fetchCourseData === 'function') fetchCourseData();
+  });
 
   // Load (or reload) the member's taken course. This has to live here
   // rather than at the bottom of js/workspace.js — see the comment

@@ -1725,6 +1725,9 @@
     .hover\:underline:hover {
       text-decoration-line: underline;
     }
+    .hover\:opacity-80:hover {
+      opacity: 80%;
+    }
     .hover\:brightness-110:hover {
       --tw-brightness: brightness(110%);
       filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
@@ -2873,8 +2876,7 @@
       }
     }
     .kir-day-popover {
-      position: fixed;
-      z-index: 100;
+    position: fixed; z-index: 40;
       width: 20rem;
       max-width: calc(100vw - 2rem);
       max-height: min(24rem, calc(100vh - 2rem));

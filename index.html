@@ -417,6 +417,20 @@
   }
   @keyframes obt-spin-full { to { transform: rotate(360deg); } }
 
+  /* Re-enable orbit animation even when reduced-motion is checked */
+  html[data-reduce-motion="true"] .obt-moon-orbit {
+    animation-name: obt-spin-full !important;
+    animation-duration: 34s !important;
+    animation-iteration-count: infinite !important;
+    animation-timing-function: linear !important;
+    animation-play-state: running !important;
+    animation-delay: 0s !important;
+  }
+  html[data-reduce-motion="true"] .obt-moon-orbit.obt-moon-2 {
+    animation-duration: 52s !important;
+    animation-direction: reverse !important;
+  }
+
   /* ---------------- Ring navigation nodes ---------------- */
   .obt-nodes { position: absolute; inset: 0; z-index: 25; }
   .obt-node {
@@ -554,6 +568,16 @@
     animation: obt-caret-blink 0.85s step-end infinite;
   }
   @keyframes obt-caret-blink { 50% { opacity: 0; } }
+
+  /* Re-enable caret blink even when reduced-motion is checked */
+  html[data-reduce-motion="true"] .obt-typehead::after {
+    animation-name: obt-caret-blink !important;
+    animation-duration: 0.85s !important;
+    animation-iteration-count: infinite !important;
+    animation-timing-function: step-end !important;
+    animation-play-state: running !important;
+    animation-delay: 0s !important;
+  }
 
   /* "Ctrl+A" erase variant — the whole heading gets a selection-style
      highlight for a beat before it's cleared in one shot, standing in
@@ -722,11 +746,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .obt-sphere-bands, .obt-storm, .obt-moon-orbit, .obt-guide-1, .obt-guide-2, .obt-hint-icon svg {
+    .obt-sphere-bands, .obt-storm, .obt-guide-1, .obt-guide-2, .obt-hint-icon svg {
       animation: none !important;
     }
     .obt-stage, .obt-node, .obt-panel, .obt-card, .obt-stars { transition: none !important; }
-    .obt-typehead::after { animation: none !important; }
   }
 
 </style>

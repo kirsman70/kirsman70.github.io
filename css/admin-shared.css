@@ -102,6 +102,30 @@
 .admin-icon-btn:hover { opacity: 1; }
 .admin-icon-btn svg { width: 0.9rem; height: 0.9rem; }
 
+/* When sitting inline in a modal header (not floating over a card),
+   strip the box so the edit/delete icons look like the X close button:
+   just a bare icon with a hover colour change. The wrapper is also
+   reset to static so it flows in the flex row rather than floating. */
+.admin-item-actions .admin-icon-btn {
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+  opacity: 0.6;
+}
+.admin-item-actions .admin-icon-btn:hover { opacity: 1; background: transparent; }
+.admin-item-actions .admin-icon-btn svg { width: 1.1rem; height: 1.1rem; }
+/* The wrapper itself: in the modal header it's a normal flex child, not absolute. */
+[id$="-modal-admin-actions"] .admin-item-actions {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+}
+
 .admin-edit-btn:hover {
   border-color: rgba(var(--accent-rgb), 0.5);
   color: rgb(var(--accent-light-rgb));

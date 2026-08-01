@@ -320,6 +320,7 @@
     const preserveSidebar = !!(oldSidebarRoot && doc.getElementById('sidebar-root'));
     const oldGlowLayer = document.querySelector(':scope > .glow-layer');
     const preserveGlow = !!(oldGlowLayer && doc.body.querySelector(':scope > .glow-layer'));
+    const oldModalsRoot = document.getElementById('kir-modals-root');
 
     let bodySwapped = false;
     const swapBody = async () => {
@@ -405,6 +406,11 @@
       syncOrbitAnimations(fragment);
 
       document.body.replaceChildren(fragment);
+      
+      if (oldModalsRoot) {
+        document.body.appendChild(oldModalsRoot);
+      }
+
       // Mirror ALL of the new page's <body> attributes — not just
       // className. auth.html's <body> tag has `style="touch-action:
       // pan-y;"` on it directly in the markup; the previous version

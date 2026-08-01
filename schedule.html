@@ -1021,6 +1021,7 @@
   }
 
   function openScheduleModal(id) {
+    scheduleHideDayPopover();
     const ev = EVENTS.find(e => e.id === id);
     if (!ev) return;
     
@@ -1060,6 +1061,7 @@
   }
 
   function openScheduleAdminModal(id, prefillDateKey) {
+    scheduleHideDayPopover();
     const ev = id ? EVENTS.find(e => e.id === id) : null;
     let values = null;
     if (ev) {

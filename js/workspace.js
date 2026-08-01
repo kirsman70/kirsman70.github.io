@@ -1432,8 +1432,7 @@
 
   // Returns an array `order` where order[displayPosition] = originalIndex.
   function kirShuffledOptionOrder(voyageId, optionCount) {
-    const { data: userData } = supabaseClient.auth.getUser();
-    const currentUserId = userData?.user?.id || null;
+    const currentUserId = localStorage.getItem('kir_user_id') || null;
     const seed = kirHashSeed(`${currentUserId || 'anon'}:${voyageId}`);
     const rand = kirSeededRandom(seed);
     const order = Array.from({ length: optionCount }, (_, i) => i);
@@ -1855,6 +1854,13 @@
     // turn corrupts the course hub's progress bar/graph. Nothing to do
     // here on a redo — the node stays completed and nothing regresses.
     if (COURSE_COMPLETED_IDS.has(nodeId)) return;
+
+    if (node.type === 'flag') {
+      if (typeof kirAddFlags === 'function') {
+        kirAddFlags(1);
+      }
+    }
+
     if (node.optional) courseToggleOptionalComplete(node.id);
     else courseAdvanceNode(node.id);
   }
@@ -2536,7 +2542,7 @@
         <div class="course-course-stats">
           <span class="course-course-stat">${COURSE_ICON_BOOK_OPEN} ${allCounts.material} ${kirEscapeHtml(I18N[lang].course_category || 'Materi')}</span>
           <span class="course-course-stat">${COURSE_ICON_ROCKET} ${allCounts.voyage_group} Voyages</span>
-          <span class="course-course-stat">${COURSE_ICON_FLAG} ${allCounts.flag} Flag</span>
+          <span class="course-course-stat">${COURSE_ICON_FLAG} ${allCounts.flag} ${kirEscapeHtml(I18N[lang].profile_flags ? (I18N[lang].profile_flags.charAt(0).toUpperCase() + I18N[lang].profile_flags.slice(1)) : 'Flag')}</span>
         </div>
         <div class="course-progress-track"><div class="course-progress-fill" style="width:${pct}%; background:${color};"></div></div>`;
     }

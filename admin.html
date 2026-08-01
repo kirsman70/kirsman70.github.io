@@ -334,6 +334,18 @@
     return new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
   }
 
+  function formatApplicantName(a) {
+    if (!a) return '';
+    const lang = localStorage.getItem('kir_lang') || 'id';
+    const username = (a.name || '').trim();
+    const nickname = (a.nickname || '').trim();
+
+    if (nickname && nickname !== username) {
+      return `${nickname} (${username || nickname})`;
+    }
+    return username || nickname || (I18N[lang] ? I18N[lang].apply_no_name : 'Tanpa nama');
+  }
+
   function renderApplicants() {
     const list = document.getElementById('apply-list');
     const filtered = APPLICANTS.filter(a => applicantMatchesFilter(a) && applicantMatchesSearch(a));
@@ -362,7 +374,7 @@
         <div class="apply-row" onclick="openApplyModal('${a.id}')">
           <div class="apply-avatar bg-white/10 text-zinc-300"${avatarStyle}>${a.avatar_url ? '' : initial}</div>
           <div class="min-w-0 flex-1">
-            <p class="font-medium text-sm text-zinc-100 truncate">${kirEscapeHtml(a.name || I18N[lang].apply_no_name)}</p>
+            <p class="font-medium text-sm text-zinc-100 truncate">${kirEscapeHtml(formatApplicantName(a))}</p>
             <p class="text-xs text-zinc-500 truncate">${kirEscapeHtml(a.email || '')}${a.kelas ? ' · ' + kirEscapeHtml(a.kelas) : ''}</p>
           </div>
           <div class="hidden sm:block text-xs text-zinc-500 shrink-0">${timeAgoId(a.created_at)}</div>
@@ -403,7 +415,7 @@
     document.getElementById('apply-modal-avatar').style.backgroundImage = a.avatar_url ? `url('${a.avatar_url}')` : '';
     document.getElementById('apply-modal-avatar').style.backgroundSize = a.avatar_url ? 'cover' : '';
     document.getElementById('apply-modal-avatar').style.backgroundPosition = a.avatar_url ? 'center' : '';
-    renderApplyModalName(a.name || '');
+    renderApplyModalName(formatApplicantName(a));
     document.getElementById('apply-modal-email').textContent = a.email || '';
     document.getElementById('apply-modal-status').textContent = isApproved ? I18N[lang].apply_status_approved : I18N[lang].apply_status_pending_full;
     document.getElementById('apply-modal-status').className = `apply-status-badge ${isApproved ? 'apply-status-approved' : 'apply-status-pending'}`;
@@ -522,7 +534,7 @@
   function confirmSetApplicantStatus(applicant, status) {
     const isApprove = status === 'approved';
     const lang = localStorage.getItem('kir_lang') || 'id';
-    const name = applicant.name || I18N[lang].apply_no_name;
+    const name = formatApplicantName(applicant);
     kirConfirmDialog({
       title: isApprove ? I18N[lang].apply_confirm_approve_title : I18N[lang].apply_confirm_revoke_title,
       message: (isApprove ? I18N[lang].apply_confirm_approve_msg : I18N[lang].apply_confirm_revoke_msg).replace('{name}', name),

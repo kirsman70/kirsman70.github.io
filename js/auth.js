@@ -43,7 +43,7 @@ const I18N = {
     menu: 'Menu', akun: 'Akun', kir_long: 'Karya Ilmiah Remaja',
     profile_nickname_placeholder: 'Atur nama panggilan...', profile_about_empty: 'Klik untuk menambahkan sesuatu tentang diri kamu…',
     profile_about_placeholder: 'Ceritakan sesuatu tentang diri kamu…', profile_joined: 'Bergabung', profile_branch: 'Cabang',
-    profile_role: 'Peran', profile_delta: 'Delta', profile_change_picture: 'Ganti foto profil',
+    profile_role: 'Peran', profile_flags: 'bendera', profile_delta: 'Delta', profile_change_picture: 'Ganti foto profil',
     settings_desc: 'Kelola profil, cabang, dan tampilan akun kamu.',
     active_branch: 'Cabang Aktif', branch_desc: 'Cabang terdaftar kamu saat ini.',
     appearance_lang: 'Tampilan & Bahasa', change_lang: 'Ubah Bahasa',
@@ -51,7 +51,7 @@ const I18N = {
     dashboard_sub: 'Berikut yang terjadi di Orbit minggu ini.',
     active_tasks: 'Tugas Aktif', due_this_week: 'jatuh tempo minggu ini', late: 'terlambat',
     upcoming_events: 'Acara Mendatang', up_next: 'Selanjutnya:', recent_activity: 'Aktivitas terbaru',
-    tasks_desc: 'Semua yang ditugaskan ke ekstrakurikuler saat ini.', assigned_to: 'Ditugaskan ke', due: 'Tenggat:', submitted: 'jawaban terkirim',
+    tasks_desc: 'Semua yang ditugaskan ke ekstrakurikuler saat ini.', tasks_search_placeholder: 'Cari tugas…', assigned_to: 'Ditugaskan ke', due: 'Tenggat:', submitted: 'jawaban terkirim',
     status_progress: 'Sedang Dikerjakan', status_review: 'Menunggu Peninjauan', status_late: 'Terlambat', status_todo: 'Belum Dimulai', status_done: 'Selesai',
     modal_desc: 'Deskripsi tugas', modal_ans: 'Jawaban kamu', modal_upload: 'Klik untuk unggah file jawaban\u2026', modal_proto: 'Prototipe: file tidak benar-benar diunggah ke server, hanya nama filenya yang disimpan di browser kamu.',
     schedule_desc: 'Acara ekstrakurikuler mendatang, secara berurutan.', badge_next: 'Berikutnya',
@@ -149,12 +149,9 @@ const I18N = {
     deltas_label: 'Deltas', this_week: 'minggu ini', all_time: 'sepanjang waktu', deltas_points: 'deltas',
     deltas_range_week: 'Minggu ini', deltas_range_lifetime: 'Sepanjang waktu',
     deltas_desc: 'Poin didapat dari mengerjakan soal latihan.',
-    streak_label: 'Beruntun', streak_days: 'hari beruntun',
+    streak_label: 'streak', streak_days: 'streak',
     galeri: 'Galeri', program_kerja: 'Program Kerja',
     nav_beranda: 'Beranda', nav_galeri: 'Galeri', nav_proker: 'Program Kerja', nav_katalog: 'Katalog',
-    profile_nickname_placeholder: 'Set a nickname...', profile_about_empty: 'Click to add something about yourself…',
-    profile_about_placeholder: 'Tell people something about yourself…', profile_joined: 'Joined', profile_branch: 'Branch',
-    profile_role: 'Role', profile_delta: 'Delta', profile_change_picture: 'Change profile picture',
     gallery_title: 'Galeri', gallery_desc: 'Dokumentasi kegiatan ekstrakurikuler, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
     gallery_up: '.. Kembali', gallery_empty: 'Folder ini belum berisi file. Foto akan segera diunggah.',
     gallery_items_one: 'item', gallery_items_other: 'item',
@@ -241,12 +238,12 @@ const I18N = {
     taskbar_position_locked_desc: 'Posisi taskbar hanya bisa diatur di layar desktop.',
     pos_left: 'Kiri', pos_right: 'Kanan', pos_top: 'Atas', pos_bottom: 'Bawah',
     danger_zone_title: 'Zona Berbahaya', danger_zone_desc: 'Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan.',
-    reset_voyages_title: 'Reset Voyages', reset_voyages_desc: 'Menghapus semua voyage yang sudah kamu selesaikan dan mengatur ulang deltas kamu ke 0.', reset_voyages_btn: 'Reset',
+    reset_voyages_title: 'Reset Kursus', reset_voyages_desc: 'Menghapus semua progres kursus yang sudah kamu ambil dan mengatur ulang deltas kamu ke 0.', reset_voyages_btn: 'Reset',
     reset_voyages_confirm_title: 'Kamu yakin?',
-    reset_voyages_confirm_desc: 'Semua voyage yang sudah kamu selesaikan akan dihapus dan deltas kamu akan kembali ke 0. Tindakan ini tidak dapat dibatalkan.',
+    reset_voyages_confirm_desc: 'Semua progres kursus yang sudah kamu ambil akan dihapus dan deltas kamu akan kembali ke 0. Tindakan ini tidak dapat dibatalkan.',
     reset_voyages_confirm_hint: 'Ketik "SAYA YAKIN" di bawah untuk melanjutkan.', reset_voyages_confirm_placeholder: 'SAYA YAKIN', reset_voyages_confirm_phrase: 'SAYA YAKIN',
-    reset_voyages_confirm_btn: 'Reset Voyages', reset_voyages_cancel: 'Batal', reset_voyages_processing: 'Mereset…',
-    reset_voyages_success: 'Voyages kamu berhasil direset.', reset_voyages_error: 'Gagal mereset voyages. Coba lagi.',
+    reset_voyages_confirm_btn: 'Reset Kursus', reset_voyages_cancel: 'Batal', reset_voyages_processing: 'Mereset…',
+    reset_voyages_success: 'Progres kursus kamu berhasil direset.', reset_voyages_error: 'Gagal mereset kursus. Coba lagi.',
     logout_all_btn: 'Keluar dari Semua Perangkat',
     logout_all_confirm_title: 'Keluar dari semua perangkat?',
     logout_all_confirm_desc: 'Kamu akan keluar dari semua sesi aktif di semua perangkat, termasuk browser ini. Kamu perlu masuk lagi di mana pun.',
@@ -316,7 +313,7 @@ const I18N = {
     dashboard_sub: "Here's what's happening in Orbit this week.",
     active_tasks: 'Active Tasks', due_this_week: 'due this week', late: 'late',
     upcoming_events: 'Upcoming Events', up_next: 'Up next:', recent_activity: 'Recent activity',
-    tasks_desc: 'Everything currently assigned to the extracurricular.', assigned_to: 'Assigned to', due: 'Due:', submitted: 'submission sent',
+    tasks_desc: 'Everything currently assigned to the extracurricular.', tasks_search_placeholder: 'Search tasks…', assigned_to: 'Assigned to', due: 'Due:', submitted: 'submission sent',
     status_progress: 'In Progress', status_review: 'Pending Review', status_late: 'Overdue', status_todo: 'Not Started', status_done: 'Completed',
     modal_desc: 'Task description', modal_ans: 'Your submission', modal_upload: 'Click to upload submission file\u2026', modal_proto: 'Prototype: files are not actually uploaded to a server, only the filename is stored in your browser.',
     schedule_desc: 'Upcoming extracurricular events, in chronological order.', badge_next: 'Next',
@@ -409,9 +406,12 @@ const I18N = {
     deltas_label: 'Deltas', this_week: 'this week', all_time: 'all time', deltas_points: 'deltas',
     deltas_range_week: 'This Week', deltas_range_lifetime: 'Lifetime',
     deltas_desc: 'Points earned by completing practice questions.',
-    streak_label: 'Streak', streak_days: 'day streak',
+    streak_label: 'streak', streak_days: 'streak',
     galeri: 'Gallery', program_kerja: 'Work Programs',
     nav_beranda: 'Home', nav_galeri: 'Gallery', nav_proker: 'Work Programs', nav_katalog: 'Catalog',
+    profile_nickname_placeholder: 'Set a nickname...', profile_about_empty: 'Click to add something about yourself…',
+    profile_about_placeholder: 'Tell people something about yourself…', profile_joined: 'Joined', profile_branch: 'Branch',
+    profile_role: 'Role', profile_flags: 'flags', profile_delta: 'Delta', profile_change_picture: 'Change profile picture',
     gallery_title: 'Gallery', gallery_desc: 'Documentation from club activities, organized into folders just like the files on your computer. Click a folder to open it, or ".." to go back.',
     gallery_up: '.. Back', gallery_empty: 'This folder is still empty. Photos are coming soon.',
     gallery_items_one: 'item', gallery_items_other: 'items',
@@ -498,12 +498,12 @@ const I18N = {
     taskbar_position_locked_desc: 'Taskbar position can only be changed on desktop screens.',
     pos_left: 'Left', pos_right: 'Right', pos_top: 'Top', pos_bottom: 'Bottom',
     danger_zone_title: 'Danger Zone', danger_zone_desc: 'Actions below are permanent and cannot be undone.',
-    reset_voyages_title: 'Reset Voyages', reset_voyages_desc: "Deletes every voyage you've completed and resets your deltas back to 0.", reset_voyages_btn: 'Reset',
+    reset_voyages_title: 'Reset Courses', reset_voyages_desc: "Deletes every course progress you've completed and resets your deltas back to 0.", reset_voyages_btn: 'Reset',
     reset_voyages_confirm_title: 'Are you sure?',
-    reset_voyages_confirm_desc: "Every voyage you've completed will be deleted and your deltas will go back to 0. This action cannot be undone.",
+    reset_voyages_confirm_desc: "Every course progress you've completed will be deleted and your deltas will go back to 0. This action cannot be undone.",
     reset_voyages_confirm_hint: 'Type "I\'M SURE" below to continue.', reset_voyages_confirm_placeholder: "I'M SURE", reset_voyages_confirm_phrase: "I'M SURE",
-    reset_voyages_confirm_btn: 'Reset Voyages', reset_voyages_cancel: 'Cancel', reset_voyages_processing: 'Resetting…',
-    reset_voyages_success: 'Your voyages have been reset.', reset_voyages_error: 'Failed to reset voyages. Try again.',
+    reset_voyages_confirm_btn: 'Reset Courses', reset_voyages_cancel: 'Cancel', reset_voyages_processing: 'Resetting…',
+    reset_voyages_success: 'Your courses have been reset.', reset_voyages_error: 'Failed to reset courses. Try again.',
     logout_all_btn: 'Log Out of All Devices',
     logout_all_confirm_title: 'Log out of all devices?',
     logout_all_confirm_desc: "You'll be signed out of every active session on every device, including this one. You'll need to sign back in everywhere.",
@@ -676,7 +676,6 @@ function __kirModalLock(delta) {
     __kirFreezeSidebar(true);
     const scrollbarWidth = __kirGetScrollbarWidth();
     if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
       document.documentElement.style.setProperty('--kir-scrollbar-w', `${scrollbarWidth}px`);
     }
     document.documentElement.classList.add('kir-scroll-locked');
@@ -684,7 +683,6 @@ function __kirModalLock(delta) {
   } else {
     document.documentElement.classList.remove('kir-scroll-locked');
     document.body.classList.remove('kir-scroll-locked');
-    document.body.style.paddingRight = '';
     document.documentElement.style.removeProperty('--kir-scrollbar-w');
     __kirFreezeSidebar(false);
 
@@ -794,7 +792,7 @@ async function confirmResetVoyages() {
   btn.textContent = I18N[lang].reset_voyages_processing;
   btn.disabled = true;
 
-  const { error } = await supabaseClient.rpc('reset_my_voyages');
+  const { error } = await supabaseClient.rpc('reset_my_courses');
 
   if (error) {
     statusEl.textContent = I18N[lang].reset_voyages_error;
@@ -805,6 +803,26 @@ async function confirmResetVoyages() {
     btn.disabled = false;
     return;
   }
+
+  // Clear all course enrollments for this member from Supabase
+  try {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (userData?.user?.id) {
+      await supabaseClient.from('course_enrollments').delete().eq('user_id', userData.user.id);
+    }
+  } catch (enrollErr) {
+    console.error('Error deleting course_enrollments on reset:', enrollErr);
+  }
+
+  // Clear local storage keys for courses, deltas, flags, and completions
+  localStorage.removeItem(KIR_DELTAS_KEY);
+  localStorage.removeItem(KIR_FLAGS_KEY);
+  localStorage.removeItem('kir_last_course_id');
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('kir_voyage_done_') || key.startsWith('kir_course_') || key.startsWith('kir_last_course')) {
+      localStorage.removeItem(key);
+    }
+  });
 
   statusEl.textContent = I18N[lang].reset_voyages_success;
   statusEl.className = 'text-xs text-emerald-400 mb-3';
@@ -1343,7 +1361,7 @@ function kirRenderSidebarNow(activeTab) {
         <div data-kir="avatar" class="w-8 h-8 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold text-xs shrink-0 group-hover:brightness-110 transition">A</div>
         <div class="min-w-0">
           <p data-kir="name" class="text-sm font-medium truncate">Anggota</p>
-          <p id="sidebar-cabang-badge" class="text-[11px] text-zinc-500">Robotik</p>
+          <p id="sidebar-cabang-badge" class="text-[11px] text-zinc-500 truncate">Robotik</p>
         </div>
       </button>
     </div>
@@ -1433,8 +1451,8 @@ function kirRenderSidebarNow(activeTab) {
         <p class="text-zinc-500 text-xs mb-4" data-i18n="danger_zone_desc">Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan.</p>
         <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/20 flex items-center justify-between gap-3">
           <div>
-            <p class="text-sm font-medium text-zinc-200" data-i18n="reset_voyages_title">Reset Voyages</p>
-            <p class="text-xs text-zinc-500 mt-1" data-i18n="reset_voyages_desc">Menghapus semua voyage yang sudah kamu selesaikan dan mengatur ulang deltas kamu ke 0.</p>
+            <p class="text-sm font-medium text-zinc-200" data-i18n="reset_voyages_title">Reset Kursus</p>
+            <p class="text-xs text-zinc-500 mt-1" data-i18n="reset_voyages_desc">Menghapus semua progres kursus yang sudah kamu ambil dan mengatur ulang deltas kamu ke 0.</p>
           </div>
           <button type="button" onclick="openResetVoyagesModal()" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition" data-i18n="reset_voyages_btn">Reset</button>
         </div>
@@ -1474,7 +1492,7 @@ function kirRenderSidebarNow(activeTab) {
       <div class="flex items-center gap-2.5 mt-3">
         <button type="button" onclick="closeResetVoyagesModal()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition" data-i18n="reset_voyages_cancel">Batal</button>
         <button type="button" id="reset-voyages-confirm-btn" onclick="confirmResetVoyages()" disabled
-          class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition" data-i18n="reset_voyages_confirm_btn">Reset Voyages</button>
+          class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition" data-i18n="reset_voyages_confirm_btn">Reset Kursus</button>
       </div>
     </div>
   </div>
@@ -1526,15 +1544,12 @@ function kirRenderSidebarNow(activeTab) {
   `;
 
   const profileModalHtml = `
-  <div id="kir-profile-modal" class="modal-overlay hidden" onclick="if(event.target===this) kirCloseProfileModal()">
+  <div id="kir-profile-modal" class="modal-overlay hidden" style="z-index: 60;" onclick="if(event.target===this) kirCloseProfileModal()">
     <div class="modal-card modal-card-split p-0 kir-profile-modal-card">
       <div class="modal-split-main kir-profile-main flex flex-col overflow-hidden">
         <div class="w-full flex-1 overflow-y-auto custom-scrollbar relative">
           <!-- Banner -->
           <div id="kir-profile-banner" class="kir-profile-banner">
-            <button onclick="kirCloseProfileModal()" class="absolute top-3 right-3 text-white/70 hover:text-white p-1 rounded-full bg-black/20 hover:bg-black/40 transition" style="line-height:0;z-index:2;">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
           </div>
           <!-- Avatar (centered, overlapping banner/card boundary) -->
           <div class="kir-profile-avatar-ring">
@@ -1612,7 +1627,16 @@ function kirRenderSidebarNow(activeTab) {
   </div>
   `;
 
-  document.getElementById('sidebar-root').innerHTML = sidebarHtml + settingsModalHtml + resetVoyagesModalHtml + logoutAllModalHtml + avatarCropModalHtml + profileModalHtml;
+  document.getElementById('sidebar-root').innerHTML = sidebarHtml;
+
+  let kirModalsRoot = document.getElementById('kir-modals-root');
+  if (!kirModalsRoot) {
+    kirModalsRoot = document.createElement('div');
+    kirModalsRoot.id = 'kir-modals-root';
+    document.body.appendChild(kirModalsRoot);
+  }
+  kirModalsRoot.innerHTML = settingsModalHtml + resetVoyagesModalHtml + logoutAllModalHtml + avatarCropModalHtml + profileModalHtml;
+
   kirApplyTranslations();
   kirApplyBrandAssets();
   
@@ -2473,6 +2497,7 @@ async function kirRefreshCurrentProfile() {
     }
 
     localStorage.setItem(KIR_SESSION_KEY, 'true');
+    localStorage.setItem('kir_user_id', userData.user.id);
     localStorage.setItem(KIR_NAME_KEY, profile.name);
     localStorage.setItem(KIR_ROLE_KEY, profile.role || 'Anggota');
     localStorage.setItem(KIR_CABANG_KEY, profile.cabang);
@@ -2490,6 +2515,8 @@ async function kirRefreshCurrentProfile() {
     if (profile.dashboard_layout) localStorage.setItem('kir_dashboard_layout_v1', JSON.stringify(profile.dashboard_layout));
     if (profile.dashboard_note) localStorage.setItem('kir_dashboard_note', profile.dashboard_note);
     localStorage.setItem(KIR_DELTAS_KEY, String(profile.deltas_total || 0));
+    localStorage.setItem(KIR_FLAGS_KEY, String(profile.flags_total || 0));
+    if (typeof profile.streak_days === 'number') localStorage.setItem('kir_user_streak', String(profile.streak_days));
 
     if (profile.lang && localStorage.getItem(KIR_LANG_KEY) === null) {
       localStorage.setItem(KIR_LANG_KEY, profile.lang);
@@ -2762,11 +2789,35 @@ function kirUpdateSidebarPositionModalUI() {
    TODO(real backend): replace with a real deltas ledger.
    ---------------------------------------------------------- */
 const KIR_DELTAS_KEY = 'kir_deltas_total';
+const KIR_FLAGS_KEY = 'kir_flags_total';
 const KIR_VOYAGE_DONE_PREFIX = 'kir_voyage_done_';
 
 function kirDeltasTotal() {
   const raw = localStorage.getItem(KIR_DELTAS_KEY);
   return raw === null ? 0 : parseInt(raw, 10) || 0;
+}
+
+function kirFlagsTotal() {
+  const raw = localStorage.getItem(KIR_FLAGS_KEY);
+  return raw === null ? 0 : parseInt(raw, 10) || 0;
+}
+
+function kirStreakDays() {
+  const raw = localStorage.getItem('kir_user_streak');
+  return raw === null ? 0 : parseInt(raw, 10) || 0;
+}
+
+function kirAddFlags(amount = 1) {
+  const next = kirFlagsTotal() + (amount || 1);
+  localStorage.setItem(KIR_FLAGS_KEY, String(next));
+  if (typeof window.refreshWorkspaceFlagsHeader === 'function') {
+    window.refreshWorkspaceFlagsHeader();
+  }
+  if (window.supabaseClient) {
+    window.supabaseClient.rpc('increment_my_flags').then(({ error }) => {
+      if (error) console.error('Failed to increment flags on server:', error);
+    });
+  }
 }
 
 function kirAddDeltas(amount) {
@@ -2886,8 +2937,8 @@ function kirCommentAttachmentHtml(att) {
   </span>`;
 }
 
-function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply, mentionAuthor, hasReplies) {
-  const isYou = c.author === you;
+function kirRenderCommentItem(containerId, scope, itemId, c, lang, youId, isReply, mentionAuthor, hasReplies) {
+  const isYou = c.userId === youId;
   const initial = c.author.charAt(0).toUpperCase();
   const avatarStyle = c.avatar ? `style="background-image:url('${c.avatar}');background-size:cover;background-position:center;"` : '';
   const replyBoxId = `${containerId}-replybox-${c.id}`;
@@ -2905,11 +2956,11 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply,
   const threadConnectorHtml = hasReplies ? `<span class="comment-thread-connector"></span>` : '';
   return `
     <div class="comment-item${isReply ? ' comment-item-reply' : ''}">
-      <div class="comment-avatar bg-white/10 text-zinc-300" ${avatarStyle}>${c.avatar ? '' : initial}</div>
+      <div class="comment-avatar bg-white/10 text-zinc-300 cursor-pointer hover:opacity-80 transition" ${avatarStyle} onclick="kirOpenProfileModal('${c.userId}')">${c.avatar ? '' : initial}</div>
       ${threadConnectorHtml}
       <div class="comment-body min-w-0">
         <div class="flex items-baseline gap-2 flex-wrap">
-          <span class="comment-author">${kirEscapeHtml(c.author)}${isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</span>
+          <span class="comment-author cursor-pointer hover:underline" onclick="kirOpenProfileModal('${c.userId}')">${kirEscapeHtml(c.author)}${isYou ? ` <span class="text-accent-300">(${I18N[lang].leaderboard_you})</span>` : ''}</span>
           <span class="comment-time">${kirFormatActivityTime(new Date(c.createdAt))}</span>
         </div>
         ${c.text || mentionHtml ? `<p class="comment-text">${mentionHtml}${kirEscapeHtml(c.text)}</p>` : ''}
@@ -2929,17 +2980,38 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply,
     </div>`;
 }
 
-async function kirRenderCommentSection(containerId, scope, itemId) {
+async function kirRenderCommentSection(containerId, scope, itemId, closeCallbackExpr) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
-  const you = kirCurrentUserName();
 
-  container.innerHTML = `<p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2">${I18N[lang].comments_title}</p><p class="text-xs text-zinc-500">Memuat...</p>`;
+  // Persist the close callback so internal re-renders (submit, delete)
+  // can restore it without callers needing to pass it again.
+  if (closeCallbackExpr !== undefined) {
+    container.dataset.kirClose = closeCallbackExpr;
+  }
+  const closeFn = container.dataset.kirClose || '';
+
+  let youId = null;
+  if (window.supabaseClient) {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    youId = userData?.user?.id;
+  }
+
+  const closeBtnHtml = closeFn
+    ? `<button onclick="${closeFn}" class="text-zinc-500 hover:text-zinc-300 p-1 -mr-1 transition" aria-label="Tutup">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>`
+    : '';
+
+  container.innerHTML = `<div class="flex items-center justify-between mb-2">
+    <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">${I18N[lang].comments_title}</p>
+    ${closeBtnHtml}
+  </div><p class="text-xs text-zinc-500">Memuat...</p>`;
 
   const { data: comments, error } = await supabaseClient
     .from('comments')
-    .select('*, profiles(name, avatar_url)')
+    .select('*, profiles(name, nickname, avatar_url)')
     .eq('scope', scope)
     .eq('item_id', itemId)
     .order('created_at', { ascending: true });
@@ -2951,7 +3023,7 @@ async function kirRenderCommentSection(containerId, scope, itemId) {
 
   const formatted = comments.map(c => ({
     id: c.id,
-    author: c.profiles?.name || 'Anggota',
+    author: c.profiles?.nickname || c.profiles?.name || 'Anggota',
     avatar: c.profiles?.avatar_url || '',
     text: c.text,
     attachment: c.attachment_url ? { name: 'File', type: 'image/jpeg', dataUrl: c.attachment_url } : null,
@@ -2981,7 +3053,7 @@ async function kirRenderCommentSection(containerId, scope, itemId) {
     const isReply = depth > 0;
     const children = byParent[c.id] || [];
     const hasReplies = children.length > 0 && depth < MAX_NEST_DEPTH;
-    const itemHtml = kirRenderCommentItem(containerId, scope, itemId, c, lang, you, isReply, mentionAuthor, hasReplies);
+    const itemHtml = kirRenderCommentItem(containerId, scope, itemId, c, lang, youId, isReply, mentionAuthor, hasReplies);
 
     if (!children.length) {
       return isReply ? `<div class="comment-thread-group">${itemHtml}</div>` : itemHtml;
@@ -3003,7 +3075,10 @@ async function kirRenderCommentSection(containerId, scope, itemId) {
     : topLevel.map(c => renderThread(c, 0, null)).join('');
 
   container.innerHTML = `
-    <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="comments_title">${I18N[lang].comments_title}</p>
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide" data-i18n="comments_title">${I18N[lang].comments_title}</p>
+      ${closeBtnHtml}
+    </div>
     <div class="comment-list mb-3">${listHtml}</div>
     <div class="comment-composer">
       <textarea id="${containerId}-text" rows="2" class="glass-input w-full rounded-lg px-3.5 py-2.5 text-sm" data-i18n-placeholder="comments_placeholder" placeholder="${I18N[lang].comments_placeholder}"></textarea>
@@ -3128,14 +3203,16 @@ async function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId
    Call this once at the bottom of a logged-in page.
    ---------------------------------------------------------- */
 function kirRenderUserChrome() {
-  const name = kirCurrentUserName();
+  const fullName = kirCurrentUserName();
+  const nickname = kirCurrentUserNickname();
+  const displayName = nickname || fullName;
   const avatar = kirCurrentUserAvatar();
 
   document.querySelectorAll('[data-kir="name"]').forEach(el => {
-    el.textContent = name;
+    el.textContent = displayName;
   });
   document.querySelectorAll('[data-kir="greeting"]').forEach(el => {
-    el.textContent = kirTimeGreeting(name);
+    el.textContent = kirTimeGreeting(displayName);
   });
   const applyAvatar = (el, avatarUrl) => {
     if (avatarUrl) {
@@ -3145,7 +3222,7 @@ function kirRenderUserChrome() {
       el.textContent = '';
     } else {
       el.style.backgroundImage = '';
-      el.textContent = name.charAt(0).toUpperCase();
+      el.textContent = displayName.charAt(0).toUpperCase();
     }
   };
   document.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
@@ -3224,7 +3301,11 @@ async function kirOpenProfileModal(targetUserId = null) {
   const isSelf = !targetUserId || targetUserId === currentUserId;
   const actualTargetId = targetUserId || currentUserId;
 
-  let name, nickname, avatar, cabang, role, about, kelas, deltasTotal, createdAt;
+  let name, nickname, avatar, cabang, role, about, kelas;
+  let deltasTotal = 0;
+  let flagsTotal = 0;
+  let streakDays = 0;
+  let createdAt = null;
 
   if (isSelf) {
     name   = kirCurrentUserName();
@@ -3235,6 +3316,8 @@ async function kirOpenProfileModal(targetUserId = null) {
     about  = kirCurrentUserAboutMe();
     kelas  = kirCurrentUserKelas();
     deltasTotal = kirDeltasTotal();
+    flagsTotal = kirFlagsTotal();
+    streakDays = kirStreakDays();
     createdAt = userData?.user?.created_at;
   } else {
     const { data: profile } = await supabaseClient
@@ -3253,6 +3336,8 @@ async function kirOpenProfileModal(targetUserId = null) {
     about = profile.about_me;
     kelas = profile.kelas;
     deltasTotal = profile.deltas_total || 0;
+    flagsTotal = profile.flags_total || 0;
+    streakDays = profile.streak_days || 0;
     createdAt = profile.created_at || profile.joined_at || null;
   }
 
@@ -3282,6 +3367,15 @@ async function kirOpenProfileModal(targetUserId = null) {
     
     roleEl.textContent = displayRole;
   }
+  const streakEl = document.getElementById('kir-profile-modal-streak');
+  if (streakEl) streakEl.textContent = streakDays || 0;
+
+  const flagsEl = document.getElementById('kir-profile-modal-flags');
+  if (flagsEl) {
+    const formatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+    flagsEl.textContent = formatter.format(flagsTotal || 0);
+  }
+
   const deltasEl = document.getElementById('kir-profile-modal-deltas');
   if (deltasEl) {
     const formatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
@@ -3381,7 +3475,7 @@ async function kirOpenProfileModal(targetUserId = null) {
   }
 
   if (actualTargetId) {
-    kirRenderCommentSection('profile-comments-root', 'profile', actualTargetId);
+    kirRenderCommentSection('profile-comments-root', 'profile', actualTargetId, 'kirCloseProfileModal()');
   }
 
   kirLocalModalShow(modal);
