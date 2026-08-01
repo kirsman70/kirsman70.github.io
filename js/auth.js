@@ -3461,7 +3461,7 @@ async function kirOpenProfileModal(targetUserId = null) {
   }
 
   // Populate about me view
-  kirRefreshProfileAboutView(about);
+  kirRefreshProfileAboutView(about, isSelf);
 
   // Populate created-at
   const createdAtEl = document.getElementById('kir-profile-modal-createdat');
@@ -3489,9 +3489,10 @@ function kirCloseProfileModal() {
 
 let _kirMarkdownDependenciesLoading = false;
 
-function kirRefreshProfileAboutView(text) {
+function kirRefreshProfileAboutView(text, isSelf = true) {
   const textEl  = document.getElementById('kir-profile-about-text');
   const emptyEl = document.getElementById('kir-profile-about-empty');
+  const viewEl  = document.getElementById('kir-profile-about-view');
   if (!textEl || !emptyEl) return;
   const val = (text || '').trim();
   if (val) {
@@ -3522,12 +3523,19 @@ function kirRefreshProfileAboutView(text) {
         }).catch(err => console.error("Failed to load markdown", err));
       }
     }
+    if (viewEl) viewEl.classList.remove('hidden');
     textEl.classList.remove('hidden');
     emptyEl.classList.add('hidden');
   } else {
     textEl.textContent = '';
     textEl.classList.add('hidden');
-    emptyEl.classList.remove('hidden');
+    if (isSelf) {
+      if (viewEl) viewEl.classList.remove('hidden');
+      emptyEl.classList.remove('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+      if (viewEl) viewEl.classList.add('hidden');
+    }
   }
 }
 

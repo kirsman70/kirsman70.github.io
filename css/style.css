@@ -3323,7 +3323,7 @@
     background-size: cover;
     background-position: center;
   }
-  .kir-profile-avatar-ring label:hover .kir-profile-avatar {
+  .kir-profile-avatar-ring label.cursor-pointer:hover .kir-profile-avatar {
     filter: brightness(0.85);
   }
 
