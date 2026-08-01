@@ -998,11 +998,27 @@ function kirAdminDpFormatDisplay(rawValue, withTime) {
   if (!rawValue) return 'Pilih tanggal...';
   const d = new Date(withTime ? rawValue : rawValue + 'T00:00:00');
   if (isNaN(d.getTime())) return 'Pilih tanggal...';
-  const dateLabel = `${d.getDate()} ${KIR_DP_MONTHS_ID[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;
-  if (!withTime) return dateLabel;
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${dateLabel}, ${hh}:${mm}`;
+  
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const parts = {};
+    fmt.formatToParts(d).forEach(p => { if (p.type !== 'literal') parts[p.type] = p.value; });
+    const monthIdx = parseInt(parts.month, 10) - 1;
+    const dayNum = parseInt(parts.day, 10);
+    const dateLabel = `${dayNum} ${KIR_DP_MONTHS_ID[monthIdx].slice(0,3)} ${parts.year}`;
+    if (!withTime) return dateLabel;
+    return `${dateLabel}, ${parts.hour}:${parts.minute}`;
+  } catch (e) {
+    const dateLabel = `${d.getDate()} ${KIR_DP_MONTHS_ID[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;
+    if (!withTime) return dateLabel;
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${dateLabel}, ${hh}:${mm}`;
+  }
 }
 
 function kirAdminDpInit(fieldId, withTime) {
@@ -1040,8 +1056,23 @@ function kirAdminDpToggle(fieldId) {
 }
 
 document.addEventListener('click', (e) => {
+  if (!e.target.isConnected || !document.body.contains(e.target)) return;
   if (!e.target.closest('.kir-datepicker')) kirAdminDpCloseAll();
 });
+
+function kirAdminDpMonthChange(fieldId, val) {
+  const state = kirAdminModalConfig.dpState[fieldId];
+  if (!state) return;
+  state.viewMonth = parseInt(val, 10);
+  kirAdminDpRender(fieldId);
+}
+
+function kirAdminDpYearChange(fieldId, val) {
+  const state = kirAdminModalConfig.dpState[fieldId];
+  if (!state) return;
+  state.viewYear = parseInt(val, 10);
+  kirAdminDpRender(fieldId);
+}
 
 function kirAdminDpRender(fieldId) {
   const state = kirAdminModalConfig.dpState[fieldId];
@@ -1066,10 +1097,24 @@ function kirAdminDpRender(fieldId) {
       <input type="time" class="glass-input rounded-lg px-2.5 py-1.5 text-sm" value="${String(state.hour).padStart(2,'0')}:${String(state.minute).padStart(2,'0')}" onchange="kirAdminDpTimeChange('${fieldId}', this.value)" />
     </div>` : '';
 
+  const yearOptions = [];
+  const startYear = Math.min(state.viewYear - 30, 1970);
+  const endYear = Math.max(state.viewYear + 30, 2070);
+  for (let y = startYear; y <= endYear; y++) {
+    yearOptions.push(`<option value="${y}"${y === state.viewYear ? ' selected' : ''}>${y}</option>`);
+  }
+
   panel.innerHTML = `
     <div class="kir-cal-header">
       <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', -1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-      <span class="kir-cal-title">${KIR_DP_MONTHS_ID[state.viewMonth]} ${state.viewYear}</span>
+      <div class="kir-cal-title-selects">
+        <select class="kir-cal-select kir-cal-month-select" onchange="kirAdminDpMonthChange('${fieldId}', this.value)">
+          ${KIR_DP_MONTHS_ID.map((m, idx) => `<option value="${idx}"${idx === state.viewMonth ? ' selected' : ''}>${m}</option>`).join('')}
+        </select>
+        <select class="kir-cal-select kir-cal-year-select" onchange="kirAdminDpYearChange('${fieldId}', this.value)">
+          ${yearOptions.join('')}
+        </select>
+      </div>
       <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', 1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <div class="kir-cal-grid">

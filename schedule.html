@@ -229,10 +229,15 @@
     return scheduleLang() === 'id' ? 'id-ID' : 'en-US';
   }
 
-  // Local-calendar-day key (NOT toISOString, which shifts by timezone offset
-  // and can silently roll a date over to the previous/next day).
+  // Local-calendar-day key in GMT+7 (Asia/Jakarta)
   function ymd(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!d || isNaN(d.getTime())) return '';
+    try {
+      const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+      return fmt.format(d);
+    } catch (e) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
   }
 
   async function fetchScheduleFromDatabase() {
@@ -946,6 +951,22 @@
     document.getElementById('schedule-cal-grid').innerHTML = cellsHtml;
   }
 
+  function kirFormatDatetimeLocalJakarta(dateObj) {
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    try {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+      const parts = {};
+      fmt.formatToParts(dateObj).forEach(p => { if (p.type !== 'literal') parts[p.type] = p.value; });
+      return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+    } catch (e) {
+      return dateObj.toISOString().slice(0, 16);
+    }
+  }
+
   function renderScheduleDayPopoverContent() {
     if (!scheduleSelectedKey) return;
 
@@ -953,7 +974,7 @@
     const locale = scheduleLocale();
     const [y, m, day] = scheduleSelectedKey.split('-').map(Number);
     const selectedDate = new Date(y, m - 1, day);
-    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate);
+    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(selectedDate);
     document.getElementById('schedule-day-popover-title').textContent = dateLabel;
 
     const body = document.getElementById('schedule-day-popover-body');
@@ -966,17 +987,7 @@
         <span class="truncate">${holiday.name}</span>
       </div>` : '';
 
-    // Hardcoded fun days (World Snake Day, etc.) — same badge styling as the
-    // holiday one above, just green, and independent of it so both can show
-    // if a date ever happens to carry both. The label itself is trimmed a
-    // bit (flex-1 instead of full-width) to leave room for the snake-icon
-    // button beside it — that button doesn't do anything yet, it's just a
-    // placeholder hook for a future World Snake Day feature.
     const special = scheduleGetSpecialDay(scheduleSelectedKey);
-    // Reduced motion: skip the button markup entirely rather than hiding it
-    // with CSS, so there's no dead-but-present click target sitting in the
-    // DOM. (scheduleSnakeDayAction/start() still guard on the same check
-    // too — see schedule-snake.js — this is just about what actually renders.)
     const snakeButtonHtml = scheduleIsReducedMotion() ? '' : `
         <button onclick="scheduleSnakeDayAction()" aria-label="${I18N[lang].schedule_world_snake_day}" class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/25 text-green-400 hover:bg-green-500/15 transition text-base leading-none">
           🐍
@@ -1003,7 +1014,7 @@
     }
 
     body.innerHTML = holidayHtml + specialHtml + dayEvents.map(ev => {
-      const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(ev.event_date));
+      const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(new Date(ev.event_date));
       const rowHtml = `
         <div onclick="openScheduleModal('${ev.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openScheduleModal('${ev.id}');}" tabindex="0" role="button" class="kir-day-event-row ${ev.is_next ? 'kir-cal-is-next' : ''}">
           <div class="flex items-center gap-3 min-w-0">
@@ -1027,8 +1038,8 @@
     
     const d = new Date(ev.event_date);
     const locale = scheduleLocale();
-    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
-    const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(d);
+    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }).format(d);
+    const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(d);
 
     document.getElementById('schedule-modal-admin-actions').innerHTML = kirAdminActionsHtml({
       onEdit: `openScheduleAdminModal('${ev.id}')`,
@@ -1065,12 +1076,8 @@
     const ev = id ? EVENTS.find(e => e.id === id) : null;
     let values = null;
     if (ev) {
-      const d = new Date(ev.event_date);
-      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-      values = { ...ev, event_date: d.toISOString().slice(0,16) };
+      values = { ...ev, event_date: kirFormatDatetimeLocalJakarta(new Date(ev.event_date)) };
     } else if (prefillDateKey) {
-      // Default to a reasonable time-of-day on the picked date rather than
-      // midnight, so the datetime field doesn't need to be touched twice.
       values = { event_date: `${prefillDateKey}T09:00` };
     }
 

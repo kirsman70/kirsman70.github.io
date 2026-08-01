@@ -298,7 +298,7 @@
       const locale = lang === 'en' ? 'en-US' : 'id-ID';
       const noDue = lang === 'en' ? 'No Due Date' : 'Tanpa Tenggat';
       const everyoneLabel = lang === 'en' ? 'All Members' : 'Semua Anggota';
-      const formattedDue = t.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(t.due_date)) : noDue;
+      const formattedDue = t.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(t.due_date)) : noDue;
       const canSubmit = kirCanSubmitTask(t);
 
       const cardHtml = `
@@ -412,7 +412,7 @@
     const locale = lang === 'en' ? 'en-US' : 'id-ID';
     const noDue = lang === 'en' ? 'No Due Date' : 'Tanpa Tenggat';
     const everyoneLabel = lang === 'en' ? 'All Members' : 'Semua Anggota';
-    const formattedDue = task.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(task.due_date)) : noDue;
+    const formattedDue = task.due_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(task.due_date)) : noDue;
 
     document.getElementById('modal-title').textContent = task.title;
     document.getElementById('modal-meta').innerHTML = `<span data-i18n="assigned_to">${I18N[lang].assigned_to}</span> ${task.assignee || everyoneLabel} &middot; <span data-i18n="due">${I18N[lang].due}</span> ${formattedDue}`;
