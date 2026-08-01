@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Orbit</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="js/auth.js" defer></script>
 <script>
   try {
     const savedHomeStage = Number(sessionStorage.getItem('kir_home_stage'));
@@ -94,6 +94,25 @@
   .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
   .obt-footer-mini { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; pointer-events: none; }
   .obt-footer-mini * { pointer-events: auto; }
+
+  /* Without an explicit view-transition-name, these still render as
+     part of the whole-page root snapshot during router.js's same-
+     document startViewTransition() (and Chrome's cross-document
+     @view-transition on a hard navigation) even though the header/
+     footer DOM node itself is preserved unchanged. The root group
+     still crossfades old-vs-new screenshots of the ENTIRE viewport,
+     so identical header/footer pixels visibly flash/fade along with
+     the rest of the page — only .public-nav-indicator (the pill) had
+     its own name, so it alone glided smoothly while everything
+     around it flashed. Naming these two pulls them into their own
+     groups, out of the root crossfade, so they just hold steady. */
+  .obt-header { view-transition-name: kir-public-header; }
+  .obt-footer-mini { view-transition-name: kir-public-footer; }
+  ::view-transition-group(kir-public-header),
+  ::view-transition-group(kir-public-footer) {
+    animation-duration: 0.001ms !important;
+    animation-delay: -1ms !important;
+  }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
   @media (max-width: 560px) {
@@ -1536,6 +1555,16 @@
 </footer>
 
 <script>
+// auth.js/router.js now load with `defer` (see <head>) so they no
+// longer block the initial paint of the header/footer/orbit scene.
+// That means this block can't assume kirApplyTranslations() /
+// kirIsLoggedIn() are defined the instant the parser reaches it --
+// deferred scripts only finish, in order, right before
+// DOMContentLoaded fires. Wrapping the whole block (which already
+// only touched DOM below it) in that event keeps it running at
+// effectively the same moment as before, just without forcing
+// everything above it to sit blocked on the network first.
+document.addEventListener('DOMContentLoaded', function () {
   kirApplyTranslations();
 
   if (kirIsLoggedIn()) {
@@ -2225,6 +2254,7 @@
       }
     });
   })();
+}); // DOMContentLoaded
 </script>
 <script>
   /* FAQ accordion — only one item open at a time per group.
@@ -2317,6 +2347,6 @@
     else openFaqItem(item);
   });
 </script>
-<script src="js/router.js"></script>
+<script src="js/router.js" defer></script>
 </body>
 </html>

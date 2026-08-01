@@ -323,6 +323,43 @@
     const preserveGlow = !!(oldGlowLayer && doc.body.querySelector(':scope > .glow-layer'));
     const oldModalsRoot = document.getElementById('kir-modals-root');
 
+    // For the public marketing shell, detect which persistent elements the two
+    // pages share so we can skip them in the fragment loop below (same technique
+    // as preserveSidebar). We patch only what changed (nav active classes, auth
+    // nav state) in a requestAnimationFrame AFTER the View Transition fires,
+    // so none of it blocks the transition's update callback with live-DOM reads.
+    const oldHeader = document.querySelector('header.obt-header');
+    const newHeaderEl = doc.querySelector('header.obt-header');
+    const preserveHeader = !!(oldHeader && newHeaderEl);
+
+    const oldStars = document.getElementById('obt-stars');
+    const preserveStars = !!(oldStars && doc.getElementById('obt-stars'));
+
+    const oldVignette = document.querySelector('.obt-vignette');
+    const preserveVignette = !!(oldVignette && doc.querySelector('.obt-vignette'));
+
+    const oldFooter = document.querySelector('footer.obt-footer-mini');
+    const preserveFooter = !!(oldFooter && doc.querySelector('footer.obt-footer-mini'));
+
+    // Collect the set of tag+id/class identifiers to skip during the fragment loop.
+    const skipNodes = new Set();
+    if (preserveHeader) skipNodes.add(oldHeader);
+    if (preserveStars)  skipNodes.add(oldStars);
+    if (preserveVignette) skipNodes.add(oldVignette);
+    if (preserveFooter) skipNodes.add(oldFooter);
+
+    // Snapshot nav active state BEFORE swapBody so we read from the detached doc,
+    // not from the live layout (avoids forced reflow inside the transition callback).
+    let newNavLinkClasses = [];
+    if (preserveHeader && newHeaderEl) {
+      newHeaderEl.querySelectorAll('.public-nav-link').forEach(l => newNavLinkClasses.push(l.className));
+    }
+    let newAuthNavHTML = null;
+    if (preserveHeader && newHeaderEl) {
+      const newAuthNav = newHeaderEl.querySelector('nav:last-child');
+      if (newAuthNav) newAuthNavHTML = newAuthNav.innerHTML;
+    }
+
     let bodySwapped = false;
     const swapBody = async () => {
       if (bodySwapped) return;
@@ -350,6 +387,13 @@
         const newSidebarPlaceholder = doc.getElementById('sidebar-root');
         if (newSidebarPlaceholder) newSidebarPlaceholder.replaceWith(doc.adoptNode(oldSidebarRoot));
       }
+
+      // Remove shell nodes from doc so the fragment loop below skips them —
+      // they are already live in the real document and stay exactly where they are.
+      if (preserveHeader && newHeaderEl && newHeaderEl.parentNode === doc.body) newHeaderEl.remove();
+      doc.querySelectorAll('#obt-stars, .obt-vignette, footer.obt-footer-mini').forEach(el => {
+        if (el.parentNode === doc.body) el.remove();
+      });
 
       const isLeavingIndex = !!document.getElementById('obt-stage-outer') ||
         sessionStorage.getItem('kir_just_left_index') === 'true';
@@ -419,7 +463,45 @@
       });
       syncOrbitAnimations(fragment);
 
-      document.body.replaceChildren(fragment);
+      // Build the final child list: persistent shell nodes that stayed in the
+      // live body (never removed from doc, so still live) + the new fragment.
+      // We clear the body and re-insert everything in the right order:
+      //   1. persistent header (if preserved, already a live node)
+      //   2. persistent stars/vignette (if preserved)
+      //   3. new main content (from fragment)
+      //   4. persistent footer (if preserved)
+      const shellBefore = []; // kept nodes to prepend
+      const shellAfter  = []; // kept nodes to append
+      if (preserveHeader  && oldHeader)   shellBefore.push(oldHeader);
+      if (preserveStars   && oldStars)    shellBefore.push(oldStars);
+      if (preserveVignette && oldVignette) shellBefore.push(oldVignette);
+      if (preserveFooter  && oldFooter)   shellAfter.push(oldFooter);
+
+      // detach live shell nodes so replaceChildren doesn't lose them
+      shellBefore.forEach(n => n.remove());
+      shellAfter.forEach(n => n.remove());
+
+      document.body.replaceChildren(...shellBefore, fragment, ...shellAfter);
+
+      // After body replacement, patch nav active classes without forced layout.
+      if (preserveHeader && oldHeader) {
+        const oldNavLinks = oldHeader.querySelectorAll('.public-nav-link');
+        newNavLinkClasses.forEach((cls, idx) => {
+          if (oldNavLinks[idx] && oldNavLinks[idx].className !== cls) {
+            oldNavLinks[idx].className = cls;
+          }
+        });
+        if (newAuthNavHTML !== null) {
+          const oldAuthNav = oldHeader.querySelector('nav:last-child');
+          if (oldAuthNav && oldAuthNav.innerHTML !== newAuthNavHTML) {
+            oldAuthNav.innerHTML = newAuthNavHTML;
+          }
+        }
+        // Slide the nav pill to the newly-active link.
+        requestAnimationFrame(() => {
+          if (typeof kirInitNavIndicator === 'function') kirInitNavIndicator();
+        });
+      }
       
       if (oldModalsRoot) {
         document.body.appendChild(oldModalsRoot);

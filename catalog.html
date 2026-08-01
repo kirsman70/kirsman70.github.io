@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Katalog</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="js/auth.js" defer></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,8 +61,28 @@
     background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
   }
 
-  .obt-header { flex: 0 0 auto; position: relative; z-index: 50; }
-  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+  .obt-footer-mini { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; pointer-events: none; }
+  .obt-footer-mini * { pointer-events: auto; }
+
+  /* Without an explicit view-transition-name, these still render as
+     part of the whole-page root snapshot during router.js's same-
+     document startViewTransition() (and Chrome's cross-document
+     @view-transition on a hard navigation) even though the header/
+     footer DOM node itself is preserved unchanged. The root group
+     still crossfades old-vs-new screenshots of the ENTIRE viewport,
+     so identical header/footer pixels visibly flash/fade along with
+     the rest of the page — only .public-nav-indicator (the pill) had
+     its own name, so it alone glided smoothly while everything
+     around it flashed. Naming these two pulls them into their own
+     groups, out of the root crossfade, so they just hold steady. */
+  .obt-header { view-transition-name: kir-public-header; }
+  .obt-footer-mini { view-transition-name: kir-public-footer; }
+  ::view-transition-group(kir-public-header),
+  ::view-transition-group(kir-public-footer) {
+    animation-duration: 0.001ms !important;
+    animation-delay: -1ms !important;
+  }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
   @media (max-width: 560px) {
@@ -103,6 +123,8 @@
     justify-content: center;
     overflow: hidden;
     padding: 2rem 1.5rem;
+    padding-top: calc(2rem + var(--obt-header-h, 92px));
+    padding-bottom: calc(2rem + var(--obt-footer-h, 40px));
     text-align: center;
   }
 </style>
@@ -145,6 +167,29 @@
   </nav>
 </header>
 
+<script>
+  // Measure the header's real rendered height so .obt-cosmos's
+  // padding-top/bottom compensation always matches exactly, instead
+  // of guessing a fixed pixel value. Mirrors index.html so the header/
+  // footer DOM nodes (kept alive across router.js navigations) never
+  // have to jump between layout modes when arriving on this page.
+  (function syncHeaderFooterHeightVars() {
+    const headerEl = document.querySelector('.obt-header');
+    const footerEl = document.querySelector('.obt-footer-mini');
+    function apply() {
+      if (headerEl) {
+        document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+      }
+      if (footerEl) {
+        const isHidden = window.getComputedStyle(footerEl).display === 'none';
+        document.documentElement.style.setProperty('--obt-footer-h', isHidden ? '0px' : footerEl.offsetHeight + 'px');
+      }
+    }
+    apply();
+    window.addEventListener('resize', apply);
+  })();
+</script>
+
 <main class="obt-cosmos" id="obt-cosmos">
   <div class="max-w-lg">
     <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
@@ -167,6 +212,15 @@
 </footer>
 
 <script>
+// auth.js/router.js now load with `defer` (see <head>) so they no
+// longer block the initial paint of the header/footer/page content.
+// That means this block can no longer assume kirApplyTranslations()/
+// kirIsLoggedIn() are already defined the instant the parser reaches
+// it — deferred scripts only finish, in order, right before
+// DOMContentLoaded fires. Waiting for that event keeps this running
+// at effectively the same moment as before, just without forcing
+// everything above it to sit blocked on the network first.
+document.addEventListener('DOMContentLoaded', function () {
   kirApplyTranslations();
   const HOME_STAGE_KEY = 'kir_home_stage';
   const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html']);
@@ -199,7 +253,8 @@
     ctaLink.href = 'dashboard.html';
     kirRenderUserChrome();
   }
+}); // DOMContentLoaded
 </script>
-<script src="js/router.js"></script>
+<script src="js/router.js" defer></script>
 </body>
 </html>

@@ -2213,6 +2213,85 @@ function kirApplyTranslations() {
   window.dispatchEvent(new CustomEvent('kir:lang-changed', { detail: { lang } }));
 
   kirRevealPage();
+  kirInitNavIndicator();
+}
+
+/* ----------------------------------------------------------
+   Animated Sliding Nav Box Indicator
+   ---------------------------------------------------------- */
+function kirInitNavIndicator() {
+  const navs = document.querySelectorAll('.obt-header-center-nav');
+  if (!navs.length) return;
+
+  navs.forEach(nav => {
+    let indicator = nav.querySelector('.public-nav-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'public-nav-indicator';
+      nav.appendChild(indicator);
+    }
+
+    const links = Array.from(nav.querySelectorAll('.public-nav-link'));
+    if (!links.length) return;
+
+    let activeLink = nav.querySelector('.public-nav-link.active') || links[0];
+
+    function updatePos(targetEl, animate = true) {
+      if (!targetEl || !targetEl.offsetWidth) {
+        indicator.classList.remove('is-visible');
+        return;
+      }
+      const navRect = nav.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+
+      const left = targetRect.left - navRect.left;
+      const top = targetRect.top - navRect.top;
+      const width = targetRect.width;
+      const height = targetRect.height;
+
+      if (!animate) {
+        indicator.style.transition = 'none';
+      }
+
+      indicator.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      indicator.style.width = `${width}px`;
+      indicator.style.height = `${height}px`;
+      indicator.classList.add('is-visible');
+
+      if (!animate) {
+        requestAnimationFrame(() => {
+          indicator.style.transition = '';
+        });
+      }
+    }
+
+    requestAnimationFrame(() => updatePos(activeLink, false));
+
+    links.forEach(link => {
+      if (link.dataset.hasIndicatorClickListener) return;
+      link.dataset.hasIndicatorClickListener = 'true';
+
+      link.addEventListener('click', () => {
+        links.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        activeLink = link;
+        updatePos(link, true);
+      });
+    });
+
+    if (!nav.dataset.hasIndicatorResizeListener) {
+      nav.dataset.hasIndicatorResizeListener = 'true';
+      window.addEventListener('resize', () => {
+        if (activeLink) updatePos(activeLink, false);
+      });
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', kirInitNavIndicator);
+} else {
+  kirInitNavIndicator();
 }
 
 // Every page's body is hidden by default (see the `html:not(.kir-ready)
@@ -2272,6 +2351,7 @@ function kirRevealPage() {
 // on a class that's already there is a no-op.
 window.addEventListener('load', () => {
   if (!document.documentElement.classList.contains('kir-ready')) kirRevealPage();
+  kirInitNavIndicator();
 });
 
 /* ----------------------------------------------------------
