@@ -2408,7 +2408,7 @@
       pointer-events: none;
       z-index: 0;
     }
-    body:has(#obt-cosmos) > .glow-layer:not(.glow-dim-out) {
+    body:has(#obt-stage-outer) > .glow-layer:not(.glow-dim-out) {
       opacity: 0 !important;
       pointer-events: none !important;
     }
@@ -2426,6 +2426,8 @@
       }
     }
     .glow-layer.glow-dim-out {
+      opacity: 1 !important;
+      z-index: 1 !important;
       animation: glow-layer-dim-out 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
     }
     @keyframes glow-layer-dim-out {
@@ -2444,12 +2446,12 @@
         opacity: var(--glow-opacity);
       }
       33% {
-        transform: translate3d(45px, -35px, 0) scale(1.12);
-        opacity: calc(var(--glow-opacity) * 1.25);
+        transform: translate3d(14px, -10px, 0) scale(1.05);
+        opacity: calc(var(--glow-opacity) * 1.12);
       }
       66% {
-        transform: translate3d(-35px, 25px, 0) scale(0.92);
-        opacity: calc(var(--glow-opacity) * 0.85);
+        transform: translate3d(-10px, 8px, 0) scale(0.96);
+        opacity: calc(var(--glow-opacity) * 0.9);
       }
     }
     @keyframes glow-blob-float-2 {
@@ -2458,12 +2460,12 @@
         opacity: var(--glow-opacity);
       }
       40% {
-        transform: translate3d(-50px, 35px, 0) scale(1.15);
-        opacity: calc(var(--glow-opacity) * 0.8);
+        transform: translate3d(-12px, 10px, 0) scale(1.06);
+        opacity: calc(var(--glow-opacity) * 0.88);
       }
       75% {
-        transform: translate3d(35px, -25px, 0) scale(0.9);
-        opacity: calc(var(--glow-opacity) * 1.2);
+        transform: translate3d(10px, -8px, 0) scale(0.95);
+        opacity: calc(var(--glow-opacity) * 1.15);
       }
     }
     .glow-blob {

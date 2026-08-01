@@ -173,10 +173,11 @@
     { selector: '.obt-guide-2', durationSec: 240 },
     { selector: '.obt-moon-orbit:not(.obt-moon-2)', durationSec: 34 },
     { selector: '.obt-moon-orbit.obt-moon-2', durationSec: 52 },
+    { selector: '.glow-blob:not(:nth-child(even))', durationSec: 32 },
+    { selector: '.glow-blob:nth-child(even)', durationSec: 44 },
   ];
 
   function syncOrbitAnimations(root) {
-    if (isReducedMotion()) return;
     const elapsedSec = (performance.now() - ORBIT_CLOCK_START) / 1000;
     ORBIT_ANIMATIONS.forEach(({ selector, durationSec }) => {
       const phase = elapsedSec % durationSec;
@@ -350,27 +351,26 @@
         if (newSidebarPlaceholder) newSidebarPlaceholder.replaceWith(doc.adoptNode(oldSidebarRoot));
       }
 
-      const isLeavingIndex = /\/(index\.html)?$/i.test(window.location.pathname) ||
-        window.location.pathname === '/' ||
-        window.location.pathname === '' ||
+      const isLeavingIndex = !!document.getElementById('obt-stage-outer') ||
         sessionStorage.getItem('kir_just_left_index') === 'true';
 
-      const isTargetingIndex = (doc.body && doc.body.classList.contains('obt-body')) ||
+      const isTargetingIndex = !!doc.getElementById('obt-stage-outer') ||
         sessionStorage.getItem('kir_just_left_glow_page') === 'true';
 
-      if (preserveGlow && !isTargetingIndex) {
+      if (oldGlowLayer && isTargetingIndex) {
+        // Navigating FROM a subpage WITH glow blobs TO index.html: dim out the glow layer
+        oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
+        void oldGlowLayer.offsetWidth;
+        oldGlowLayer.classList.add('glow-dim-out');
+        const targetGlowPlaceholder = doc.querySelector('.glow-layer');
+        if (targetGlowPlaceholder) targetGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
+        else if (doc.getElementById('obt-cosmos')) doc.getElementById('obt-cosmos').prepend(doc.adoptNode(oldGlowLayer));
+        else doc.body.prepend(doc.adoptNode(oldGlowLayer));
+      } else if (preserveGlow) {
         // Navigating between two subpages with glow blobs: preserve old glow layer without re-triggering light-up or dim-out
         if (oldGlowLayer) oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
         const newGlowPlaceholder = doc.body.querySelector(':scope > .glow-layer');
         if (newGlowPlaceholder) newGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
-      } else if (oldGlowLayer && isTargetingIndex) {
-        // Navigating FROM a subpage WITH glow blobs TO index.html: dim out the glow layer
-        const targetGlowPlaceholder = doc.body.querySelector(':scope > .glow-layer');
-        oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
-        void oldGlowLayer.offsetWidth;
-        oldGlowLayer.classList.add('glow-dim-out');
-        if (targetGlowPlaceholder) targetGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
-        else doc.body.prepend(doc.adoptNode(oldGlowLayer));
       } else {
         // Navigating FROM index.html TO a subpage WITH glow blobs: light up the glow layer
         const newGlow = doc.body.querySelector(':scope > .glow-layer');
@@ -487,7 +487,7 @@
       try {
         const destPath = new URL(a.href, window.location.href).pathname;
         const isDestIndex = /\/(index\.html)?$/i.test(destPath) || destPath === '/' || destPath === '';
-        const isCurrentIndex = document.body.classList.contains('obt-body') || /\/(index\.html)?$/i.test(window.location.pathname);
+        const isCurrentIndex = !!document.getElementById('obt-stage-outer');
         if (isCurrentIndex && !isDestIndex) {
           sessionStorage.setItem('kir_just_left_index', 'true');
         } else if (!isCurrentIndex && isDestIndex && document.querySelector('.glow-layer')) {
@@ -511,7 +511,7 @@
   function checkInitialGlowLightUp() {
     const glow = document.querySelector('.glow-layer');
     if (!glow) return;
-    const isIndex = document.body.classList.contains('obt-body') || /\/(index\.html)?$/i.test(window.location.pathname);
+    const isIndex = !!document.getElementById('obt-stage-outer');
     const justLeftGlowPage = sessionStorage.getItem('kir_just_left_glow_page') === 'true';
     const justLeftIndex = sessionStorage.getItem('kir_just_left_index') === 'true';
     sessionStorage.removeItem('kir_just_left_glow_page');
