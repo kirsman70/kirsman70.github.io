@@ -997,6 +997,75 @@
     z-index: 0;
   }
 
+  /* Default hidden state for index.html glow layer unless dimming out from a subpage */
+  body:has(#obt-cosmos) > .glow-layer:not(.glow-dim-out) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Entry light-up animation when arriving from index.html */
+  .glow-layer.glow-light-up {
+    animation: glow-layer-light-up 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  @keyframes glow-layer-light-up {
+    0% {
+      opacity: 0;
+      filter: brightness(0.1) saturate(0.3);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1) saturate(1);
+    }
+  }
+
+  /* Dim-out animation when returning to index.html from a glow blob page */
+  .glow-layer.glow-dim-out {
+    animation: glow-layer-dim-out 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  @keyframes glow-layer-dim-out {
+    0% {
+      opacity: 1;
+      filter: brightness(1) saturate(1);
+    }
+    100% {
+      opacity: 0;
+      filter: brightness(0.1) saturate(0.3);
+    }
+  }
+
+  /* Floating keyframe animations for ambient glow blobs */
+  @keyframes glow-blob-float-1 {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+      opacity: var(--glow-opacity);
+    }
+    33% {
+      transform: translate3d(45px, -35px, 0) scale(1.12);
+      opacity: calc(var(--glow-opacity) * 1.25);
+    }
+    66% {
+      transform: translate3d(-35px, 25px, 0) scale(0.92);
+      opacity: calc(var(--glow-opacity) * 0.85);
+    }
+  }
+
+  @keyframes glow-blob-float-2 {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+      opacity: var(--glow-opacity);
+    }
+    40% {
+      transform: translate3d(-50px, 35px, 0) scale(1.15);
+      opacity: calc(var(--glow-opacity) * 0.8);
+    }
+    75% {
+      transform: translate3d(35px, -25px, 0) scale(0.9);
+      opacity: calc(var(--glow-opacity) * 1.2);
+    }
+  }
+
   /* ambient glow blobs. The site's signature visual motif */
   .glow-blob {
     position: absolute;
@@ -1005,6 +1074,19 @@
     pointer-events: none;
     z-index: 0;
     opacity: var(--glow-opacity);
+    animation: glow-blob-float-1 16s ease-in-out infinite alternate !important;
+    will-change: transform, opacity;
+  }
+
+  .glow-blob:nth-child(even) {
+    animation-name: glow-blob-float-2 !important;
+    animation-duration: 22s !important;
+  }
+
+  /* Always animate glow blobs regardless of reduced motion settings */
+  html[data-reduce-motion="true"] .glow-blob,
+  html[data-reduce-motion="true"] .glow-layer * {
+    animation-play-state: running !important;
   }
 
   .glass {

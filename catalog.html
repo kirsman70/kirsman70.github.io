@@ -168,6 +168,27 @@
 
 <script>
   kirApplyTranslations();
+  const HOME_STAGE_KEY = 'kir_home_stage';
+  const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html']);
+
+  function pageNameFromHref(href) {
+    try {
+      return new URL(href, window.location.href).pathname.split('/').pop();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!link) return;
+    const pageName = pageNameFromHref(link.getAttribute('href') || link.href);
+    if (pageName === 'index.html' || HOME_STAGE_PAGES.has(pageName)) return;
+    try {
+      sessionStorage.removeItem(HOME_STAGE_KEY);
+    } catch (err) {}
+  }, true);
+
   if (kirIsLoggedIn()) {
     const authLink = document.getElementById('nav-auth-link');
     const ctaLink = document.getElementById('nav-cta-link');

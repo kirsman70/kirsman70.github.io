@@ -350,26 +350,40 @@
         if (newSidebarPlaceholder) newSidebarPlaceholder.replaceWith(doc.adoptNode(oldSidebarRoot));
       }
 
-      if (preserveGlow) {
-        // .glow-layer (the fixed, full-viewport ambient glow blobs
-        // behind everything — the site's whole background lighting
-        // against the near-black page background) IS a direct child of
-        // <body> on every page, unlike sidebar-root. The childNodes
-        // loop below used to unconditionally skip it "to prevent flash
-        // during navigation" — but nothing ever put a replacement back:
-        // the OLD glow-layer wasn't in the new fragment either (only
-        // doc.body's children end up there), so document.body.
-        // replaceChildren() below discarded it right along with
-        // everything else NOT in the fragment. Net effect: the very
-        // first SPA navigation deleted it permanently, and every page
-        // after that rendered against flat black instead of the site's
-        // actual background — which is exactly what reads as "flashing
-        // black" (and stays that way, since it never comes back). Same
-        // fix as the sidebar: keep the real node and move it into place
-        // instead of dropping it.
+      const isLeavingIndex = /\/(index\.html)?$/i.test(window.location.pathname) ||
+        window.location.pathname === '/' ||
+        window.location.pathname === '' ||
+        sessionStorage.getItem('kir_just_left_index') === 'true';
+
+      const isTargetingIndex = (doc.body && doc.body.classList.contains('obt-body')) ||
+        sessionStorage.getItem('kir_just_left_glow_page') === 'true';
+
+      if (preserveGlow && !isTargetingIndex) {
+        // Navigating between two subpages with glow blobs: preserve old glow layer without re-triggering light-up or dim-out
+        if (oldGlowLayer) oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
         const newGlowPlaceholder = doc.body.querySelector(':scope > .glow-layer');
         if (newGlowPlaceholder) newGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
+      } else if (oldGlowLayer && isTargetingIndex) {
+        // Navigating FROM a subpage WITH glow blobs TO index.html: dim out the glow layer
+        const targetGlowPlaceholder = doc.body.querySelector(':scope > .glow-layer');
+        oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
+        void oldGlowLayer.offsetWidth;
+        oldGlowLayer.classList.add('glow-dim-out');
+        if (targetGlowPlaceholder) targetGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
+        else doc.body.prepend(doc.adoptNode(oldGlowLayer));
+      } else {
+        // Navigating FROM index.html TO a subpage WITH glow blobs: light up the glow layer
+        const newGlow = doc.body.querySelector(':scope > .glow-layer');
+        if (newGlow) {
+          newGlow.classList.remove('glow-light-up', 'glow-dim-out');
+          if (isLeavingIndex) {
+            void newGlow.offsetWidth;
+            newGlow.classList.add('glow-light-up');
+          }
+        }
       }
+      sessionStorage.removeItem('kir_just_left_index');
+      sessionStorage.removeItem('kir_just_left_glow_page');
 
       // --------------------------------------------------------------
       // Orbit-animation continuity (architectural fix)
@@ -468,9 +482,21 @@
   }
 
   document.addEventListener('click', (e) => {
+    const a = e.target ? e.target.closest('a') : null;
+    if (a && a.href) {
+      try {
+        const destPath = new URL(a.href, window.location.href).pathname;
+        const isDestIndex = /\/(index\.html)?$/i.test(destPath) || destPath === '/' || destPath === '';
+        const isCurrentIndex = document.body.classList.contains('obt-body') || /\/(index\.html)?$/i.test(window.location.pathname);
+        if (isCurrentIndex && !isDestIndex) {
+          sessionStorage.setItem('kir_just_left_index', 'true');
+        } else if (!isCurrentIndex && isDestIndex && document.querySelector('.glow-layer')) {
+          sessionStorage.setItem('kir_just_left_glow_page', 'true');
+        }
+      } catch (err) {}
+    }
     if (e.defaultPrevented || e.button !== 0) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    const a = e.target.closest('a');
     if (!isRoutableLink(a)) return;
     if (a.href === window.location.href) { e.preventDefault(); return; }
     e.preventDefault();
@@ -480,6 +506,33 @@
   window.addEventListener('popstate', () => {
     navigate(window.location.href, { push: false });
   });
+
+  // Check initial page load for entry from index.html or return to index.html from a glow page
+  function checkInitialGlowLightUp() {
+    const glow = document.querySelector('.glow-layer');
+    if (!glow) return;
+    const isIndex = document.body.classList.contains('obt-body') || /\/(index\.html)?$/i.test(window.location.pathname);
+    const justLeftGlowPage = sessionStorage.getItem('kir_just_left_glow_page') === 'true';
+    const justLeftIndex = sessionStorage.getItem('kir_just_left_index') === 'true';
+    sessionStorage.removeItem('kir_just_left_glow_page');
+    sessionStorage.removeItem('kir_just_left_index');
+
+    if (isIndex && justLeftGlowPage) {
+      glow.classList.remove('glow-light-up', 'glow-dim-out');
+      void glow.offsetWidth;
+      glow.classList.add('glow-dim-out');
+    } else if (!isIndex && justLeftIndex) {
+      glow.classList.remove('glow-light-up', 'glow-dim-out');
+      void glow.offsetWidth;
+      glow.classList.add('glow-light-up');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkInitialGlowLightUp);
+  } else {
+    checkInitialGlowLightUp();
+  }
 
   // Sync whatever guides/moons are on the very first page of the
   // session too, so the shared clock has a consistent starting phase

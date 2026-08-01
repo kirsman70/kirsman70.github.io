@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Orbit</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
+<script>
+  try {
+    const savedHomeStage = Number(sessionStorage.getItem('kir_home_stage'));
+    if (Number.isFinite(savedHomeStage) && savedHomeStage !== 0) {
+      document.documentElement.classList.add('obt-hide-hero-backdrop-initially');
+    }
+  } catch (e) {}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -22,6 +33,16 @@
      ========================================================== */
 
   html, body { height: 100%; overscroll-behavior: none; }
+
+  /* Override global reduced motion for index.html: always animate regardless of settings */
+  html[data-reduce-motion="true"] body.obt-body,
+  html[data-reduce-motion="true"] body.obt-body *,
+  html[data-reduce-motion="true"] body.obt-body *::before,
+  html[data-reduce-motion="true"] body.obt-body *::after {
+    animation-duration: unset !important;
+    animation-iteration-count: unset !important;
+    transition-duration: unset !important;
+  }
 
   body.obt-body {
     display: flex;
@@ -71,7 +92,8 @@
      orbit rings now extend up behind the (transparent) header instead
      of stopping short of it. */
   .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
-  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-footer-mini { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; pointer-events: none; }
+  .obt-footer-mini * { pointer-events: auto; }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
   @media (max-width: 560px) {
@@ -126,13 +148,33 @@
     justify-content: center;
     overflow: hidden;
     touch-action: none;
-    /* The header is now position:fixed (out of flow) so the ring/glow
-       can show through it, but that also gives .obt-cosmos the full
-       viewport height to center in — which pulled the planet up by
-       roughly half the header's height. Padding the top back in by the
-       header's actual measured height (set as --obt-header-h below)
-       puts the centered content back where it originally sat. */
+    background-color: var(--bg-color);
     padding-top: var(--obt-header-h, 92px);
+    padding-bottom: var(--obt-footer-h, 40px);
+  }
+
+  .obt-hero-backdrop {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 44;
+    pointer-events: none;
+    transition:
+      opacity 0.7s cubic-bezier(.2,.8,.2,1),
+      backdrop-filter 0.7s cubic-bezier(.2,.8,.2,1),
+      -webkit-backdrop-filter 0.7s cubic-bezier(.2,.8,.2,1);
+    background: rgba(255, 255, 255, 0.005);
+    backdrop-filter: invert(1);
+    -webkit-backdrop-filter: invert(1);
+    -webkit-mask: url(#hero-backdrop-mask);
+    mask: url(#hero-backdrop-mask);
+    will-change: opacity, backdrop-filter, -webkit-backdrop-filter;
+  }
+
+  .obt-hide-hero-backdrop-initially .obt-hero-backdrop,
+  .obt-hero-backdrop.is-hidden {
+    opacity: 0;
+    backdrop-filter: invert(0);
+    -webkit-backdrop-filter: invert(0);
   }
 
   .obt-stage-outer {
@@ -354,11 +396,6 @@
   .obt-corrupt-slice-a { top: 34%; }
   .obt-corrupt-slice-b { top: 61%; height: 4%; }
 
-  @media (prefers-reduced-motion: reduce) {
-    .obt-sphere-inner.is-corrupting { filter: none !important; }
-    .obt-sphere-surface { opacity: 1 !important; }
-    .obt-corrupt { display: none !important; }
-  }
 
   /* obt-ring-group is sized/positioned to the ring's OWN true bounding
      box (not inset:0 to the whole square stage). This box is exactly
@@ -509,6 +546,21 @@
     background: rgb(var(--accent-light-rgb));
     box-shadow: 0 0 14px 3px rgba(var(--accent-rgb), 0.8);
   }
+  /* Soft top rim so the glass card reads as a lit surface catching
+     light from the planet, rather than a flat tinted rectangle.
+     Sits behind the nav/panels (default stacking of a ::before) and
+     never intercepts clicks. */
+  .obt-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,0.09), transparent 42%);
+    pointer-events: none;
+  }
+  html[data-theme="light"] .obt-card::before {
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), transparent 42%);
+  }
 
   .obt-dock-tr { top: clamp(1rem, 6vh, 3.5rem); left: 74%; transform: translate(-50%, 0); }
   .obt-dock-tr::after { bottom: -5px; left: -5px; }
@@ -548,6 +600,12 @@
     display: flex; align-items: center; gap: 0.5rem;
     margin-bottom: 0.85rem;
   }
+  .obt-eyebrow::before {
+    content: '';
+    width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+    background: rgb(var(--accent-light-rgb));
+    box-shadow: 0 0 8px 1px rgba(var(--accent-rgb), 0.75);
+  }
   .obt-eyebrow-count { color: var(--muted-500); font-weight: 500; letter-spacing: 0.05em; }
 
   /* ---------------- Typewriter effect on each panel's heading ----------------
@@ -559,12 +617,9 @@
      heading is mid-type/mid-erase, in case anything else hooks into it. */
   .obt-typehead::after {
     content: '';
-    display: inline-block;
-    width: 2px;
-    height: 0.85em;
+    display: inline;
+    border-right: 2px solid var(--text-color);
     margin-left: 2px;
-    background: var(--text-color);
-    vertical-align: middle;
     animation: obt-caret-blink 0.85s step-end infinite;
   }
   @keyframes obt-caret-blink { 50% { opacity: 0; } }
@@ -596,7 +651,33 @@
   }
   .obt-typehead.obt-selected::after { display: none; }
 
-  .obt-feat-row { display: flex; gap: 0.85rem; align-items: flex-start; padding: 0.6rem 0; border-top: 1px solid var(--glass-border); }
+  /* CTAs inside the compact/mobile card reuse the .bg-accent-gradient
+     and .glass utility classes rather than a dedicated obt-cta class,
+     so these hover/press rules are scoped to .obt-card specifically —
+     the visually-identical "Daftar" button in the fixed header is
+     never touched by them. */
+  .obt-card a[class*="bg-accent-gradient"],
+  .obt-card a.glass {
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), filter 0.15s ease,
+      background-color 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .obt-card a[class*="bg-accent-gradient"]:hover {
+    box-shadow: 0 0 30px -4px rgba(var(--accent-rgb), 0.75);
+  }
+  .obt-card a.glass:hover { background-color: rgba(255,255,255,0.1); }
+  .obt-card a[class*="bg-accent-gradient"]:active,
+  .obt-card a.glass:active { transform: translateY(0) scale(0.97); }
+  .obt-card .glass.rounded-xl { transition: border-color 0.2s ease, background-color 0.2s ease; }
+  .obt-card .glass.rounded-xl:hover { border-color: rgba(var(--accent-rgb), 0.35); }
+
+
+  .obt-feat-row {
+    display: flex; gap: 0.85rem; align-items: flex-start;
+    padding: 0.7rem 0.5rem; margin-inline: -0.5rem;
+    border-top: 1px solid var(--glass-border);
+    border-radius: 0.6rem;
+    transition: background-color 0.2s ease;
+  }
   .obt-feat-row:first-of-type { border-top: none; }
   .obt-feat-icon {
     width: 2.1rem; height: 2.1rem; border-radius: 0.65rem; flex-shrink: 0;
@@ -614,8 +695,11 @@
     border-radius: 0.85rem;
     margin-bottom: 0.6rem;
     overflow: hidden;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .obt-faq-item:last-of-type { margin-bottom: 0; }
+  .obt-faq-item:hover { border-color: rgba(var(--accent-rgb), 0.35); }
+  .obt-faq-item[open] { border-color: rgba(var(--accent-rgb), 0.4); }
   .obt-faq-q {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
     padding: 0.85rem 1rem;
@@ -632,15 +716,29 @@
     transition: transform 0.25s ease;
   }
   .obt-faq-item[open] .obt-faq-chevron { transform: rotate(180deg); color: rgb(var(--accent-light-rgb)); }
+  .obt-faq-body {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.42s cubic-bezier(.2,.8,.2,1);
+  }
   .obt-faq-a {
+    margin: 0;
     padding: 0 1rem 1rem;
     font-size: 0.82rem;
     color: var(--muted-500);
     line-height: 1.55;
+    opacity: 0;
+    transform: translateY(-0.25rem);
+    transition:
+      opacity 0.22s ease,
+      transform 0.4s cubic-bezier(.2,.8,.2,1),
+      opacity 0.22s ease;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .obt-faq-chevron { transition: none; }
+  .obt-faq-item[open] .obt-faq-a {
+    opacity: 1;
+    transform: translateY(0);
   }
+
 
   /* ---------------- Progress rail + arrows ---------------- */
   .obt-progress {
@@ -717,8 +815,6 @@
   }
   .obt-hint.is-hidden { opacity: 0; transform: translateX(-50%) translateY(-8px); pointer-events: none; }
   .obt-hint-icon { display: flex; }
-  .obt-hint-icon svg { animation: obt-hint-bounce 1.8s ease-in-out infinite; }
-  @keyframes obt-hint-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 
   @media (max-width: 900px) {
     .obt-hint { top: auto; bottom: 46vh; margin-bottom: 0.75rem; }
@@ -745,11 +841,263 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .obt-sphere-bands, .obt-storm, .obt-guide-1, .obt-guide-2, .obt-hint-icon svg {
-      animation: none !important;
+
+
+  /* ============================================================
+     NEW: Dynamic editorial layout
+     ============================================================ */
+
+  /* Planet shift: driven by --planet-shift CSS custom property set by JS.
+     On mobile (<= 900px) we never shift — planet stays centered so the
+     bottom-sheet card has something to center above. */
+  @media (min-width: 901px) {
+    .obt-stage-outer {
+      transition:
+        width 0.4s cubic-bezier(.2,.8,.2,1),
+        transform 0.85s cubic-bezier(.2,.8,.2,1);
     }
-    .obt-stage, .obt-node, .obt-panel, .obt-card, .obt-stars { transition: none !important; }
+    .obt-stage-outer.obt-no-initial-transition {
+      transition: none !important;
+    }
+    .obt-stage-outer.obt-shifted {
+      transform: translateX(var(--planet-shift, 0%)) !important;
+    }
+  }
+
+  /* ---- Hero Backdrop: "In Harmonia Innovatio" ghost text ---- */
+  :root {
+    --text-grad-1: rgba(var(--accent-light-rgb), 0.22);
+    --text-grad-2: rgba(var(--accent-rgb), 0.13);
+    --text-grad-3: rgba(var(--accent-2-rgb), 0.18);
+  }
+  html[data-theme="light"] {
+    --text-grad-1: rgba(var(--accent-rgb), 0.15);
+    --text-grad-2: rgba(var(--accent-rgb), 0.125);
+    --text-grad-3: rgba(var(--accent-2-rgb), 0.10);
+  }
+
+
+  /* ---- Stage Outer Wrapper Group ----
+     Wraps the planet & stage. */
+  .obt-clip-group {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    /* Centers the planet properly inside this absolute wrapper */
+    display: flex; align-items: center; justify-content: center;
+  }
+  .obt-clip-group > .obt-stage-outer { pointer-events: auto; }
+
+
+  /* ---- Hero Caption: subtitle + CTAs for scene 0 ----
+     The sphere's own color comes from the user's accent theme, which
+     defaults to a near-white grayscale ("Premium Neutral") — so text
+     colored from the same theme variables (--muted-500, --text-color)
+     could land light-on-light or dark-on-dark depending on theme,
+     with no way to guarantee contrast against whatever the planet
+     currently looks like. Instead of chasing every accent/theme combo,
+     the caption gets its own fixed dark vignette + fixed light text,
+     the same way a caption over a bright photo would — self-contained
+     and legible no matter what's rendered behind it. */
+  .obt-hero-caption {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, 34%);
+    z-index: 45;
+    text-align: center;
+    width: min(500px, 80vw);
+    padding: 1.5rem 2rem 1.75rem;
+    transition: opacity 0.5s cubic-bezier(.2,.8,.2,1), transform 0.5s cubic-bezier(.2,.8,.2,1);
+    will-change: opacity, transform;
+  }
+  .obt-hero-caption::before {
+    content: '';
+    position: absolute;
+    inset: -1rem -2.5rem;
+    z-index: -1;
+    border-radius: 1.75rem;
+    background: radial-gradient(ellipse at center, rgba(6,6,9,0.7) 0%, rgba(6,6,9,0.46) 60%, transparent 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    pointer-events: none;
+  }
+  .obt-hero-caption.is-hidden {
+    opacity: 0;
+    transform: translate(-50%, 38%);
+    pointer-events: none;
+  }
+  .obt-hero-caption-sub {
+    font-size: clamp(0.8rem, 1.4vw, 1rem);
+    color: rgba(244, 244, 245, 0.92);
+    text-shadow: 0 1px 12px rgba(0,0,0,0.4);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.01em;
+  }
+  .obt-hero-caption-ctas {
+    display: flex; flex-wrap: wrap;
+    justify-content: center; gap: 0.75rem;
+  }
+  /* Fixed (not theme-variable) colors here too, for the same reason
+     as the scrim above — this sits on a permanently-dark backdrop. */
+  .obt-hero-caption-ctas .obt-st-cta-ghost {
+    color: rgba(244, 244, 245, 0.95);
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.16);
+  }
+  .obt-hero-caption-ctas .obt-st-cta-ghost:hover { background: rgba(255,255,255,0.14); }
+  /* Hide hero caption entirely on mobile — content lives in the bottom sheet */
+  @media (max-width: 900px) {
+    .obt-hero-caption { display: none; }
+  }
+
+  /* ---- Scene Text Panels: large editorial content for non-home scenes ---- */
+  .obt-scene-text {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 45;
+    width: clamp(260px, 32vw, 480px);
+    display: none; /* shown by JS via .is-active */
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 clamp(1rem, 3vw, 2.5rem);
+    /* Panels slide in from their respective side */
+    transition: opacity 0.55s cubic-bezier(.2,.8,.2,1), transform 0.65s cubic-bezier(.2,.8,.2,1);
+    will-change: opacity, transform;
+    /* Always hidden on mobile — bottom sheet handles content there */
+  }
+  .obt-scene-text.is-left  { left: 2%; }
+  .obt-scene-text.is-right { right: 2%; }
+
+  .obt-scene-text.is-active {
+    display: flex;
+    animation: obt-scene-text-in 0.65s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .obt-scene-text.is-left.is-active  { animation-name: obt-scene-text-in-left; }
+  .obt-scene-text.is-right.is-active { animation-name: obt-scene-text-in-right; }
+  .obt-scene-text[data-scene="faq"] { justify-content: flex-start; }
+
+  @keyframes obt-scene-text-in-left {
+    from { opacity: 0; transform: translateY(-50%) translateX(-28px); }
+    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }
+  @keyframes obt-scene-text-in-right {
+    from { opacity: 0; transform: translateY(-50%) translateX(28px); }
+    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }
+
+  .obt-st-eyebrow {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgb(var(--accent-light-rgb));
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .obt-st-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 2rem; height: 1.5px;
+    background: rgb(var(--accent-light-rgb));
+    opacity: 0.6;
+  }
+  .obt-st-heading {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.4rem, 4.5vw, 5rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.2rem;
+    color: var(--text-color);
+    text-shadow: 0 0 70px rgba(var(--accent-rgb), 0.28);
+    white-space: pre-line;
+  }
+  .obt-st-body {
+    font-size: clamp(0.82rem, 1.2vw, 0.97rem);
+    color: var(--muted-500);
+    line-height: 1.65;
+    margin-bottom: 1.8rem;
+    max-width: 38ch;
+  }
+  .obt-st-features {
+    display: flex; flex-direction: column; gap: 0.7rem;
+    margin-bottom: 1.8rem;
+  }
+  .obt-st-feature-row {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.4rem 0.5rem; margin-inline: -0.5rem;
+    border-radius: 0.6rem;
+    transition: background-color 0.2s ease;
+  }
+  .obt-st-feature-icon {
+    width: 2rem; height: 2rem; border-radius: 0.6rem; flex-shrink: 0;
+    background: rgba(var(--accent-rgb), 0.15);
+    border: 1px solid rgba(var(--accent-rgb), 0.28);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .obt-st-feature-icon svg { width: 13px; height: 13px; color: rgb(var(--accent-light-rgb)); }
+  .obt-st-feature-label { font-size: 0.82rem; font-weight: 600; color: var(--text-color); margin-bottom: 0.15rem; }
+  .obt-st-feature-desc  { font-size: 0.78rem; color: var(--muted-500); line-height: 1.5; }
+  .obt-st-branches {
+    display: flex; flex-direction: column; gap: 0.65rem;
+    margin-bottom: 1.8rem;
+  }
+  .obt-st-branch {
+    padding: 0.85rem 1rem; border-radius: 0.85rem;
+    transition: none;
+    cursor: default;
+  }
+  .obt-st-branch-label,
+  .obt-panel[data-scene="cabang"] .badge-robotik,
+  .obt-panel[data-scene="cabang"] .badge-sains {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 0.35rem;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .obt-st-branch-desc { font-size: 0.8rem; color: var(--muted-500); line-height: 1.5; }
+  .obt-st-cta {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 0.6rem;
+    font-size: 0.85rem; font-weight: 600;
+    letter-spacing: 0.01em;
+    width: fit-content;
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), box-shadow 0.2s ease,
+      filter 0.15s ease, background-color 0.15s ease;
+  }
+  .obt-st-cta:active { transform: translateY(0) scale(0.97); }
+  .obt-st-cta:focus-visible { outline: 2px solid rgb(var(--accent-light-rgb)); outline-offset: 2px; }
+  .obt-st-cta-primary {
+    background: linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)));
+    color: #fff;
+    box-shadow: 0 0 24px -6px rgba(var(--accent-rgb), 0.6);
+  }
+  .obt-st-cta-primary:hover { filter: brightness(1.12); box-shadow: 0 0 30px -4px rgba(var(--accent-rgb), 0.75); }
+  .obt-st-cta-ghost {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text-color);
+    backdrop-filter: blur(8px);
+  }
+  .obt-st-cta-ghost:hover { background: rgba(255,255,255,0.1); }
+
+  .obt-st-ctas { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+  .obt-st-faq { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.8rem; }
+
+  /* Hide scene-text panels on mobile (bottom-sheet card handles content) */
+  @media (max-width: 900px) {
+    .obt-scene-text { display: none !important; }
+  }
+
+  /* Hide desktop card on non-beranda scenes (JS adds obt-card-desktop-hidden) */
+  @media (min-width: 901px) {
+    .obt-card { display: none !important; }
+    .obt-card.obt-card-desktop-hidden { opacity: 0; pointer-events: none; }
+    /* On beranda (scene 0) card is also not needed since hero caption takes over */
+    .obt-card { transition: opacity 0.4s ease, transform 0.75s cubic-bezier(.2,.8,.2,1) !important; }
   }
 
 </style>
@@ -800,11 +1148,18 @@
   // instead of guessing a fixed pixel value that only fits one size.
   // Runs synchronously here (before .obt-cosmos below is painted) and
   // again on resize so rotating a device or resizing a window stays correct.
-  (function syncHeaderHeightVar() {
+  (function syncHeaderFooterHeightVars() {
     const headerEl = document.querySelector('.obt-header');
+    const footerEl = document.querySelector('.obt-footer-mini');
     function apply() {
-      if (!headerEl) return;
-      document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+      if (headerEl) {
+        document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+      }
+      if (footerEl) {
+        // If footer is hidden (display: none) below 640px, set it to 0
+        const isHidden = window.getComputedStyle(footerEl).display === 'none';
+        document.documentElement.style.setProperty('--obt-footer-h', isHidden ? '0px' : footerEl.offsetHeight + 'px');
+      }
     }
     apply();
     window.addEventListener('resize', apply);
@@ -812,6 +1167,26 @@
 </script>
 
 <main class="obt-cosmos" id="obt-cosmos">
+
+  <!-- SVG mask definition for backdrop-filter clipping -->
+  <svg width="100%" height="100%" style="position: absolute; inset: 0; pointer-events: none; z-index: -1;" aria-hidden="true">
+    <defs>
+      <mask id="hero-backdrop-mask">
+        <rect x="-10%" y="-10%" width="120%" height="120%" fill="black" />
+        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="white"
+              style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(3.8rem, 10vw, 11rem); letter-spacing: -0.04em;">
+          <tspan x="50%" dy="-0.45em">In Harmonia</tspan>
+          <tspan x="50%" dy="0.9em">Innovatio</tspan>
+        </text>
+      </mask>
+    </defs>
+  </svg>
+
+  <!-- Inverted typographic backdrop filter for scene 0: "In Harmonia Innovatio" -->
+  <div class="obt-hero-backdrop" id="obt-hero-backdrop" aria-hidden="true"></div>
+
+  <!-- Stage wrapper containing planet and orbit elements -->
+  <div class="obt-clip-group" id="obt-clip-group">
 
   <div class="obt-stage-outer" id="obt-stage-outer">
     <div class="obt-stage" id="obt-stage">
@@ -875,6 +1250,100 @@
     </div>
   </div>
 
+  </div><!-- /.obt-clip-group -->
+
+  <!-- Scene text panels: large editorial content for non-beranda scenes (desktop only) -->
+
+  <div class="obt-scene-text" data-scene="fitur" id="obt-st-fitur">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus</h2>
+    <div class="obt-st-features">
+      <div class="obt-st-feature-row">
+        <div class="obt-st-feature-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+        <div><p class="obt-st-feature-label" data-i18n="idx_feat1_title">Pelacakan tugas</p><p class="obt-st-feature-desc" data-i18n="idx_feat1_desc">Pantau penanggung jawab tugas, tenggat waktu, dan status penyelesaian setiap kegiatan.</p></div>
+      </div>
+      <div class="obt-st-feature-row">
+        <div class="obt-st-feature-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+        <div><p class="obt-st-feature-label" data-i18n="idx_feat2_title">Jadwal ekstrakurikuler</p><p class="obt-st-feature-desc" data-i18n="idx_feat2_desc">Susun kalender ekstrakurikuler dalam linimasa sentral tanpa bentrok jadwal.</p></div>
+      </div>
+      <div class="obt-st-feature-row">
+        <div class="obt-st-feature-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+        <div><p class="obt-st-feature-label" data-i18n="idx_feat3_title">Koordinasi tim</p><p class="obt-st-feature-desc" data-i18n="idx_feat3_desc">Fasilitasi anggota memahami alur kerja dan minimalkan miskomunikasi.</p></div>
+      </div>
+    </div>
+    <a href="auth.html?tab=register" class="obt-st-cta obt-st-cta-primary"><span data-i18n="idx_cta_1">Mulai menggunakan</span></a>
+  </div>
+
+  <div class="obt-scene-text" data-scene="cabang" id="obt-st-cabang">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
+    <div class="obt-st-branches">
+      <div class="obt-st-branch glass">
+        <p class="obt-st-branch-label badge-sains" data-i18n="sains">Sains</p>
+        <p class="obt-st-branch-desc" data-i18n="idx_branch_sci_sub">Riset, eksperimen, dan karya ilmiah. Persiapkan diri untuk OPSI dan kompetisi penelitian.</p>
+      </div>
+      <div class="obt-st-branch glass">
+        <p class="obt-st-branch-label badge-robotik" data-i18n="robotik">Robotik</p>
+        <p class="obt-st-branch-desc" data-i18n="idx_branch_rob_sub">Rancang bangun, pemrograman, kompetisi robot. Eksplorasi mikrokontroler, game, web, dan AI.</p>
+      </div>
+    </div>
+    <a href="auth.html?tab=register" class="obt-st-cta obt-st-cta-primary" style="margin-bottom:0.85rem"><span data-i18n="idx_cta_1">Mulai menggunakan</span></a>
+    <div class="flex items-center gap-1.5 text-xs text-zinc-400/80">
+      <svg class="w-3.5 h-3.5 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <span data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</span>
+    </div>
+  </div>
+
+  <div class="obt-scene-text" data-scene="faq" id="obt-st-faq">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
+    <div class="obt-st-faq">
+      <details class="obt-faq-item glass">
+        <summary class="obt-faq-q">
+          <span data-i18n="idx_faq_q1">Apa itu Orbit?</span>
+          <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a1">Dasbor terpusat KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang dalam satu ruang kerja.</p></div>
+      </details>
+      <details class="obt-faq-item glass">
+        <summary class="obt-faq-q">
+          <span data-i18n="idx_faq_q2">Apa itu KIR?</span>
+          <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a2">Karya Ilmiah Remaja — ekstrakurikuler dua cabang tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.</p></div>
+      </details>
+      <details class="obt-faq-item glass">
+        <summary class="obt-faq-q">
+          <span data-i18n="idx_faq_q3">Bagaimana cara bergabung?</span>
+          <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a3">Klik Daftar, isi formulir, lalu pilih cabang. Pengurus akan meninjau sebelum akun diaktifkan.</p></div>
+      </details>
+      <details class="obt-faq-item glass">
+        <summary class="obt-faq-q">
+          <span data-i18n="idx_faq_q5">Apakah ada Tutoring?</span>
+          <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a5">Ada! Kakak kelas mengajar MIPA. Orbit akan segera dipakai untuk program ini.</p></div>
+      </details>
+    </div>
+  </div>
+
+  <div class="obt-scene-text" data-scene="katalog" id="obt-st-katalog">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_katalog_heading">Karya Anggota</h2>
+    <p class="obt-st-body" data-i18n="idx_katalog_sub">Kumpulan karya, proyek, dan penelitian yang dihasilkan anggota Robotik dan Sains dari tahun ke tahun.</p>
+    <a href="catalog.html" class="obt-st-cta obt-st-cta-primary"><span data-i18n="idx_katalog_cta">Lihat Katalog</span></a>
+  </div>
+
+  <div class="obt-scene-text" data-scene="galeri" id="obt-st-galeri">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+    <p class="obt-st-body" data-i18n="idx_gallery_sub">Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.</p>
+    <a href="gallery.html" class="obt-st-cta obt-st-cta-primary"><span data-i18n="idx_gallery_cta">Buka Galeri</span></a>
+  </div>
+
+  <div class="obt-scene-text" data-scene="proker" id="obt-st-proker">
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
+    <p class="obt-st-body" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini — target mingguan dan persiapan perlombaan.</p>
+    <a href="work-programs.html" class="obt-st-cta obt-st-cta-primary"><span data-i18n="idx_proker_cta">Lihat Program Kerja</span></a>
+  </div>
+
   <div class="obt-card glass obt-dock-tr" id="obt-card">
     <div class="obt-card-nav" id="obt-card-nav">
       <button type="button" class="obt-arrow-btn obt-card-arrow glass" id="obt-card-prev" aria-label="Sebelumnya">
@@ -887,22 +1356,20 @@
     <div id="obt-panels">
 
       <div class="obt-panel is-active" data-scene="beranda">
-        <p class="obt-eyebrow">ORBIT <span class="obt-eyebrow-count">01 / 07</span></p>
-        <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4 hero-gradient obt-typehead" data-i18n="idx_hero_title">
+        <h1 class="font-display text-xl sm:text-2xl font-semibold tracking-tight leading-tight mb-3 hero-gradient obt-typehead" data-i18n="idx_hero_title">
           “In Harmonia Innovatio”
         </h1>
-        <p class="text-zinc-400 text-sm mb-7" data-i18n="idx_hero_subtitle">
-          Platform generasi baru KIR. Semua eksplorasi, penemuan, dan kegiatan ekstrakurikuler terjadi di sini.
+        <p class="text-zinc-400 text-sm mb-5" data-i18n="idx_hero_subtitle">
+          Platform generasi baru KIR.
         </p>
         <div class="flex flex-wrap items-center gap-3">
-          <a href="auth.html?tab=register" id="hero-cta-primary" class="rounded-lg px-6 py-3 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="idx_cta_1">Mulai sekarang</a>
-          <a href="auth.html?tab=login" id="hero-cta-secondary" class="rounded-lg px-6 py-3 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition" data-i18n="idx_cta_2">Sudah punya akun? Masuk</a>
+          <a href="auth.html?tab=register" id="hero-cta-primary-mobile" class="rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow transition" data-i18n="idx_cta_1">Mulai sekarang</a>
+          <a href="auth.html?tab=login" id="hero-cta-secondary-mobile" class="rounded-lg px-5 py-2.5 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition" data-i18n="idx_cta_2">Masuk</a>
         </div>
       </div>
 
       <div class="obt-panel" data-scene="fitur">
-        <p class="obt-eyebrow"><span data-i18n="nav_fitur">FITUR</span> <span class="obt-eyebrow-count">02 / 07</span></p>
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus.</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_feat_heading">Alat bantu pengurus</h2>
         <div>
           <div class="obt-feat-row">
             <div class="obt-feat-icon"><svg class="w-4 h-4 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
@@ -929,23 +1396,27 @@
       </div>
 
       <div class="obt-panel" data-scene="cabang">
-        <p class="obt-eyebrow"><span data-i18n="nav_cabang">CABANG</span> <span class="obt-eyebrow-count">03 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-5 obt-typehead" data-i18n="idx_branch_title">Dua cabang, satu dasbor:</h2>
         <div class="space-y-3 mb-4">
-          <div class="glass rounded-xl p-4">
-            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik" data-i18n="robotik">Robotik</span>
-            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_rob_sub">Fokus pada kegiatan rancang bangun, pemrograman, dan kompetisi robot. Modul ini menyediakan ruang eksplorasi ke berbagai bidang seperti mikrokontroler, pengembangan game, pengembangan web, pemanfaatan AI cerdas, dan logika otomasi.</p>
-          </div>
           <div class="glass rounded-xl p-4">
             <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-sains" data-i18n="sains">Sains</span>
             <p class="text-zinc-500 text-sm" data-i18n="idx_branch_sci_sub">Fokus pada praktik riset, eksperimen, dan penulisan karya ilmiah. Anggota mengembangkan hipotesis, menguji metodologi baru, serta mempersiapkan diri untuk OPSI dan kompetisi penelitian lainnya di sini.</p>
           </div>
+          <div class="glass rounded-xl p-4">
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-2 badge-robotik" data-i18n="robotik">Robotik</span>
+            <p class="text-zinc-500 text-sm" data-i18n="idx_branch_rob_sub">Fokus pada kegiatan rancang bangun, pemrograman, dan kompetisi robot. Modul ini menyediakan ruang eksplorasi ke berbagai bidang seperti mikrokontroler, pengembangan game, pengembangan web, pemanfaatan AI cerdas, dan logika otomasi.</p>
+          </div>
         </div>
-        <p class="text-zinc-600 text-xs" data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</p>
+        <a href="auth.html?tab=register" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition mb-3">
+          <span data-i18n="idx_cta_1">Mulai menggunakan</span>
+        </a>
+        <div class="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-1">
+          <svg class="w-3.5 h-3.5 shrink-0 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span data-i18n="idx_branch_sub">Pilih cabang saat mendaftar untuk mengonfigurasi tampilan dasbor.</span>
+        </div>
       </div>
 
       <div class="obt-panel" data-scene="faq">
-        <p class="obt-eyebrow"><span data-i18n="nav_faq">FAQ</span> <span class="obt-eyebrow-count">04 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 obt-typehead" data-i18n="idx_faq_heading">Pertanyaan Umum</h2>
         <p class="text-zinc-500 text-sm mb-5" data-i18n="idx_faq_sub">Klik pertanyaan untuk melihat jawabannya.</p>
         <div>
@@ -954,70 +1425,61 @@
               <span data-i18n="idx_faq_q1">Apa itu Orbit?</span>
               <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="obt-faq-a" data-i18n="idx_faq_a1">Orbit adalah dasbor terpusat untuk KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang, Robotik dan Sains, dalam satu ruang kerja.</p>
+            <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a1">Orbit adalah dasbor terpusat untuk KIR yang menyatukan pelacakan tugas, jadwal, dan koordinasi tim kedua cabang, Robotik dan Sains, dalam satu ruang kerja.</p></div>
           </details>
           <details class="obt-faq-item glass">
             <summary class="obt-faq-q">
               <span data-i18n="idx_faq_q2">Apa itu KIR?</span>
               <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="obt-faq-a" data-i18n="idx_faq_a2">KIR (Karya Ilmiah Remaja) adalah ekstrakurikuler sekolah dengan dua cabang, Robotik dan Sains, tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.</p>
+            <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a2">KIR (Karya Ilmiah Remaja) adalah ekstrakurikuler sekolah dengan dua cabang, Robotik dan Sains, tempat anggota berkarya lewat proyek teknik maupun riset ilmiah.</p></div>
           </details>
           <details class="obt-faq-item glass">
             <summary class="obt-faq-q">
               <span data-i18n="idx_faq_q3">Bagaimana cara bergabung?</span>
               <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="obt-faq-a" data-i18n="idx_faq_a3">Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.</p>
+            <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a3">Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.</p></div>
           </details>
           <details class="obt-faq-item glass">
             <summary class="obt-faq-q">
               <span data-i18n="idx_faq_q4">Apa saja kegiatan KIR?</span>
               <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="obt-faq-a" data-i18n="idx_faq_a4">Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.</p>
+            <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a4">Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.</p></div>
           </details>
           <details class="obt-faq-item glass">
             <summary class="obt-faq-q">
               <span data-i18n="idx_faq_q5">Apakah KIR punya Tutoring?</span>
               <svg class="obt-faq-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="obt-faq-a" data-i18n="idx_faq_a5">Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.</p>
+            <div class="obt-faq-body"><p class="obt-faq-a" data-i18n="idx_faq_a5">Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.</p></div>
           </details>
         </div>
       </div>
 
 
       <div class="obt-panel" data-scene="katalog">
-        <p class="obt-eyebrow"><span data-i18n="nav_katalog">KATALOG</span> <span class="obt-eyebrow-count">05 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_katalog_heading">Karya Anggota</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_katalog_sub">Kumpulan karya, proyek, dan penelitian yang dihasilkan anggota Robotik dan Sains dari tahun ke tahun.</p>
         <a href="catalog.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
           <span data-i18n="idx_katalog_cta">Lihat Katalog</span>
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
         </a>
       </div>
 
       <div class="obt-panel" data-scene="galeri">
-        <p class="obt-eyebrow"><span data-i18n="nav_galeri">GALERI</span> <span class="obt-eyebrow-count">06 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
-        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan ekstrakurikuler dalam format direktori. Akses rekaman visual dari acara masa lalu dan sesi eksperimen laboratorium.</p>
-        <div class="flex flex-wrap items-center gap-3">
-          <a href="gallery.html" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-zinc-200 glass hover:bg-white/10 transition">
-            <span data-i18n="idx_gallery_cta">Buka Galeri</span>
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-          </a>
-          <a href="auth.html?tab=register" id="final-cta" data-i18n="proker_cta_btn" class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">Daftar Sekarang</a>
-        </div>
+        <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.</p>
+        <a href="gallery.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
+          <span data-i18n="idx_gallery_cta">Buka Galeri</span>
+        </a>
       </div>
 
       <div class="obt-panel" data-scene="proker">
-        <p class="obt-eyebrow"><span data-i18n="nav_proker">PROGRAM KERJA</span> <span class="obt-eyebrow-count">07 / 07</span></p>
         <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_proker_heading">Rencana Kegiatan</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_proker_sub">Daftar kegiatan cabang Robotik dan Sains untuk tahun ajaran ini. Fitur ini menjabarkan target mingguan dan persiapan perlombaan.</p>
         <a href="work-programs.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
           <span data-i18n="idx_proker_cta">Lihat Program Kerja</span>
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
         </a>
       </div>
 
@@ -1056,35 +1518,43 @@
   <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js"></script>
 <script>
   kirApplyTranslations();
 
   if (kirIsLoggedIn()) {
     const authLink = document.getElementById('nav-auth-link');
     const ctaLink = document.getElementById('nav-cta-link');
+    // Desktop hero caption CTAs
     const heroPrimary = document.getElementById('hero-cta-primary');
     const heroSecondary = document.getElementById('hero-cta-secondary');
-    const finalCta = document.getElementById('final-cta');
+    // Mobile card CTAs
+    const heroPrimaryMobile = document.getElementById('hero-cta-primary-mobile');
+    const heroSecondaryMobile = document.getElementById('hero-cta-secondary-mobile');
     const lang = localStorage.getItem('kir_lang') || 'id';
 
-    authLink.remove();
+    if (authLink) authLink.remove();
 
-    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
-    ctaLink.className = 'flex items-center justify-center shrink-0';
-    ctaLink.removeAttribute('data-i18n');
-    ctaLink.href = 'dashboard.html';
+    if (ctaLink) {
+      ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+      ctaLink.className = 'flex items-center justify-center shrink-0';
+      ctaLink.removeAttribute('data-i18n');
+      ctaLink.href = 'dashboard.html';
+    }
 
-    heroPrimary.textContent = I18N[lang].idx_open_dashboard_hero;
-    heroPrimary.setAttribute('data-i18n', 'idx_open_dashboard_hero');
-    heroPrimary.href = 'dashboard.html';
+    if (heroPrimary) {
+      heroPrimary.textContent = I18N[lang].idx_open_dashboard_hero;
+      heroPrimary.setAttribute('data-i18n', 'idx_open_dashboard_hero');
+      heroPrimary.href = 'dashboard.html';
+    }
+    if (heroSecondary) heroSecondary.remove();
+    if (heroPrimaryMobile) {
+      heroPrimaryMobile.textContent = I18N[lang].idx_open_dashboard_hero;
+      heroPrimaryMobile.setAttribute('data-i18n', 'idx_open_dashboard_hero');
+      heroPrimaryMobile.href = 'dashboard.html';
+    }
+    if (heroSecondaryMobile) heroSecondaryMobile.remove();
 
-    heroSecondary.remove();
 
-    finalCta.textContent = I18N[lang].idx_open_dashboard;
-    finalCta.setAttribute('data-i18n', 'idx_open_dashboard');
-    finalCta.href = 'dashboard.html';
 
     kirRenderUserChrome();
   }
@@ -1142,7 +1612,7 @@
 
     if (!cosmos || !stage) return;
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduceMotion = false; // Always animate index.html regardless of OS or user reduced-motion settings
     // The ambient idle drift is nice embellishment for a mouse-driven
     // desktop session, but it forces every node (backdrop-filter blur
     // and all) plus every dust particle to be repositioned every single
@@ -1164,6 +1634,9 @@
     }));
     const panels = Array.from(panelsWrap.querySelectorAll('.obt-panel'));
     const dots = Array.from(dotsWrap.querySelectorAll('.obt-dot'));
+    const HOME_STAGE_KEY = 'kir_home_stage';
+    const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html']);
+    let hasRestoredHomeStage = false;
 
     /* ----------------------------------------------------------
        Typewriter effect on each panel's heading — typed out on
@@ -1178,7 +1651,7 @@
        ---------------------------------------------------------- */
     const typeHeads = Array.from(document.querySelectorAll('.obt-typehead'));
     const typeHeadText = new Map();
-    typeHeads.forEach(el => typeHeadText.set(el, (el.textContent || '').trim()));
+    typeHeads.forEach(el => typeHeadText.set(el, (el.textContent || el.innerText || '').replace(/\s+/g, ' ').trim()));
     let typeGen = 0;      // bumped on every transition to invalidate any in-flight loop
     let typeTimer = null;
     let currentTypeHead = null;
@@ -1378,7 +1851,7 @@
     sizeStage();
     measure();
     syncMobilePlanetOffset();
-    function onResize() { sizeStage(); measure(); syncMobilePlanetOffset(); }
+    function onResize() { sizeStage(); measure(); syncMobilePlanetOffset(); updateActiveStates(); }
     window.addEventListener('resize', onResize);
 
     let step = 0;
@@ -1388,6 +1861,42 @@
     let currentAngle = 90;
     let targetAngle = 90;
     let idleAngle = 0;
+
+    function pageNameFromHref(href) {
+      try {
+        return new URL(href, window.location.href).pathname.split('/').pop();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function saveHomeStage() {
+      try {
+        sessionStorage.setItem(HOME_STAGE_KEY, String(step));
+      } catch (e) {}
+    }
+
+    function restoreHomeStage() {
+      let raw;
+      try {
+        raw = sessionStorage.getItem(HOME_STAGE_KEY);
+      } catch (e) {
+        return;
+      }
+      if (raw === null) return;
+      const restoredStep = Number(raw);
+      if (!Number.isFinite(restoredStep)) {
+        try { sessionStorage.removeItem(HOME_STAGE_KEY); } catch (e) {}
+        return;
+      }
+      step = restoredStep;
+      sceneIndex = sceneFor(step);
+      currentAngle = 90 - step * stepAngle;
+      targetAngle = currentAngle;
+      idleAngle = 0;
+      hasRestoredHomeStage = true;
+      try { sessionStorage.removeItem(HOME_STAGE_KEY); } catch (e) {}
+    }
 
     function sceneFor(s) { return ((s % scenes.length) + scenes.length) % scenes.length; }
 
@@ -1415,15 +1924,80 @@
       });
     }
 
-    function updateActiveStates() {
-      nodes.forEach(({ el, scene }) => el.classList.toggle('obt-node-active', scene === scenes[sceneIndex]));
-      panels.forEach(p => p.classList.toggle('is-active', p.getAttribute('data-scene') === scenes[sceneIndex]));
-      dots.forEach((d, i) => d.classList.toggle('is-active', i === sceneIndex));
-      docks.forEach(d => card.classList.remove(d));
-      card.classList.add(docks[sceneIndex]);
+    // Scene-text panels + hero elements
+    const backdropEl = document.getElementById('obt-hero-backdrop');
+    const heroCaptionEl = document.getElementById('obt-hero-caption');
+    const sceneTextEls = Array.from(cosmos.querySelectorAll('.obt-scene-text'));
 
-      const activePanel = panels.find(p => p.getAttribute('data-scene') === scenes[sceneIndex]);
-      const activeHead = activePanel ? activePanel.querySelector('.obt-typehead') : null;
+    // Alternating planet shift amounts per scene (scene 0 = center)
+    // Positive = right, negative = left (planet moves, text appears on opposite side)
+    const planetShifts = [0, -30, 30, -30, 30, -30, 30]; // percent
+    // Which side the scene-text panel appears on (opposite the planet)
+    const textSides    = ['',  'right', 'left', 'right', 'left', 'right', 'left'];
+
+    function updateActiveStates() {
+      const isDesktop = window.innerWidth > 900;
+      const currentScene = scenes[sceneIndex];
+      const isHome = sceneIndex === 0;
+
+      nodes.forEach(({ el, scene }) => el.classList.toggle('obt-node-active', scene === currentScene));
+      panels.forEach(p => p.classList.toggle('is-active', p.getAttribute('data-scene') === currentScene));
+      dots.forEach((d, i) => d.classList.toggle('is-active', i === sceneIndex));
+
+      // --- Desktop card: always hidden (replaced by scene-text panels + hero caption) ---
+      if (isDesktop) {
+        card.classList.add('obt-card-desktop-hidden');
+      } else {
+        card.classList.remove('obt-card-desktop-hidden');
+        // Mobile still uses the card's dock class
+        docks.forEach(d => card.classList.remove(d));
+        card.classList.add(docks[sceneIndex]);
+      }
+
+      // --- Planet shift (desktop only) ---
+      if (isDesktop) {
+        const shift = planetShifts[sceneIndex];
+        stageOuter.style.setProperty('--planet-shift', shift + '%');
+        if (shift !== 0) {
+          stageOuter.classList.add('obt-shifted');
+        } else {
+          stageOuter.classList.remove('obt-shifted');
+        }
+      } else {
+        stageOuter.classList.remove('obt-shifted');
+      }
+
+      // --- Hero backdrop: visible only on scene 0 ---
+      if (backdropEl) {
+        backdropEl.classList.toggle('is-hidden', !isHome);
+      }
+      
+      // --- Toggle true hole punch mask on the planet group ---
+
+      // --- Hero caption: visible only on scene 0 (desktop) ---
+      if (heroCaptionEl) {
+        heroCaptionEl.classList.toggle('is-hidden', !isHome);
+      }
+
+      // --- Scene text panels: show the one matching the current scene, on correct side ---
+      sceneTextEls.forEach(el => {
+        const elScene = el.getAttribute('data-scene');
+        const isActive = elScene === currentScene && !isHome;
+        // Update side class
+        el.classList.remove('is-left', 'is-right');
+        const side = textSides[sceneIndex];
+        if (side) el.classList.add('is-' + side);
+        el.classList.toggle('is-active', isActive);
+      });
+
+      let activeHead = null;
+      if (isDesktop) {
+        const activeSceneEl = sceneTextEls.find(el => el.getAttribute('data-scene') === currentScene && !isHome);
+        activeHead = activeSceneEl ? activeSceneEl.querySelector('.obt-typehead') : null;
+      } else {
+        const activePanel = panels.find(p => p.getAttribute('data-scene') === currentScene);
+        activeHead = activePanel ? activePanel.querySelector('.obt-typehead') : null;
+      }
       transitionTypeHead(activeHead);
     }
 
@@ -1436,31 +2010,23 @@
        smooth curve toward the new destination rather than a jump or cut,
        which is what lets jumpTo() redirect instantly and safely below. */
     function commitStep(newStep) {
-      // `idleAngle` drifts forever, unbounded, as long as the ring sits
-      // untouched (see the rAF loop below) — it's what gives the ring its
-      // slow ambient float. But targetAngle here is computed in absolute
-      // terms (90 - step * stepAngle) with no idea how much drift has
-      // piled up. Left alone, the two fall out of sync the longer the
-      // ring was left spinning: currentAngle would lerp to the "right"
-      // target, but rendering (currentAngle + idleAngle) still adds
-      // whatever the drift had wandered to on top of that, which can be
-      // anywhere around the circle — sometimes landing the just-picked
-      // node in the back instead of front-center. Folding the current
-      // drift into currentAngle and zeroing it out here means the very
-      // next frame's render is unchanged (currentAngle + idleAngle stays
-      // the same instant), but going forward the lerp is chasing a clean,
-      // drift-free target — so the picked node always settles dead
-      // center, no matter how long the ring had been idly drifting first.
+      const dir = newStep >= step ? -1 : 1;
       currentAngle += idleAngle;
       idleAngle = 0;
       step = newStep;
       sceneIndex = sceneFor(step);
-      targetAngle = 90 - step * stepAngle;
+
+      // ~30% chance to execute a full extra 360° orbit spin on stage change
+      const isExtraSpin = !reduceMotion && Math.random() < 0.3;
+      const extraLoop = isExtraSpin ? dir * 360 : 0;
+
+      targetAngle = 90 - step * stepAngle + extraLoop;
       updateActiveStates();
       hideHint();
       isLocked = true;
       if (lockTimer) window.clearTimeout(lockTimer);
-      lockTimer = window.setTimeout(() => { isLocked = false; }, reduceMotion ? 50 : 780);
+      const lockDuration = reduceMotion ? 50 : (isExtraSpin ? 1150 : 780);
+      lockTimer = window.setTimeout(() => { isLocked = false; }, lockDuration);
     }
 
     // Sequential single-notch navigation (wheel / keyboard / touch swipe /
@@ -1563,7 +2129,25 @@
     }
     window.addEventListener('keydown', onKeydown);
 
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest ? e.target.closest('a[href]') : null;
+      if (!link) return;
+      const pageName = pageNameFromHref(link.getAttribute('href') || link.href);
+      if (HOME_STAGE_PAGES.has(pageName)) saveHomeStage();
+    }, true);
+
+    restoreHomeStage();
+
     updateActiveStates();
+    if (hasRestoredHomeStage) {
+      stageOuter.classList.add('obt-no-initial-transition');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => stageOuter.classList.remove('obt-no-initial-transition'));
+      });
+    }
+    requestAnimationFrame(() => {
+      document.documentElement.classList.remove('obt-hide-hero-backdrop-initially');
+    });
     // Always position everything at least once on load — the settled-skip
     // optimization in the loop below only makes sense once nodes/dust have
     // already been placed correctly for the first time.
@@ -1615,7 +2199,106 @@
         if (lockTimer) window.clearTimeout(lockTimer);
       };
     }
+
+    // Set flag when leaving index.html so subpages trigger glow light-up animation
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]');
+      if (a && !a.href.endsWith('index.html') && !a.href.endsWith('/')) {
+        sessionStorage.setItem('kir_just_left_index', 'true');
+      }
+    });
   })();
+</script>
+<script>
+  /* FAQ accordion — only one item open at a time per group.
+     Works for both the mobile card FAQ and the desktop scene-text FAQ
+     because each is wrapped in its own container (.obt-st-faq or the
+     panel div), so siblings are scoped per group. */
+  function getFaqBody(item) {
+    return item.querySelector('.obt-faq-body');
+  }
+
+  function getFaqAnswer(item) {
+    return item.querySelector('.obt-faq-a');
+  }
+
+  function prepFaqItem(item) {
+    const body = getFaqBody(item);
+    const answer = getFaqAnswer(item);
+    if (!body || !answer) return;
+    if (item.open) {
+      body.style.height = 'auto';
+      answer.style.opacity = '1';
+      answer.style.transform = 'translateY(0)';
+    } else {
+      body.style.height = '0px';
+      answer.style.opacity = '0';
+      answer.style.transform = 'translateY(-0.25rem)';
+    }
+  }
+
+  function closeFaqItem(item) {
+    if (!item.open) return;
+    const body = getFaqBody(item);
+    const answer = getFaqAnswer(item);
+    if (!body || !answer) {
+      item.removeAttribute('open');
+      return;
+    }
+    body.style.height = body.scrollHeight + 'px';
+    body.offsetHeight;
+    answer.style.opacity = '0';
+    answer.style.transform = 'translateY(-0.25rem)';
+    body.style.height = '0px';
+    const finish = function onCloseEnd(event) {
+      if (event.propertyName !== 'height') return;
+      body.removeEventListener('transitionend', finish);
+      item.removeAttribute('open');
+      body.style.height = '0px';
+    };
+    body.addEventListener('transitionend', finish);
+  }
+
+  function openFaqItem(item) {
+    const siblings = item.parentElement.querySelectorAll('details.obt-faq-item[open]');
+    siblings.forEach(function(d) { if (d !== item) closeFaqItem(d); });
+
+    const body = getFaqBody(item);
+    const answer = getFaqAnswer(item);
+    if (!body || !answer) {
+      item.setAttribute('open', '');
+      return;
+    }
+
+    item.setAttribute('open', '');
+    body.style.height = '0px';
+    answer.style.opacity = '0';
+    answer.style.transform = 'translateY(-0.25rem)';
+    body.offsetHeight;
+    body.style.height = body.scrollHeight + 'px';
+    answer.style.opacity = '1';
+    answer.style.transform = 'translateY(0)';
+
+    const finish = function onOpenEnd(event) {
+      if (event.propertyName !== 'height') return;
+      body.removeEventListener('transitionend', finish);
+      if (item.open) body.style.height = 'auto';
+    };
+    body.addEventListener('transitionend', finish);
+  }
+
+  const faqItems = Array.from(document.querySelectorAll('details.obt-faq-item'));
+  faqItems.forEach(prepFaqItem);
+
+  document.addEventListener('click', function(e) {
+    const summary = e.target.closest('summary.obt-faq-q');
+    if (!summary) return;
+    const item = summary.parentElement;
+    if (!item || !item.classList.contains('obt-faq-item')) return;
+    e.preventDefault();
+    if (item.open) closeFaqItem(item);
+    else openFaqItem(item);
+  });
 </script>
 <script src="js/router.js"></script>
 </body>
