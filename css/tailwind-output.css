@@ -2408,7 +2408,7 @@
       pointer-events: none;
       z-index: 0;
     }
-    body:has(#obt-stage-outer) > .glow-layer:not(.glow-dim-out) {
+    body:has(#obt-stage-outer) .glow-layer:not(.glow-dim-out) {
       opacity: 0 !important;
       pointer-events: none !important;
     }
