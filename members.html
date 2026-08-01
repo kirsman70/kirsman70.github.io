@@ -193,6 +193,7 @@
     const youName = localStorage.getItem('kir_user_name') || 'Anggota';
 
     MEMBERS = data.map(p => ({
+      id: p.id,
       name: p.name,
       role: p.role || 'Anggota',
       cabang: p.cabang,
@@ -229,8 +230,10 @@
   function buildCard(m) {
     const i18nKey = getRoleI18n(m.role);
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
+    const clickAttr = m.id ? `onclick="if(!didDrag) kirOpenProfileModal('${m.id}')"` : '';
+    const cursorClass = m.id ? 'cursor-pointer hover:border-white/20 hover:scale-[1.03] transition-all duration-200' : '';
     return `
-      <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg">
+      <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg ${cursorClass}" ${clickAttr}>
         <div class="w-12 h-12 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
           ${m.avatar ? '' : m.name.charAt(0).toUpperCase()}
         </div>

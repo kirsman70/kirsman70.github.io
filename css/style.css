@@ -1497,7 +1497,10 @@
     font-weight: 700;
     line-height: 1rem;
     text-align: center;
-    box-shadow: 0 0 0 2px var(--bg-color);
+  }
+  .relative:has(.nav-ping-badge:not(.hidden)) > svg {
+    -webkit-mask-image: radial-gradient(circle 10px at calc(100% - 1px) 3px, transparent 99%, #000 100%);
+    mask-image: radial-gradient(circle 10px at calc(100% - 1px) 3px, transparent 99%, #000 100%);
   }
   @keyframes star-burst {
     0% { 
