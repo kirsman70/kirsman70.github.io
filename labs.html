@@ -3,20 +3,29 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta http-equiv="refresh" content="1; URL=https://docs.google.com/forms/d/e/1FAIpQLSccsgnNSqS-WD4sANR622mTLBzewAvcfwboGPFZxu0vgl8LPg/viewform?usp=header" />
-<title>Form Pendataan KIR</title>
+<title>Orbit Labs</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../../js/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="js/auth.js" defer></script>
+<script>
+  try {
+    const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
+    if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
+  } catch (e) {}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../css/tailwind-output.css">
-<link rel="stylesheet" href="../../css/style.css">
+<link rel="stylesheet" href="css/tailwind-output.css">
+<link rel="stylesheet" href="css/style.css">
 
 <style id="kir-page-style">
+  /* ==========================================================
+     ORBIT LABS — Console & Terminal Shell matching Voyages
+     ========================================================== */
+
   html, body { height: 100%; overscroll-behavior: none; }
 
   body.obt-body {
@@ -55,8 +64,17 @@
     background: radial-gradient(ellipse at center, transparent 38%, rgba(15,23,42,0.12) 100%);
   }
 
-  .obt-header { flex: 0 0 auto; position: relative; z-index: 50; }
-  .obt-footer-mini { flex: 0 0 auto; position: relative; z-index: 20; }
+  .obt-header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+  .obt-footer-mini { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; pointer-events: none; }
+  .obt-footer-mini * { pointer-events: auto; }
+
+  .obt-header { view-transition-name: kir-public-header; }
+  .obt-footer-mini { view-transition-name: kir-public-footer; }
+  ::view-transition-group(kir-public-header),
+  ::view-transition-group(kir-public-footer) {
+    animation-duration: 0.001ms !important;
+    animation-delay: -1ms !important;
+  }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; }
   @media (max-width: 560px) {
@@ -95,6 +113,8 @@
     justify-content: center;
     overflow: hidden;
     padding: 2rem 1.5rem;
+    padding-top: calc(2rem + var(--obt-header-h, 92px));
+    padding-bottom: calc(2rem + var(--obt-footer-h, 40px));
     text-align: center;
   }
 </style>
@@ -109,10 +129,11 @@
 </div>
 <div class="obt-vignette"></div>
 
+<!-- HEADER NAVBAR -->
 <header class="obt-header w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-4">
-  <a href="../../index.html" class="flex items-center gap-2.5 shrink-0">
+  <a href="index.html" class="flex items-center gap-2.5 shrink-0">
     <div class="w-9 h-9 shrink-0 flex items-center justify-center">
-      <img data-kir-brand-logo="glow" src="../../assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
+      <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
     </div>
     <div>
       <div class="flex items-center gap-1.5">
@@ -126,51 +147,97 @@
     </div>
   </a>
   <nav class="hidden md:flex items-center gap-7 obt-header-center-nav">
-    <a href="../../index.html" class="public-nav-link" data-i18n="nav_beranda">Beranda</a>
-    <a href="../../catalog.html" class="public-nav-link" data-i18n="nav_katalog">Katalog</a>
-    <a href="../../gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
-    <a href="../../work-programs.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
-    <a href="../../labs.html" class="public-nav-link" data-i18n="nav_labs">Labs</a>
+    <a href="index.html" class="public-nav-link" data-i18n="nav_beranda">Beranda</a>
+    <a href="catalog.html" class="public-nav-link" data-i18n="nav_katalog">Katalog</a>
+    <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
+    <a href="work-programs.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+    <a href="labs.html" class="public-nav-link active" data-i18n="nav_labs">Labs</a>
   </nav>
   <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
-    <a href="../../auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
-    <a href="../../auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
+    <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
+    <a href="auth.html?tab=register" id="nav-cta-link" class="text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg bg-accent-gradient text-white shadow-glow-sm hover:brightness-110 transition" data-i18n="idx_register">Daftar</a>
   </nav>
 </header>
 
+<script>
+  (function syncHeaderFooterHeightVars() {
+    const headerEl = document.querySelector('.obt-header');
+    const footerEl = document.querySelector('.obt-footer-mini');
+    function apply() {
+      if (headerEl) {
+        document.documentElement.style.setProperty('--obt-header-h', headerEl.offsetHeight + 'px');
+      }
+      if (footerEl) {
+        const isHidden = window.getComputedStyle(footerEl).display === 'none';
+        document.documentElement.style.setProperty('--obt-footer-h', isHidden ? '0px' : footerEl.offsetHeight + 'px');
+      }
+    }
+    apply();
+    window.addEventListener('resize', apply);
+  })();
+</script>
+
 <main class="obt-cosmos" id="obt-cosmos">
   <div class="max-w-lg">
-    <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
-      <span data-i18n="redirect_pendataan_title">Mengarahkan ke Form Pendataan...</span>
+    <h1 class="font-display text-4xl sm:text-6xl font-bold tracking-tight text-white mb-4">
+      Orbit <span class="text-gradient-accent">Labs</span>
     </h1>
-    <p class="text-zinc-500 text-sm sm:text-base mb-7" data-i18n="redirect_pendataan_desc">
-      Anda akan diarahkan ke form pendataan anggota KIR secara otomatis.
+    <p class="text-zinc-500 text-sm sm:text-base mb-7" data-i18n="labs_wip_desc">
+      Kami sedang merancang ruang eksperimen, perkakas interaktif, dan fitur laboratorium untuk anggota Orbit. Nantikan kejutannya, ya!
     </p>
 
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLSccsgnNSqS-WD4sANR622mTLBzewAvcfwboGPFZxu0vgl8LPg/viewform?usp=header" class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-white transition">
-      <span data-i18n="redirect_click_here">Click here if you're not redirected yet</span>
+    <a href="index.html" class="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-white transition">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span data-i18n="wip_back_home">Kembali ke Beranda</span>
     </a>
   </div>
 </main>
 
+<!-- FOOTER -->
 <footer class="obt-footer-mini w-full px-4 sm:px-8 py-3 text-[11px] text-zinc-600 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
   <span class="obt-footer-tagline" data-i18n="idx_footer">KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.</span>
   <span class="obt-footer-meta" data-i18n="idx_footer_meta">© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com</span>
 </footer>
 
+<!-- PAGE SCRIPTS -->
 <script>
+document.addEventListener('DOMContentLoaded', function () {
   kirApplyTranslations();
+  const HOME_STAGE_KEY = 'kir_home_stage';
+  const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html', 'labs.html']);
+
+  function pageNameFromHref(href) {
+    try {
+      return new URL(href, window.location.href).pathname.split('/').pop();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!link) return;
+    const pageName = pageNameFromHref(link.getAttribute('href') || link.href);
+    if (pageName === 'index.html' || HOME_STAGE_PAGES.has(pageName)) return;
+    try {
+      sessionStorage.removeItem(HOME_STAGE_KEY);
+    } catch (err) {}
+  }, true);
+
   if (kirIsLoggedIn()) {
     const authLink = document.getElementById('nav-auth-link');
     const ctaLink = document.getElementById('nav-cta-link');
-    authLink.remove();
-    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
-    ctaLink.className = 'flex items-center justify-center shrink-0';
-    ctaLink.removeAttribute('data-i18n');
-    ctaLink.href = '../../dashboard.html';
+    if (authLink) authLink.remove();
+    if (ctaLink) {
+      ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+      ctaLink.className = 'flex items-center justify-center shrink-0';
+      ctaLink.removeAttribute('data-i18n');
+      ctaLink.href = 'dashboard.html';
+    }
     kirRenderUserChrome();
   }
+});
 </script>
-<script src="../../js/router.js"></script>
+<script src="js/router.js" defer></script>
 </body>
-</html> 
+</html>

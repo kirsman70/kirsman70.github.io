@@ -7,6 +7,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="js/auth.js" defer></script>
+<script>
+  try {
+    const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
+    if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
+  } catch (e) {}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,7 +90,7 @@
     animation-delay: -1ms !important;
   }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
-  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
+  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; }
   @media (max-width: 560px) {
     .obt-footer-meta { white-space: normal; text-align: left; }
   }
@@ -160,6 +166,7 @@
     <a href="catalog.html" class="public-nav-link active" data-i18n="nav_katalog">Katalog</a>
     <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
     <a href="work-programs.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+    <a href="labs.html" class="public-nav-link" data-i18n="nav_labs">Labs</a>
   </nav>
   <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
     <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
@@ -223,7 +230,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   kirApplyTranslations();
   const HOME_STAGE_KEY = 'kir_home_stage';
-  const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html']);
+  const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html', 'labs.html']);
 
   function pageNameFromHref(href) {
     try {

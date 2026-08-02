@@ -2038,67 +2038,85 @@
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem !important;
-    padding: 4px;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    gap: 1.75rem !important;
+    padding: 0;
+    border-radius: 0;
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   html[data-theme="light"] .obt-header-center-nav {
-    background: rgba(15, 23, 42, 0.04);
-    border-color: rgba(15, 23, 42, 0.08);
+    background: transparent !important;
+    border-color: transparent !important;
   }
 
   .public-nav-link {
     position: relative;
     z-index: 2;
-    padding: 0.4rem 0.85rem;
-    border-radius: 9999px;
+    padding: 0.25rem 0;
+    border-radius: 0;
     color: var(--muted-500);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     font-weight: 500;
-    line-height: 1;
+    line-height: 1.25;
     transition: color 0.2s ease, opacity 0.2s ease;
     white-space: nowrap;
     text-decoration: none;
-    opacity: 0.75;
+    opacity: 0.8;
   }
-  .public-nav-link:hover,
-  .public-nav-link.active {
+  .public-nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background-color: rgb(var(--accent-rgb));
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.4);
+    border-radius: 2px;
+    transform: translateX(-50%);
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .public-nav-link:hover {
+    color: rgb(var(--accent-light-rgb));
     opacity: 1;
-    color: var(--text-color);
   }
-  html[data-theme="light"] .public-nav-link.active,
-  html[data-theme="light"] .public-nav-link:hover {
-    color: #0f172a;
+  .public-nav-link.active {
+    color: rgb(var(--accent-light-rgb));
+    opacity: 1;
+    font-weight: 600;
+  }
+  /* Fallbacks when no cabang attribute is present on html to avoid pure white (#f4f4f5) flash */
+  html:not([data-cabang]) .public-nav-link:hover,
+  html:not([data-cabang]) .public-nav-link.active {
+    color: rgb(var(--accent-rgb));
+  }
+  html:not([data-cabang]) .public-nav-link::after {
+    background-color: rgb(var(--accent-rgb));
+  }
+  .public-nav-link:hover::after,
+  .public-nav-link.active::after {
+    width: 100%;
+    opacity: 1;
+  }
+  html[data-theme="light"] .public-nav-link {
+    color: #64748b;
+  }
+  html[data-theme="light"] .public-nav-link:hover,
+  html[data-theme="light"] .public-nav-link.active {
+    color: rgb(var(--accent-rgb));
+  }
+  html[data-theme="light"] .public-nav-link::after {
+    background-color: rgb(var(--accent-rgb));
+    box-shadow: none;
   }
 
-  /* Animated sliding box highlight indicator that hugs each text link */
+  /* Animated sliding box highlight indicator (disabled - no pills) */
   .public-nav-indicator {
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-    border-radius: 9999px;
-    background: rgba(var(--accent-rgb), 0.2);
-    border: 1px solid rgba(var(--accent-rgb), 0.4);
-    box-shadow: 0 0 16px -2px rgba(var(--accent-rgb), 0.35);
-    opacity: 0;
-    contain: layout;
-    view-transition-name: kir-public-nav-pill;
-    transform: translate3d(0, 0, 0);
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
-                width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
-                height 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
-                opacity 0.2s ease;
-  }
-  .public-nav-indicator.is-visible {
-    opacity: 1;
+    display: none !important;
   }
 
   /* ==========================================================
@@ -3281,6 +3299,93 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 0.75rem;
   }
+  .labs-terminal-prompt { overflow: visible; }
+  #labs-terminal-input,
+  #labs-terminal-mirror,
+  #labs-terminal-autocomplete {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    font-size: 0.75rem !important;
+    line-height: 1.25rem !important;
+    letter-spacing: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    height: 1.25rem !important;
+    box-sizing: border-box !important;
+  }
+  #labs-terminal-input::placeholder {
+    color: #52525b !important;
+    -webkit-text-fill-color: #52525b !important;
+    opacity: 1;
+  }
+  /* Suppress native browser blue selection on input */
+  #labs-terminal-input::selection {
+    background: transparent !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+  }
+  #labs-terminal-input::-moz-selection {
+    background: transparent !important;
+    color: transparent !important;
+  }
+  .labs-terminal-mirror {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 10;
+    color: rgb(255 255 255 / 0.96);
+    white-space: pre;
+    height: 100%;
+  }
+  .labs-terminal-mirror-content {
+    display: inline-flex;
+    align-items: center;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    white-space: pre;
+    transform: translateX(var(--labs-terminal-scroll-x, 0px));
+    will-change: transform;
+  }
+  .labs-terminal-block-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1ch;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    background: rgb(var(--accent-light-rgb));
+    color: #0a0a0d;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 20;
+    border-radius: 0;
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+  .labs-terminal-block-caret.is-visible { opacity: 1; }
+  .labs-terminal-block-caret.is-blinking {
+    animation: labs-block-caret-blink 1s step-end infinite;
+  }
+  .labs-terminal-block-caret.is-solid,
+  .labs-terminal-block-caret.is-selected {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  @keyframes labs-block-caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  .labs-terminal-mirror-selection {
+    background: rgb(var(--accent-light-rgb));
+    color: #0a0a0d;
+    display: inline-flex;
+    align-items: center;
+    height: 1.25rem;
+    line-height: 1.25rem;
+  }
+  .labs-terminal-mirror-filler {
+    display: inline-block;
+  }
   .console-cursor {
     display: inline-block; width: 0.5rem; height: 0.95rem;
     margin-left: 0.35rem;
@@ -3319,6 +3424,7 @@
   .console-prompt { color: rgb(var(--accent-light-rgb)); font-weight: 700; margin-right: 0.15rem; }
   .console-line-muted { color: var(--muted-500); }
   .console-line-ok { color: #4ade80; }
+  .console-line-accent { color: rgb(var(--accent-light-rgb)); }
   .console-line-fail { color: #f87171; }
   .console-result-block { margin-top: 0.3rem; }
   /* ----------------------------------------------------------
@@ -3523,3 +3629,50 @@
     margin-bottom: 8px;
   }
 }
+
+/* ==========================================================
+   ORBIT LABS — Typewriter Caret & Tool Component Utilities
+   ========================================================== */
+.obt-typehead::after {
+  content: '';
+  display: inline;
+  border-right: 2px solid currentColor;
+  margin-left: 2px;
+  animation: obt-caret-blink 0.85s step-end infinite;
+}
+.obt-typehead.obt-type-done::after {
+  display: none !important;
+}
+@keyframes obt-caret-blink { 50% { opacity: 0; } }
+
+.labs-terminal-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Footer Tagline & Copyright Metadata Styling */
+.obt-footer-tagline {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.obt-footer-meta {
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .obt-footer-meta {
+    white-space: normal;
+    text-align: left;
+  }
+}
+
+

@@ -9,6 +9,8 @@
 <script src="js/auth.js" defer></script>
 <script>
   try {
+    const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
+    if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
     const savedHomeStage = Number(sessionStorage.getItem('kir_home_stage'));
     if (Number.isFinite(savedHomeStage) && savedHomeStage !== 0) {
       document.documentElement.classList.add('obt-hide-hero-backdrop-initially');
@@ -114,7 +116,7 @@
     animation-delay: -1ms !important;
   }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
-  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; color: var(--muted-500); }
+  .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; }
   @media (max-width: 560px) {
     .obt-footer-meta { white-space: normal; text-align: left; }
   }
@@ -1165,6 +1167,7 @@
     <a href="catalog.html" class="public-nav-link" data-i18n="nav_katalog">Katalog</a>
     <a href="gallery.html" class="public-nav-link" data-i18n="nav_galeri">Galeri</a>
     <a href="work-programs.html" class="public-nav-link" data-i18n="nav_proker">Program Kerja</a>
+    <a href="labs.html" class="public-nav-link" data-i18n="nav_labs">Labs</a>
   </nav>
   <nav class="flex items-center gap-2 sm:gap-3 shrink-0">
     <a href="auth.html?tab=login" id="nav-auth-link" class="text-sm text-zinc-300 hover:text-white transition px-2.5 sm:px-4 py-2" data-i18n="idx_login">Masuk</a>
@@ -1681,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const panels = Array.from(panelsWrap.querySelectorAll('.obt-panel'));
     const dots = Array.from(dotsWrap.querySelectorAll('.obt-dot'));
     const HOME_STAGE_KEY = 'kir_home_stage';
-    const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html']);
+    const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html', 'labs.html']);
     let hasRestoredHomeStage = false;
 
     /* ----------------------------------------------------------
@@ -2049,6 +2052,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function hideHint() { hintEl.classList.add('is-hidden'); }
 
+    let lastExtraSpinTime = 0;
+    let hadExtraSpinLast = false;
+
     /* Commits a new step (and therefore a new target angle) and restarts
        the settle timer. Node/dust positions are driven by a continuous
        per-frame lerp toward targetAngle (see the rAF loop below), never
@@ -2062,8 +2068,16 @@ document.addEventListener('DOMContentLoaded', function () {
       step = newStep;
       sceneIndex = sceneFor(step);
 
-      // ~30% chance to execute a full extra 360° orbit spin on stage change
-      const isExtraSpin = !reduceMotion && Math.random() < 0.3;
+      // ~30% chance to execute a full extra 360° orbit spin on stage change,
+      // enforced with a cooldown so extra spins cannot happen back-to-back.
+      const now = Date.now();
+      const isExtraSpin = !reduceMotion && !hadExtraSpinLast && (now - lastExtraSpinTime > 3000) && Math.random() < 0.3;
+      if (isExtraSpin) {
+        hadExtraSpinLast = true;
+        lastExtraSpinTime = now;
+      } else {
+        hadExtraSpinLast = false;
+      }
       const extraLoop = isExtraSpin ? dir * 360 : 0;
 
       targetAngle = 90 - step * stepAngle + extraLoop;
