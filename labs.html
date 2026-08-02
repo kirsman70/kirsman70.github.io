@@ -9,6 +9,10 @@
 <script src="js/auth.js" defer></script>
 <script>
   try {
+    const disableBranchColor = localStorage.getItem('kir_disable_branch_color') === 'true';
+    document.documentElement.setAttribute('data-disable-branch-color', disableBranchColor ? 'true' : 'false');
+    const savedTheme = localStorage.getItem('kir_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
     const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
     if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
   } catch (e) {}
@@ -201,7 +205,7 @@
 
 <!-- PAGE SCRIPTS -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+kirOnReady(function () {
   kirApplyTranslations();
   const HOME_STAGE_KEY = 'kir_home_stage';
   const HOME_STAGE_PAGES = new Set(['catalog.html', 'gallery.html', 'work-programs.html', 'labs.html']);

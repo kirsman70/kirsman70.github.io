@@ -9,6 +9,10 @@
 <script src="js/auth.js" defer></script>
 <script>
   try {
+    const disableBranchColor = localStorage.getItem('kir_disable_branch_color') === 'true';
+    document.documentElement.setAttribute('data-disable-branch-color', disableBranchColor ? 'true' : 'false');
+    const savedTheme = localStorage.getItem('kir_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
     const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
     if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
     const savedHomeStage = Number(sessionStorage.getItem('kir_home_stage'));
@@ -104,9 +108,7 @@
      footer DOM node itself is preserved unchanged. The root group
      still crossfades old-vs-new screenshots of the ENTIRE viewport,
      so identical header/footer pixels visibly flash/fade along with
-     the rest of the page — only .public-nav-indicator (the pill) had
-     its own name, so it alone glided smoothly while everything
-     around it flashed. Naming these two pulls them into their own
+     the rest of the page. Naming these two pulls them into their own
      groups, out of the root crossfade, so they just hold steady. */
   .obt-header { view-transition-name: kir-public-header; }
   .obt-footer-mini { view-transition-name: kir-public-footer; }
@@ -1567,7 +1569,7 @@
 // only touched DOM below it) in that event keeps it running at
 // effectively the same moment as before, just without forcing
 // everything above it to sit blocked on the network first.
-document.addEventListener('DOMContentLoaded', function () {
+kirOnReady(function () {
   kirApplyTranslations();
 
   if (kirIsLoggedIn()) {

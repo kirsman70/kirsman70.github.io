@@ -3640,17 +3640,47 @@
       }
     }
     .public-nav-link {
-      color: var(--text-color);
-      opacity: 0.65;
-      transition: opacity 0.15s ease;
+      position: relative;
+      z-index: 2;
+      padding: 0.25rem 0;
+      border-radius: 0;
+      color: var(--muted-500);
       font-size: 0.875rem;
+      font-weight: 500;
+      line-height: 1.25;
+      transition: color 0.2s ease, opacity 0.2s ease;
+      white-space: nowrap;
+      text-decoration: none;
+      opacity: 0.8;
+    }
+    .public-nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background-color: rgb(var(--accent-rgb));
+      box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.4);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+      opacity: 0;
+      pointer-events: none;
     }
     .public-nav-link:hover {
+      color: rgb(var(--accent-light-rgb));
       opacity: 1;
     }
     .public-nav-link.active {
-      opacity: 1;
       color: rgb(var(--accent-light-rgb));
+      opacity: 1;
+      font-weight: 600;
+    }
+    .public-nav-link:hover::after,
+    .public-nav-link.active::after {
+      width: 100%;
+      opacity: 1;
     }
     .finder-window {
       background: var(--glass-bg);

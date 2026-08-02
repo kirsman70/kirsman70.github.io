@@ -8,6 +8,16 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../../js/auth.js"></script>
+<script>
+  try {
+    const disableBranchColor = localStorage.getItem('kir_disable_branch_color') === 'true';
+    document.documentElement.setAttribute('data-disable-branch-color', disableBranchColor ? 'true' : 'false');
+    const savedTheme = localStorage.getItem('kir_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const savedCabang = localStorage.getItem('kir_user_cabang') || localStorage.getItem('kir_last_cabang');
+    if (savedCabang) document.documentElement.setAttribute('data-cabang', savedCabang);
+  } catch (e) {}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -163,11 +173,13 @@
   if (kirIsLoggedIn()) {
     const authLink = document.getElementById('nav-auth-link');
     const ctaLink = document.getElementById('nav-cta-link');
-    authLink.remove();
-    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
-    ctaLink.className = 'flex items-center justify-center shrink-0';
-    ctaLink.removeAttribute('data-i18n');
-    ctaLink.href = '../../dashboard.html';
+    if (authLink) authLink.remove();
+    if (ctaLink) {
+      ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+      ctaLink.className = 'flex items-center justify-center shrink-0';
+      ctaLink.removeAttribute('data-i18n');
+      ctaLink.href = '../../dashboard.html';
+    }
     kirRenderUserChrome();
   }
 </script>

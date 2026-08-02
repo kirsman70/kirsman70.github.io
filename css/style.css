@@ -2114,10 +2114,6 @@
     box-shadow: none;
   }
 
-  /* Animated sliding box highlight indicator (disabled - no pills) */
-  .public-nav-indicator {
-    display: none !important;
-  }
 
   /* ==========================================================
     Gallery. Finder-esque folder browser

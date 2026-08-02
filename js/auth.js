@@ -2246,10 +2246,35 @@ function kirTranslateElements(root) {
   return lang;
 }
 
+function kirSyncPublicHeaderAuth() {
+  if (!kirIsLoggedIn()) return;
+  const authLink = document.getElementById('nav-auth-link');
+  const ctaLink = document.getElementById('nav-cta-link');
+  if (authLink) authLink.remove();
+  if (ctaLink && !ctaLink.querySelector('[data-kir="avatar"]')) {
+    const isRedirectSubdir = window.location.pathname.indexOf('/redirect/') !== -1;
+    const targetHref = isRedirectSubdir ? '../../dashboard.html' : 'dashboard.html';
+    ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
+    ctaLink.className = 'flex items-center justify-center shrink-0';
+    ctaLink.removeAttribute('data-i18n');
+    ctaLink.href = targetHref;
+  }
+  if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
+}
+
+function kirOnReady(fn) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fn);
+  } else {
+    fn();
+  }
+}
+
 function kirApplyTranslations() {
   const lang = kirTranslateElements(document);
   kirApplyPageTitle(lang);
   kirApplyBrandAssets();
+  kirSyncPublicHeaderAuth();
   if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
 
   // Not every piece of translated UI is covered by [data-i18n]. For
@@ -2266,81 +2291,10 @@ function kirApplyTranslations() {
 }
 
 /* ----------------------------------------------------------
-   Animated Sliding Nav Box Indicator
+   Header Nav (Plain Link Navigation)
    ---------------------------------------------------------- */
 function kirInitNavIndicator() {
-  const navs = document.querySelectorAll('.obt-header-center-nav');
-  if (!navs.length) return;
-
-  navs.forEach(nav => {
-    let indicator = nav.querySelector('.public-nav-indicator');
-    if (!indicator) {
-      indicator = document.createElement('div');
-      indicator.className = 'public-nav-indicator';
-      nav.appendChild(indicator);
-    }
-
-    const links = Array.from(nav.querySelectorAll('.public-nav-link'));
-    if (!links.length) return;
-
-    let activeLink = nav.querySelector('.public-nav-link.active') || links[0];
-
-    function updatePos(targetEl, animate = true) {
-      if (!targetEl || !targetEl.offsetWidth) {
-        indicator.classList.remove('is-visible');
-        return;
-      }
-      const navRect = nav.getBoundingClientRect();
-      const targetRect = targetEl.getBoundingClientRect();
-
-      const left = targetRect.left - navRect.left;
-      const top = targetRect.top - navRect.top;
-      const width = targetRect.width;
-      const height = targetRect.height;
-
-      if (!animate) {
-        indicator.style.transition = 'none';
-      }
-
-      indicator.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-      indicator.style.width = `${width}px`;
-      indicator.style.height = `${height}px`;
-      indicator.classList.add('is-visible');
-
-      if (!animate) {
-        requestAnimationFrame(() => {
-          indicator.style.transition = '';
-        });
-      }
-    }
-
-    requestAnimationFrame(() => updatePos(activeLink, false));
-
-    links.forEach(link => {
-      if (link.dataset.hasIndicatorClickListener) return;
-      link.dataset.hasIndicatorClickListener = 'true';
-
-      link.addEventListener('click', () => {
-        links.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-        activeLink = link;
-        updatePos(link, true);
-      });
-    });
-
-    if (!nav.dataset.hasIndicatorResizeListener) {
-      nav.dataset.hasIndicatorResizeListener = 'true';
-      window.addEventListener('resize', () => {
-        if (activeLink) updatePos(activeLink, false);
-      });
-    }
-  });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', kirInitNavIndicator);
-} else {
-  kirInitNavIndicator();
+  // Plain header nav style used - pill indicator disabled
 }
 
 // Every page's body is hidden by default (see the `html:not(.kir-ready)
@@ -2515,9 +2469,13 @@ async function confirmLogoutAll() {
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' || !session) {
+  if (event === 'SIGNED_OUT') {
     localStorage.removeItem(KIR_SESSION_KEY);
+  } else if (session && session.user) {
+    localStorage.setItem(KIR_SESSION_KEY, 'true');
+    kirSyncPublicHeaderAuth();
   }
+
   if (event === 'PASSWORD_RECOVERY') {
     localStorage.setItem('kir_password_recovery_mode', 'true');
     
