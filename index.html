@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Orbit</title>
 
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="js/auth.js" defer></script>
 <script>
@@ -472,11 +474,12 @@
   }
 
   /* Fine asteroid dust scattered along the ring, purely decorative */
-  .obt-dust { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+  .obt-dust { position: absolute; inset: 0; z-index: 30; pointer-events: none; contain: layout style; }
   .obt-dust span {
     position: absolute; left: 50%; top: 50%; width: 2px; height: 2px; border-radius: 999px;
     background: rgba(var(--accent-light-rgb), 0.8);
     box-shadow: 0 0 4px 1px rgba(var(--accent-rgb), 0.6);
+    will-change: transform, opacity;
   }
 
   .obt-moon-orbit {
@@ -507,7 +510,7 @@
   }
 
   /* ---------------- Ring navigation nodes ---------------- */
-  .obt-nodes { position: absolute; inset: 0; z-index: 25; }
+  .obt-nodes { position: absolute; inset: 0; z-index: 25; contain: layout style; }
   .obt-node {
     position: absolute; left: 50%; top: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -1814,10 +1817,10 @@ kirOnReady(function () {
     // something that isn't still sliding away.
     let driftPaused = false;
     nodes.forEach(({ el }) => {
-      el.addEventListener('pointerenter', () => { driftPaused = true; });
-      el.addEventListener('pointerleave', () => { driftPaused = false; });
-      el.addEventListener('focus', () => { driftPaused = true; });
-      el.addEventListener('blur', () => { driftPaused = false; });
+      el.addEventListener('pointerenter', () => { driftPaused = true; if (typeof startLoop === 'function') startLoop(); });
+      el.addEventListener('pointerleave', () => { driftPaused = false; if (typeof startLoop === 'function') startLoop(); });
+      el.addEventListener('focus', () => { driftPaused = true; if (typeof startLoop === 'function') startLoop(); });
+      el.addEventListener('blur', () => { driftPaused = false; if (typeof startLoop === 'function') startLoop(); });
     });
 
     // Everything below registers on `window`/`document` directly (rAF
@@ -1909,7 +1912,14 @@ kirOnReady(function () {
     sizeStage();
     measure();
     syncMobilePlanetOffset();
-    function onResize() { sizeStage(); measure(); syncMobilePlanetOffset(); updateActiveStates(); }
+    let resizeTimer = null;
+    function onResize() {
+      if (resizeTimer) return;
+      resizeTimer = requestAnimationFrame(() => {
+        resizeTimer = null;
+        sizeStage(); measure(); syncMobilePlanetOffset(); updateActiveStates();
+      });
+    }
     window.addEventListener('resize', onResize);
 
     let step = 0;
@@ -2070,7 +2080,10 @@ kirOnReady(function () {
        by a CSS transition, so retargeting mid-flight always produces a
        smooth curve toward the new destination rather than a jump or cut,
        which is what lets jumpTo() redirect instantly and safely below. */
+    let startLoop = function() {};
+
     function commitStep(newStep) {
+      startLoop();
       const dir = newStep >= step ? -1 : 1;
       currentAngle += idleAngle;
       idleAngle = 0;
@@ -2228,21 +2241,34 @@ kirOnReady(function () {
     } else {
       let lastT = performance.now();
       let loopRafId = null;
+      let isLoopRunning = false;
+
+      startLoop = function() {
+        if (isLoopRunning) return;
+        isLoopRunning = true;
+        lastT = performance.now();
+        loopRafId = requestAnimationFrame(loop);
+      };
+
       function loop(t) {
         const dt = Math.min(t - lastT, 48);
         lastT = t;
         if (!driftPaused && allowIdleDrift) idleAngle += dt * 0.0022;
         currentAngle += (targetAngle - currentAngle) * 0.055;
-        // On touch devices there's no ambient drift to chase, so once
-        // currentAngle has actually caught up to targetAngle there is
-        // nothing left to move — skip re-writing every node/dust
-        // transform this frame instead of doing it forever regardless.
-        // (Desktop always re-renders since idleAngle keeps advancing.)
-        const settled = !allowIdleDrift && Math.abs(targetAngle - currentAngle) < 0.01;
-        if (!settled) place(currentAngle + idleAngle);
-        loopRafId = requestAnimationFrame(loop);
+
+        const diff = Math.abs(targetAngle - currentAngle);
+        const settled = (!allowIdleDrift || driftPaused) && diff < 0.005;
+
+        place(currentAngle + idleAngle);
+
+        if (settled) {
+          isLoopRunning = false;
+          loopRafId = null;
+        } else {
+          loopRafId = requestAnimationFrame(loop);
+        }
       }
-      loopRafId = requestAnimationFrame(loop);
+      startLoop();
 
       // Tab-switching / app-switching on mobile leaves this rAF loop
       // running in the background otherwise — it's cheap per frame, but
@@ -2252,16 +2278,18 @@ kirOnReady(function () {
       // backgrounded duration) when the tab becomes visible again.
       function onVisibilityChange() {
         if (document.hidden) {
-          cancelAnimationFrame(loopRafId);
+          if (loopRafId) cancelAnimationFrame(loopRafId);
+          isLoopRunning = false;
+          loopRafId = null;
         } else {
-          lastT = performance.now();
-          loopRafId = requestAnimationFrame(loop);
+          startLoop();
         }
       }
       document.addEventListener('visibilitychange', onVisibilityChange);
 
       teardown = () => {
-        cancelAnimationFrame(loopRafId);
+        if (loopRafId) cancelAnimationFrame(loopRafId);
+        isLoopRunning = false;
         document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('resize', onResize);
         window.removeEventListener('keydown', onKeydown);

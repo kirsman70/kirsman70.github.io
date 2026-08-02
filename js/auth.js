@@ -2246,20 +2246,21 @@ function kirTranslateElements(root) {
   return lang;
 }
 
-function kirSyncPublicHeaderAuth() {
+function kirSyncPublicHeaderAuth(root = document) {
   if (!kirIsLoggedIn()) return;
-  const authLink = document.getElementById('nav-auth-link');
-  const ctaLink = document.getElementById('nav-cta-link');
+  const authLink = root.querySelector ? root.querySelector('#nav-auth-link') : document.getElementById('nav-auth-link');
+  const ctaLink = root.querySelector ? root.querySelector('#nav-cta-link') : document.getElementById('nav-cta-link');
   if (authLink) authLink.remove();
   if (ctaLink && !ctaLink.querySelector('[data-kir="avatar"]')) {
-    const isRedirectSubdir = window.location.pathname.indexOf('/redirect/') !== -1;
+    const pathname = (root === document ? window.location.pathname : '');
+    const isRedirectSubdir = pathname.indexOf('/redirect/') !== -1;
     const targetHref = isRedirectSubdir ? '../../dashboard.html' : 'dashboard.html';
     ctaLink.innerHTML = '<div data-kir="avatar" class="w-9 h-9 rounded-full bg-accent-gradient flex items-center justify-center font-display font-semibold text-sm hover:brightness-110 transition shadow-glow-sm"></div>';
     ctaLink.className = 'flex items-center justify-center shrink-0';
     ctaLink.removeAttribute('data-i18n');
     ctaLink.href = targetHref;
   }
-  if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
+  if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome(root);
 }
 
 function kirOnReady(fn) {
@@ -3289,16 +3290,16 @@ async function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId
    Looks for elements with data-kir="name" / "initial" / "avatar".
    Call this once at the bottom of a logged-in page.
    ---------------------------------------------------------- */
-function kirRenderUserChrome() {
+function kirRenderUserChrome(root = document) {
   const fullName = kirCurrentUserName();
   const nickname = kirCurrentUserNickname();
   const displayName = nickname || fullName;
   const avatar = kirCurrentUserAvatar();
 
-  document.querySelectorAll('[data-kir="name"]').forEach(el => {
+  root.querySelectorAll('[data-kir="name"]').forEach(el => {
     el.textContent = displayName;
   });
-  document.querySelectorAll('[data-kir="greeting"]').forEach(el => {
+  root.querySelectorAll('[data-kir="greeting"]').forEach(el => {
     el.textContent = kirTimeGreeting(displayName);
   });
   const applyAvatar = (el, avatarUrl) => {
@@ -3312,9 +3313,9 @@ function kirRenderUserChrome() {
       el.textContent = displayName.charAt(0).toUpperCase();
     }
   };
-  document.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
+  root.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
   // Also refresh the profile modal avatar if it's open
-  const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
+  const modalAvatar = root.querySelector('[data-kir="profile-modal-avatar"]');
   if (modalAvatar) applyAvatar(modalAvatar, avatar);
 }
 

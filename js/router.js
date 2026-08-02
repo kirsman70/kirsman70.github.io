@@ -232,6 +232,7 @@
     // here means the swapped-in content is already correct the very
     // first instant it's attached.
     if (typeof kirTranslateElements === 'function') kirTranslateElements(doc);
+    if (typeof kirSyncPublicHeaderAuth === 'function') kirSyncPublicHeaderAuth(doc);
 
     // We're committed to leaving the current page now, so give it a
     // chance to cancel any rAF loop and remove any window/document-level
