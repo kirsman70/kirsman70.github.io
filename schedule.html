@@ -30,16 +30,6 @@
   <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 </div>
 
-<style>
-  /* Optimize glow blobs on mobile for better performance while keeping visual appeal */
-  @media (max-width: 768px) {
-    .glow-blob {
-      opacity: 0.5;
-      transform: scale(0.7);
-    }
-  }
-</style>
-
 <div class="relative z-10 min-h-screen lg:flex kir-app-shell">
 
   <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
@@ -361,11 +351,6 @@
   function scheduleCalSelectDay(key, cellEl) {
     if (window.kirSnakeModeActive) return; // days can't be picked while World Snake Day mode is running
     const rect = cellEl.getBoundingClientRect();
-    // Clicking the already-selected date again always deselects it — even
-    // if its popover was passively dismissed in the meantime (click
-    // elsewhere, Esc, scroll) and is no longer open. Selection staying
-    // highlighted after a passive dismissal is only meant to survive
-    // things that AREN'T "clicking that same date" again.
     const reclickingSelectedDay = scheduleSelectedKey === key;
 
     if (reclickingSelectedDay) {
@@ -375,37 +360,20 @@
 
     scheduleClearTravelTimers();
     const prevKey = scheduleSelectedKey;
-    scheduleSelectedKey = key; // logical selection updates immediately (popover content, etc.)
+    scheduleSelectedKey = key; // logical selection updates immediately
+    scheduleVisualSelectedKey = key; // visual selection updates immediately for instant feedback
 
-    // Reduced motion: skip the walk entirely and fall straight into the
-    // "no sensible path" branch below, which already just fades the new
-    // cell straight in (and that fade itself is zeroed out by the
-    // site-wide transition-duration override in style.css, so it lands
-    // instantly with no travel effect at all).
-    const path = scheduleIsReducedMotion() ? null : scheduleComputeTravelPath(prevKey, key);
-
-    if (path) {
-      // Ring snaps onto the new cell instantly (bound to scheduleSelectedKey,
-      // set above, so it's already active on this very render). The fill
-      // deliberately stays behind — it only arrives once the traveling
-      // pulse below reaches the destination, chasing after the ring.
-      scheduleVisualSelectedKey = null;
-      scheduleAnimateDeselectKey = prevKey;
-      scheduleAnimateSelectKey = null;
-      renderScheduleCalendar();
-      scheduleRunTravelAnimation(path, key);
-    } else {
-      // No sensible path (first-ever selection, or the old cell has
-      // scrolled out of the currently displayed month) — just fade the
-      // new cell straight in.
-      scheduleVisualSelectedKey = key;
-      scheduleAnimateDeselectKey = prevKey;
-      scheduleAnimateSelectKey = key;
-      renderScheduleCalendar();
-    }
+    scheduleAnimateDeselectKey = prevKey;
+    scheduleAnimateSelectKey = key;
+    renderScheduleCalendar();
 
     renderScheduleDayPopoverContent();
     scheduleShowDayPopoverAt(rect);
+
+    const path = scheduleIsReducedMotion() ? null : scheduleComputeTravelPath(prevKey, key);
+    if (path) {
+      scheduleRunTravelAnimation(path, key);
+    }
   }
 
   // Fully clears the selection (unlike scheduleHideDayPopover, which just
@@ -566,7 +534,6 @@
   function scheduleShowDayPopoverAt(rect) {
     const popover = document.getElementById('schedule-day-popover');
     popover.classList.remove('hidden');
-    void popover.offsetWidth; // force reflow so size/position below can be measured, and so removing 'hidden' + adding the open class don't get coalesced into one paint
     schedulePositionDayPopover(rect, popover);
     popover.classList.add('kir-popover-open');
   }
@@ -870,17 +837,31 @@
      between months — only the in-month vs. out-of-month styling
      (kir-cal-outside) changes.
      ---------------------------------------------------------- */
+  const _scheduleDtfCache = {};
+  function scheduleGetDTF(locale, options) {
+    const key = locale + '|' + JSON.stringify(options);
+    if (!_scheduleDtfCache[key]) _scheduleDtfCache[key] = new Intl.DateTimeFormat(locale, options);
+    return _scheduleDtfCache[key];
+  }
+
+  /* ----------------------------------------------------------
+     Single month, always 6 full weeks (42 cells) starting on the
+     Monday on/before the 1st, so the grid height never jumps
+     between months — only the in-month vs. out-of-month styling
+     (kir-cal-outside) changes.
+     ---------------------------------------------------------- */
   function renderScheduleCalendar() {
     const lang = scheduleLang();
     const locale = scheduleLocale();
     const titleEl = document.getElementById('schedule-cal-title');
-    titleEl.textContent = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(scheduleCalMonth);
+    titleEl.textContent = scheduleGetDTF(locale, { month: 'long', year: 'numeric' }).format(scheduleCalMonth);
 
     // Weekday header, Monday-first, localized via a known Monday reference date.
     const weekdaysWrap = document.getElementById('schedule-cal-weekdays');
     const refMonday = new Date(2023, 0, 2); // 2 Jan 2023 was a Monday
+    const weekdayFmt = scheduleGetDTF(locale, { weekday: 'short' });
     weekdaysWrap.innerHTML = Array.from({ length: 7 }, (_, i) => {
-      const label = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2023, 0, 2 + i));
+      const label = weekdayFmt.format(new Date(2023, 0, 2 + i));
       return `<div class="kir-month-cal-weekday">${label}</div>`;
     }).join('');
 
@@ -900,6 +881,8 @@
     const animDeselectKey = scheduleAnimateDeselectKey;
     scheduleAnimateSelectKey = null;
     scheduleAnimateDeselectKey = null;
+
+    const monthLongFmt = scheduleGetDTF(locale, { month: 'long' });
 
     let cellsHtml = '';
     for (let i = 0; i < 42; i++) {
@@ -942,7 +925,7 @@
           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(!window.kirSnakeModeActive){scheduleCalSelectDay('${key}', this);}}"
           tabindex="0" role="button"
           ${titleAttr ? `title="${titleAttr.replace(/"/g, '&quot;')}"` : ''}
-          aria-label="${d.getDate()} ${new Intl.DateTimeFormat(locale, { month: 'long' }).format(d)}${ariaHolidaySuffix}${ariaSpecialSuffix}">
+          aria-label="${d.getDate()} ${monthLongFmt.format(d)}${ariaHolidaySuffix}${ariaSpecialSuffix}">
           <span class="kir-month-cal-day-num">${d.getDate()}</span>
           ${dotsHtml}
         </div>`;
@@ -954,7 +937,7 @@
   function kirFormatDatetimeLocalJakarta(dateObj) {
     if (!dateObj || isNaN(dateObj.getTime())) return '';
     try {
-      const fmt = new Intl.DateTimeFormat('en-CA', {
+      const fmt = scheduleGetDTF('en-CA', {
         timeZone: 'Asia/Jakarta',
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', hour12: false
@@ -974,7 +957,7 @@
     const locale = scheduleLocale();
     const [y, m, day] = scheduleSelectedKey.split('-').map(Number);
     const selectedDate = new Date(y, m - 1, day);
-    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(selectedDate);
+    const dateLabel = scheduleGetDTF(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(selectedDate);
     document.getElementById('schedule-day-popover-title').textContent = dateLabel;
 
     const body = document.getElementById('schedule-day-popover-body');
@@ -1009,12 +992,13 @@
           <p class="text-zinc-500 text-sm mb-4" data-i18n="schedule_no_events_day">${I18N[lang].schedule_no_events_day}</p>
           ${kirIsAdmin() ? `<button onclick="openScheduleAdminModal(null, '${scheduleSelectedKey}')" class="kir-month-cal-today-btn" data-i18n="schedule_add_event_day">${I18N[lang].schedule_add_event_day}</button>` : ''}
         </div>`;
-      kirApplyTranslations();
+      if (typeof kirTranslateElements === 'function') kirTranslateElements(body);
       return;
     }
 
+    const eventTimeFmt = scheduleGetDTF(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     body.innerHTML = holidayHtml + specialHtml + dayEvents.map(ev => {
-      const timeStr = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(new Date(ev.event_date));
+      const timeStr = eventTimeFmt.format(new Date(ev.event_date));
       const rowHtml = `
         <div onclick="openScheduleModal('${ev.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openScheduleModal('${ev.id}');}" tabindex="0" role="button" class="kir-day-event-row ${ev.is_next ? 'kir-cal-is-next' : ''}">
           <div class="flex items-center gap-3 min-w-0">
@@ -1028,7 +1012,7 @@
         </div>`;
       return kirAdminWrapQuickActions(rowHtml, { onEdit: `openScheduleAdminModal('${ev.id}')`, onDelete: `confirmDeleteSchedule('${ev.id}')` });
     }).join('');
-    kirApplyTranslations();
+    if (typeof kirTranslateElements === 'function') kirTranslateElements(body);
   }
 
   function openScheduleModal(id) {

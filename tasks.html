@@ -36,16 +36,6 @@
   <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 </div>
 
-<style>
-  /* Optimize glow blobs on mobile for better performance while keeping visual appeal */
-  @media (max-width: 768px) {
-    .glow-blob {
-      opacity: 0.5;
-      transform: scale(0.7);
-    }
-  }
-</style>
-
 <div class="relative z-10 min-h-screen lg:flex kir-app-shell">
 
   <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
@@ -129,7 +119,7 @@
       </div>
 
       <div>
-        <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="modal_ans">Jawaban kamu</p>
+        <p class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2" data-i18n="modal_ans">Jawaban kamu <span class="text-accent-300 ml-0.5">*</span></p>
         <div id="modal-submission-status" class="text-sm mb-3"></div>
 
         <label id="modal-file-label-wrap" for="modal-file-input" class="glass-input flex items-center gap-3 rounded-lg px-4 py-3 text-sm cursor-pointer hover:bg-white/5 transition">
@@ -529,8 +519,8 @@
         { value: 'sains', label: 'Sains' },
         { value: 'both', label: 'Keduanya' },
       ] },
-      { id: 'status', label: 'Status', type: 'select', required: true, row: 'status-assignee', options: Object.keys(STATUS_META).map(k => ({ value: k, label: STATUS_META[k].label })) },
-      { id: 'assignee', label: 'Ditugaskan ke', type: 'text', placeholder: 'Semua Anggota', row: 'status-assignee' },
+      { id: 'status', label: 'Status', type: 'select', required: true, default: 'todo', showIf: { field: 'type', equals: 'ekskul' }, row: 'status-assignee', options: Object.keys(STATUS_META).map(k => ({ value: k, label: STATUS_META[k].label })) },
+      { id: 'assignee', label: 'Ditugaskan ke', type: 'text', placeholder: 'Semua Anggota', showIf: { field: 'type', equals: 'ekskul' }, row: 'status-assignee' },
       { id: 'due_date', label: 'Tenggat', type: 'date' },
       { id: 'image_url', label: 'URL Gambar', type: 'image' },
     ];
@@ -545,6 +535,7 @@
       values: task,
       saveLabel: task ? 'Simpan' : 'Tambah',
       onSave: async (payload) => {
+        if (!payload.status) payload.status = 'todo';
         const result = task
           ? await kirAdminUpdate('tasks', task.id, payload)
           : await kirAdminCreate('tasks', payload);

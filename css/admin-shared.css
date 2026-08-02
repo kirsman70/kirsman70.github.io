@@ -243,16 +243,36 @@
 .admin-field-group[data-required] { position: relative; }
 .admin-field-group.admin-field-hidden,
 .admin-field-group:not(.admin-field-hidden) {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .admin-field-group.admin-field-hidden {
   overflow: hidden;
   max-height: 0 !important;
   opacity: 0;
+  transform: translateY(-6px);
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   pointer-events: none;
+}
+.admin-field-group:not(.admin-field-hidden) {
+  max-height: 300px;
+  opacity: 1;
+  transform: translateY(0);
+}
+.admin-field-row.admin-field-row-hidden,
+.admin-field-row:not(:has(.admin-field-group:not(.admin-field-hidden))) {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-field-group.admin-field-hidden,
+  .admin-field-group:not(.admin-field-hidden) {
+    transition: none !important;
+    transform: none !important;
+  }
 }
 .admin-modal-header {
   display: flex;
@@ -526,13 +546,22 @@
    Voyage/Tugas/Jadwal pages).
    ---------------------------------------------------------- */
 .kir-datepicker { position: relative; }
+.kir-datepicker.is-open,
+.kir-datepicker:has(.kir-calendar-panel:not(.hidden)),
+.admin-field-group.kir-dp-active,
+.admin-field-group:has(.kir-calendar-panel:not(.hidden)),
+.admin-field-row.kir-dp-active,
+.admin-field-row:has(.kir-calendar-panel:not(.hidden)) {
+  position: relative !important;
+  z-index: 60 !important;
+}
 .kir-date-trigger { display: flex; align-items: center; gap: 0.55rem; cursor: pointer; }
 .kir-date-display.placeholder { color: var(--muted-600); }
 .kir-calendar-panel {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
-  background: var(--bg-color); border: 1px solid var(--glass-border);
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 100 !important;
+  background: var(--bg-color, #09090b); border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
   border-radius: 0.85rem; padding: 0.9rem; width: 272px;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 .kir-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
 .kir-cal-nav-btn {
@@ -542,31 +571,75 @@
 }
 .kir-cal-nav-btn:hover { background: rgba(128,128,128,0.12); color: var(--text-color); }
 .kir-cal-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 0.85rem; text-transform: capitalize; }
-.kir-cal-title-selects { display: flex; align-items: center; gap: 0.25rem; }
-.kir-cal-select {
+.kir-cal-title-selects { display: flex; align-items: center; gap: 0.35rem; }
+.kir-cal-title-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-color, #f4f4f5);
+  background: var(--glass-input-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+  border-radius: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.kir-cal-title-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(var(--accent-rgb, 99, 102, 241), 0.4);
+  color: #ffffff;
+}
+.kir-cal-title-btn.active {
+  background: rgba(var(--accent-rgb, 99, 102, 241), 0.2);
+  border-color: rgba(var(--accent-rgb, 99, 102, 241), 0.6);
+  color: #ffffff;
+}
+.kir-cal-title-label {
   font-family: 'Bricolage Grotesque', sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
-  text-transform: capitalize;
-  background: transparent;
-  color: var(--text-color);
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-}
-.kir-cal-select:hover {
-  color: rgb(var(--accent-light-rgb, 147, 197, 253));
-}
-.kir-cal-select option {
-  background: #18181b;
-  color: #f4f4f5;
+  color: var(--text-color, #f4f4f5);
 }
 .kir-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.kir-cal-grid-months,
+.kir-cal-grid-years {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.3rem 0;
+}
+.kir-cal-month-item,
+.kir-cal-year-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  color: var(--text-color, #f4f4f5);
+  background: var(--glass-input-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.kir-cal-month-item:hover,
+.kir-cal-year-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(var(--accent-rgb, 99, 102, 241), 0.35);
+  color: #ffffff;
+}
+.kir-cal-month-item.selected,
+.kir-cal-year-item.selected {
+  background: rgb(var(--accent-rgb, 99, 102, 241));
+  border-color: rgb(var(--accent-rgb, 99, 102, 241));
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb, 99, 102, 241), 0.35);
+}
 .kir-cal-weekday { font-size: 0.63rem; text-align: center; color: var(--muted-500); padding: 0.2rem 0 0.4rem; font-weight: 600; text-transform: uppercase; }
 .kir-cal-day {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.78rem;

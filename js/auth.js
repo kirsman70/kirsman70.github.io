@@ -45,6 +45,9 @@ const I18N = {
     profile_about_placeholder: 'Ceritakan sesuatu tentang diri kamu…', profile_joined: 'Bergabung', profile_branch: 'Cabang',
     profile_role: 'Peran', profile_flags: 'bendera', profile_delta: 'Delta', profile_change_picture: 'Ganti foto profil',
     settings_desc: 'Kelola profil, cabang, dan tampilan akun kamu.',
+    inbox: 'Kotak Masuk', inbox_desc: 'Pesan dan pemberitahuan kamu.', inbox_empty: 'Belum ada pesan.',
+    inbox_empty_title: 'Belum ada pesan!', inbox_filter_all: 'Semua', inbox_filter_unread: 'Belum Dibaca',
+    inbox_mark_all_read: 'Tandai Semua Dibaca', inbox_empty_unread_title: 'Semua sudah dibaca!', inbox_empty_unread_desc: 'Tidak ada pesan baru saat ini.',
     active_branch: 'Cabang Aktif', branch_desc: 'Cabang terdaftar kamu saat ini.',
     appearance_lang: 'Tampilan & Bahasa', change_lang: 'Ubah Bahasa',
     crop_title: 'Sesuaikan Foto', crop_hint: 'Seret untuk menggeser, geser slider untuk memperbesar.', crop_cancel: 'Batal', crop_save: 'Simpan',
@@ -138,6 +141,7 @@ const I18N = {
     page_title_resources: 'Resources', page_title_course: 'Kursus', page_title_workspace: 'Workspace', page_title_schedule: 'Jadwal', page_title_members: 'Anggota',
     page_title_voyages: 'Voyages', page_title_leaderboard: 'Peringkat',
     page_title_settings: 'Pengaturan', page_title_program_kerja: 'Program Kerja', page_title_gallery: 'Galeri', page_title_katalog: 'Katalog', page_title_labs: 'Labs',
+    page_title_inbox: 'Kotak Masuk',
     page_title_auth: 'Masuk atau Daftar',
     idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
     greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.', 'Sudah ngopi belum, {name}?'],
@@ -283,7 +287,7 @@ const I18N = {
     admin_assign_mode_label: 'Mode Penugasan', admin_assign_everyone: 'Semua Anggota Cabang', admin_assign_specific: 'Orang Tertentu',
     admin_assignee_label: 'Penerima (Assignee)', admin_assignee_placeholder: 'Nama anggota…', admin_assignee_hint: 'Masukkan satu atau lebih nama, pisahkan dengan koma.',
     admin_desc_label: 'Deskripsi', admin_desc_placeholder: 'Jelaskan detail tugas…',
-    admin_image_label: 'Gambar (Opsional)', admin_image_upload: 'Klik untuk unggah gambar…',
+    admin_image_label: 'Gambar', admin_image_upload: 'Klik untuk unggah gambar…',
     admin_save_task: 'Simpan Tugas',
     admin_event_name_label: 'Nama Acara', admin_event_name_placeholder: 'Masukkan nama acara…',
     admin_datetime_label: 'Waktu & Tanggal', admin_time_label: 'Jam',
@@ -306,7 +310,7 @@ const I18N = {
     admin_preview_label: 'Pratinjau',
     admin_options_label: 'Opsi Jawaban', admin_options_hint: 'Tandai lingkaran di samping opsi untuk menjadikannya jawaban yang benar.',
     admin_option_placeholder: 'Tulis opsi jawaban…', admin_add_option: 'Tambah Opsi',
-    admin_essay_ref_label: 'Jawaban Referensi (Opsional)',
+    admin_essay_ref_label: 'Jawaban Referensi',
     admin_essay_ref_placeholder: 'Tulis kunci jawaban atau poin-poin penting untuk peninjauan pengurus…',
     admin_save_voyage: 'Simpan Voyage',
     admin_view_json: 'Edit JSON', admin_upload_json: 'Unggah JSON',
@@ -331,6 +335,9 @@ const I18N = {
     robotik: 'Robotics', sains: 'Science', both: 'Robotics and Science',
     menu: 'Menu', akun: 'Account', kir_long: 'Karya Ilmiah Remaja',
     settings_desc: 'Manage your profile, branch, and account appearance.',
+    inbox: 'Inbox', inbox_desc: 'Your messages and notifications.', inbox_empty: 'No messages yet.',
+    inbox_empty_title: 'No messages yet!', inbox_filter_all: 'All', inbox_filter_unread: 'Unread',
+    inbox_mark_all_read: 'Mark All as Read', inbox_empty_unread_title: 'All caught up!', inbox_empty_unread_desc: 'No new messages right now.',
     active_branch: 'Active Branch', branch_desc: 'Your currently registered branch.',
     appearance_lang: 'Appearance & Language', change_lang: 'Change Language',
     crop_title: 'Adjust Photo', crop_hint: 'Drag to reposition, use the slider to zoom.', crop_cancel: 'Cancel', crop_save: 'Save',
@@ -508,7 +515,7 @@ const I18N = {
     voyages_sort_label: 'Sort by', voyages_sort_random: 'Random', voyages_sort_diff_asc: 'Rating: Low to High',
     voyages_sort_diff_desc: 'Rating: High to Low', voyages_sort_title_az: 'Title: A to Z', voyages_sort_newest: 'Newest',
     voyages_filter_chemistry: 'Chemistry', voyages_filter_biology: 'Biology',
-    voyages_difficulty: 'Rating', voyages_osn_level: 'OSN Level', voyages_reward: 'Reward',
+    voyages_difficulty: 'Rating', voyages_osn_level: 'Provincial OSN Level', voyages_reward: 'Reward',
     voyages_grading_analyzing: 'Grading your answer with Smart Grading…',
     voyages_grading_result_title: 'Smart Grading Result',
     voyages_grading_strengths: 'Strengths',
@@ -567,7 +574,7 @@ const I18N = {
     admin_assign_mode_label: 'Assignment Mode', admin_assign_everyone: 'All Branch Members', admin_assign_specific: 'Specific People',
     admin_assignee_label: 'Assignee', admin_assignee_placeholder: 'Member name…', admin_assignee_hint: 'Enter one or more names, separated by commas.',
     admin_desc_label: 'Description', admin_desc_placeholder: 'Describe the task details…',
-    admin_image_label: 'Image (Optional)', admin_image_upload: 'Click to upload an image…',
+    admin_image_label: 'Image', admin_image_upload: 'Click to upload an image…',
     admin_save_task: 'Save Task',
     admin_event_name_label: 'Event Name', admin_event_name_placeholder: 'Enter an event name…',
     admin_datetime_label: 'Date & Time', admin_time_label: 'Time',
@@ -590,7 +597,7 @@ const I18N = {
     admin_preview_label: 'Preview',
     admin_options_label: 'Answer Options', admin_options_hint: 'Mark the circle next to an option to set it as the correct answer.',
     admin_option_placeholder: 'Write an answer option…', admin_add_option: 'Add Option',
-    admin_essay_ref_label: 'Reference Answer (Optional)',
+    admin_essay_ref_label: 'Reference Answer',
     admin_essay_ref_placeholder: 'Write an answer key or key points for officer review…',
     admin_save_voyage: 'Save Voyage',
     admin_view_json: 'Edit JSON', admin_upload_json: 'Upload JSON',
@@ -692,21 +699,44 @@ function __kirFreezeSidebar(freeze) {
   const root = document.getElementById('sidebar-root');
   if (!sidebar || !root) return;
   if (freeze) {
+    const pos = kirCurrentSidebarPosition();
     const rect = sidebar.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return;
     sidebar.classList.add('kir-sidebar-frozen');
     sidebar.style.position = 'fixed';
-    sidebar.style.top = `${rect.top}px`;
-    sidebar.style.left = `${rect.left}px`;
     sidebar.style.width = `${rect.width}px`;
     sidebar.style.height = `${rect.height}px`;
     root.style.width = `${rect.width}px`;
     root.style.flexShrink = '0';
+
+    if (pos === 'right') {
+      sidebar.style.top = `${rect.top}px`;
+      sidebar.style.left = 'auto';
+      sidebar.style.right = `${Math.max(0, window.innerWidth - rect.right)}px`;
+      sidebar.style.bottom = '';
+    } else if (pos === 'bottom') {
+      sidebar.style.top = 'auto';
+      sidebar.style.left = `${rect.left}px`;
+      sidebar.style.right = '';
+      sidebar.style.bottom = `${Math.max(0, window.innerHeight - rect.bottom)}px`;
+    } else if (pos === 'top') {
+      sidebar.style.top = `${rect.top}px`;
+      sidebar.style.left = `${rect.left}px`;
+      sidebar.style.right = '';
+      sidebar.style.bottom = '';
+    } else {
+      sidebar.style.top = `${rect.top}px`;
+      sidebar.style.left = `${rect.left}px`;
+      sidebar.style.right = '';
+      sidebar.style.bottom = '';
+    }
   } else {
     sidebar.classList.remove('kir-sidebar-frozen');
     sidebar.style.position = '';
     sidebar.style.top = '';
     sidebar.style.left = '';
+    sidebar.style.right = '';
+    sidebar.style.bottom = '';
     sidebar.style.width = '';
     sidebar.style.height = '';
     root.style.width = '';
@@ -780,10 +810,6 @@ function toggleSettingsModal() {
   }
 }
 
-/* Small local shake helper. auth.html has its own page-scoped
-   shakeEl(), but this modal is injected on every page via
-   kirRenderShell(), so it needs its own copy here. Same `.shake`
-   CSS class from style.css either way. */
 function kirShakeEl(el) {
   if (!el) return;
   el.classList.remove('shake');
@@ -791,14 +817,6 @@ function kirShakeEl(el) {
   el.classList.add('shake');
 }
 
-/* ----------------------------------------------------------
-   Danger Zone, reset voyages. Wipes every voyage_completions
-   row for the current user (via the reset_my_voyages RPC, see
-   migration_login_by_name.sql's sibling migration) and zeroes
-   their deltas, letting them re-attempt everything from scratch.
-   Gated behind a typed confirmation phrase so it can't be
-   triggered by a stray click.
-   ---------------------------------------------------------- */
 function openResetVoyagesModal() {
   const input = document.getElementById('reset-voyages-confirm-input');
   input.value = '';
@@ -852,7 +870,6 @@ async function confirmResetVoyages() {
     return;
   }
 
-  // Clear all course enrollments for this member from Supabase
   try {
     const { data: userData } = await supabaseClient.auth.getUser();
     if (userData?.user?.id) {
@@ -862,7 +879,6 @@ async function confirmResetVoyages() {
     console.error('Error deleting course_enrollments on reset:', enrollErr);
   }
 
-  // Clear local storage keys for courses, deltas, flags, and completions
   localStorage.removeItem(KIR_DELTAS_KEY);
   localStorage.removeItem(KIR_FLAGS_KEY);
   localStorage.removeItem('kir_last_course_id');
@@ -883,28 +899,14 @@ async function confirmResetVoyages() {
 
 function handleQuickAvatarUpload(event) {
   const file = event.target.files[0];
-  event.target.value = ''; // allow re-selecting the same file next time
+  event.target.value = '';
   if (!file) return;
   kirOpenAvatarCrop(file);
 }
 
-/* ----------------------------------------------------------
-   Avatar cropper. Opens whenever a new photo is picked (from
-   the sidebar avatar). Lets the person pan and zoom within a
-   circular frame before it's saved, instead of using the raw
-   upload as-is.
-
-   The crop viewport is a fixed-size circle (KIR_CROP_VIEWPORT).
-   The image is displayed at `baseScale` (enough to cover the
-   circle) times a user-controlled `zoom` (1x-3x), and can be
-   panned within bounds that always keep it covering the circle.
-   On confirm, the same math is replayed against a <canvas> to
-   cut out exactly what's visible and produce the final square
-   image (which renders as a circle everywhere via rounded-full).
-   ---------------------------------------------------------- */
-const KIR_CROP_VIEWPORT = 260; // px, must match the CSS width/height on #crop-viewport
-const KIR_CROP_OUTPUT = 480;   // px, output image size
-let kirCropState = null;       // { naturalW, naturalH, baseScale, zoom, panX, panY }
+const KIR_CROP_VIEWPORT = 260;
+const KIR_CROP_OUTPUT = 480;
+let kirCropState = null;
 let kirCropDrag = null;
 
 function kirOpenAvatarCrop(file) {
@@ -944,9 +946,6 @@ function kirRenderCropTransform() {
   const displayH = s.naturalH * s.baseScale * s.zoom;
   const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
   const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
-  // I use an explicit width/height pair for background-size here instead
-  // of the 'cover' keyword so zoom is driven entirely by my own math and
-  // the browser never gets a chance to re-fit or stretch it on its own.
   vp.style.backgroundSize = `${displayW}px ${displayH}px`;
   vp.style.backgroundPosition = `${imageLeft}px ${imageTop}px`;
 }
@@ -1024,8 +1023,6 @@ async function confirmAvatarCrop() {
     const imageLeft = KIR_CROP_VIEWPORT / 2 - displayW / 2 + s.panX;
     const imageTop = KIR_CROP_VIEWPORT / 2 - displayH / 2 + s.panY;
 
-    // I map the visible circle-viewport window back into source-image
-    // pixel coordinates so the canvas crop matches what was shown.
     const sx = -imageLeft / scaleFactor;
     const sy = -imageTop / scaleFactor;
     const sw = KIR_CROP_VIEWPORT / scaleFactor;
@@ -1044,10 +1041,6 @@ async function confirmAvatarCrop() {
     if (window.supabaseClient) {
       const { data: userData } = await supabaseClient.auth.getUser();
       if (userData?.user) {
-        // The old avatar file is cleaned up automatically by a DB trigger
-        // (trg_cleanup_profile_avatar_on_update) the moment the profiles
-        // row below is updated with the new avatar_url — no client-side
-        // storage.remove() needed here anymore.
         const filePath = `avatars/${userData.user.id}-${Date.now()}.jpg`;
         const { error: uploadError } = await supabaseClient.storage
           .from('assets')
@@ -1059,16 +1052,11 @@ async function confirmAvatarCrop() {
       }
     }
 
-    // If there is no active or known session, or if storage is unavailable,
-    // I fall back to keeping the cropped image locally rather than losing
-    // the edit.
     if (!avatarUrl) avatarUrl = canvas.toDataURL('image/jpeg', 0.92);
 
     kirSetUserAvatar(avatarUrl);
-    // Invalidate cached banner colour so next modal open re-derives it
     __kirCachedBannerAvatarSrc = null;
     __kirCachedBannerColor = null;
-    // If the profile modal is currently showing, live-update its banner
     const bannerEl = document.getElementById('kir-profile-banner');
     if (bannerEl && !document.getElementById('kir-profile-modal')?.classList.contains('hidden')) {
       kirExtractDominantColor(avatarUrl).then(rgb => {
@@ -1114,35 +1102,11 @@ function handleDisableBranchColorToggle() {
 }
 
 function handleSidebarPositionChange(position) {
-  // Taskbar position only renders at the lg breakpoint (see css/style.css).
-  // Below that, the mobile top bar and drawer take over regardless of
-  // this setting. I lock it on mobile so there is no dead control that
-  // looks like it should do something but cannot.
   if (!window.matchMedia('(min-width: 1024px)').matches) return;
   if (position === kirCurrentSidebarPosition()) return;
   kirSetSidebarPosition(position);
 }
 
-/* ----------------------------------------------------------
-   Mobile nav drawer
-   --------------------------------------------------------
-   Below the lg breakpoint #sidebar is normally `hidden`, and the
-   hamburger button in each page's mobile top bar used to just do
-   `document.getElementById('sidebar').classList.toggle('hidden')`
-   directly. That's wrong below lg: with `hidden` removed, #sidebar
-   has no layout instruction of its own until the `lg:flex` utility
-   kicks in at 1024px, so the browser falls back to its default
-   block display for <aside> and the (very tall) nav list just
-   opens up in normal document flow, shoving <main> straight down
-   the page instead of floating over it.
-
-   This turns that same toggle into a real overlay drawer: #sidebar
-   gets fixed-positioned and slid in via .kir-sidebar-open (see
-   css/style.css), with a dedicated backdrop behind it that dismisses
-   the drawer on click, and body scroll gets suspended while it's
-   open so the page behind can't be dragged around underneath it.
-   Every page's hamburger button calls this instead of touching
-   classList directly. ---------------------------------------- */
 function kirCloseMobileSidebar() {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-mobile-backdrop');
@@ -1152,9 +1116,6 @@ function kirCloseMobileSidebar() {
   if (backdrop) backdrop.classList.remove('visible');
   if (wasOpen) __kirModalLock(-1);
   setTimeout(() => {
-    // I only actually hide once the slide-out transition (see
-    // .kir-sidebar-open in css/style.css) has had time to play because
-    // hiding immediately would just make it vanish instead of slide.
     if (!sidebar.classList.contains('kir-sidebar-open')) {
       sidebar.classList.add('hidden');
     }
@@ -1170,16 +1131,6 @@ function kirToggleMobileSidebar() {
     backdrop.id = 'sidebar-mobile-backdrop';
     backdrop.className = 'kir-sidebar-backdrop';
     backdrop.onclick = () => kirCloseMobileSidebar();
-    // I insert into the same stacking context as #sidebar (the
-    // .kir-app-shell wrapper, which is `relative z-10`) instead of
-    // document.body. Appending to <body> puts the backdrop in the
-    // ROOT stacking context, where its z-index:55 is compared against
-    // the entire z-10 wrapper (sidebar included) rather than against
-    // #sidebar individually. This was causing the backdrop to paint
-    // over the wrapper as a whole, dimming the sidebar along with the
-    // page behind it, no matter how high #sidebar's own z-index (60)
-    // was set. Keeping both inside the same wrapper lets that z-index
-    // actually apply, so the sidebar renders above the dim overlay.
     const shell = document.querySelector('.kir-app-shell') || document.body;
     shell.appendChild(backdrop);
   }
@@ -1192,43 +1143,13 @@ function kirToggleMobileSidebar() {
 
   sidebar.classList.remove('hidden');
   __kirModalLock(1);
-  // I force a reflow between removing `hidden` and adding the open class
-  // for the same reason as kirModalShow. Otherwise the browser can
-  // coalesce both changes into one paint and the slide-in transition
-  // never plays.
   void sidebar.offsetWidth;
   sidebar.classList.add('kir-sidebar-open');
   document.getElementById('sidebar-mobile-backdrop').classList.add('visible');
 
-  // I reposition the pill once the drawer's slide-in transition (0.28s,
-  // see #sidebar.kir-sidebar-open in style.css) has actually finished.
-  // Opening the drawer only ever changes #sidebar's transform, never its
-  // width, so kirWatchNavPill's ResizeObserver (which only tracks
-  // offsetWidth) never fires for this case. Nothing else repositions
-  // the pill on drawer-open either, only on initial load, SPA nav, and
-  // width changes. Left alone, the pill sits wherever it was last
-  // measured, which can be from before the drawer was ever visible in
-  // its true on-screen position (floating outside the drawer). I use
-  // animate:false regardless because the mobile media query in style.css
-  // strips .nav-active-pill's top/left/width/height transition entirely
-  // below the lg breakpoint, so this always lands as a plain snap, never
-  // a visible glide.
   setTimeout(() => kirPositionNavPill(false), 280);
 }
 
-// If the viewport grows past the lg breakpoint while the mobile drawer
-// is open (rotating a tablet, resizing a browser window), #sidebar
-// becomes the normal always-visible desktop sidebar via `lg:flex`.
-// I make sure the drawer-only state (backdrop, scroll lock, slide
-// transform) doesn't linger into that layout.
-/* Collapse is a desktop-only affordance. #sidebar-collapse-btn is hidden
-   outright below 1024px (see the mobile media query in css/style.css), so
-   there is no UI on mobile to undo a collapsed state. The persisted
-   preference (KIR_SIDEBAR_COLLAPSED_KEY) should therefore only ever be
-   applied on desktop, even though it keeps being stored regardless of
-   viewport. Without this gate, a user who collapsed the sidebar on desktop
-   would open the mobile drawer later and find it permanently squashed down
-   to icon-only width with no button to expand it back out. */
 function kirSidebarCollapsedClass() {
   const isDesktop = typeof window !== 'undefined' && window.matchMedia
     && window.matchMedia('(min-width: 1024px)').matches;
@@ -1238,25 +1159,15 @@ function kirSidebarCollapsedClass() {
 if (typeof window !== 'undefined' && window.matchMedia) {
   window.matchMedia('(min-width: 1024px)').addEventListener('change', (e) => {
     if (e.matches) kirCloseMobileSidebar();
-    // I live-sync the collapsed class to whichever side of the breakpoint
-    // we just landed on (window resize or tablet rotation, not just a fresh
-    // page load) using the same gate as kirSidebarCollapsedClass() above.
     const sidebarEl = document.getElementById('sidebar');
     if (sidebarEl) {
       const shouldCollapse = e.matches && localStorage.getItem(KIR_SIDEBAR_COLLAPSED_KEY) === 'true';
       sidebarEl.classList.toggle('sidebar-collapsed', shouldCollapse);
     }
-    // I keep the Settings modal's taskbar-position picker in sync if it's
-    // open (or opened later) across the same crossing, for example rotating
-    // a tablet or resizing a desktop window down past 1024px.
     if (typeof kirUpdateSidebarPositionModalUI === 'function') kirUpdateSidebarPositionModalUI();
   });
 }
 
-// I close on Escape, and after using any link or nav-tab inside the drawer
-// itself. router.js keeps #sidebar's DOM node alive across same-shape
-// SPA navigations, so without this the drawer would stay open with the
-// backdrop over whatever page it just navigated to.
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') kirCloseMobileSidebar();
 });
@@ -1265,28 +1176,12 @@ document.addEventListener('click', (e) => {
 });
 
 function kirInjectSidebar(activeTab) {
-  // router.js preserves the actual #sidebar DOM node across same-shape
-  // SPA navigations (see navigate()'s sidebar-preservation block). If it's
-  // already here, this is a client-side nav to a page we're already set up
-  // for, so I just move the active tab and pill instead of tearing the
-  // whole sidebar down and rebuilding it from scratch. This lets
-  // .nav-active-pill's CSS transition (and kirPositionNavPill's animate=true
-  // path) actually have something persistent to slide from, instead of
-  // always popping into place already correct.
-  //
-  // On a true hard page load #sidebar doesn't exist yet, so this always
-  // falls through to the full kirRenderSidebarNow() build below.
   const existingSidebar = document.getElementById('sidebar');
   if (existingSidebar) {
     existingSidebar.querySelectorAll('.nav-link[data-tab]').forEach(a => {
       a.classList.toggle('active', a.dataset.tab === activeTab);
     });
     
-    // I exclude the sidebar from View Transitions and rely strictly on
-    // CSS transitions for the pill's physics. By avoiding VT snapshots
-    // for the sidebar entirely, CSS naturally interpolates from its current
-    // physical computed position, guaranteeing smooth mid-flight redirection
-    // if a user clicks tabs rapidly before the animation finishes.
     requestAnimationFrame(() => kirPositionNavPill(true));
 
     kirRenderUserChrome();
@@ -1296,11 +1191,6 @@ function kirInjectSidebar(activeTab) {
 
     if (window.__kirProfileReady) {
       window.__kirProfileReady.then(() => {
-        // Admin status can only change the set of nav links (the Admin
-        // Panel entry appearing or disappearing), which the lightweight
-        // class-toggle path above can't handle. I fall back to a full
-        // rebuild in that one case. Otherwise I just refresh the bits that
-        // could have changed (name, avatar, cabang).
         const nowAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
         const hasAdminLink = !!existingSidebar.querySelector('.nav-link[data-tab="admin"]');
         if (nowAdmin !== hasAdminLink) {
@@ -1316,11 +1206,6 @@ function kirInjectSidebar(activeTab) {
 
   kirRenderSidebarNow(activeTab);
 
-  // I don't block the first paint on a network round-trip. I render
-  // instantly from whatever's cached, then quietly re-render only if
-  // the authoritative profile (once it loads) actually changed
-  // something (for example an admin promotion). In the normal case nothing
-  // changed, so there's no visible flash on every page navigation.
   if (window.__kirProfileReady) {
     const before = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
     window.__kirProfileReady.then(() => {
@@ -1337,7 +1222,6 @@ function kirRenderSidebarNow(activeTab) {
       <svg class="w-3 h-3 collapse-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
     </button>
     <a href="index.html" class="hidden lg:flex items-center gap-2.5 px-2 mb-8 overflow-hidden">
-      <!-- Removed bg-zinc-900, shadow-glow-sm, and border -->
       <div class="w-9 h-9 shrink-0 flex items-center justify-center">
         <img data-kir-brand-logo="glow" src="assets/kir_light_glow.PNG" alt="Orbit Logo" class="w-8 h-8 object-contain" />
       </div>
@@ -1402,6 +1286,14 @@ function kirRenderSidebarNow(activeTab) {
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         <span class="nav-label" data-i18n="pengaturan">Pengaturan</span>
       </button>
+      ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
+      <a href="inbox.html" data-tab="inbox" class="nav-link ${activeTab === 'inbox' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+        <span class="relative shrink-0 inline-flex">
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          <span id="sidebar-inbox-badge" class="nav-ping-badge">3</span>
+        </span>
+        <span class="nav-label" data-i18n="inbox">Kotak Masuk</span>
+      </a>` : ''}
     </nav>
     </div>
     <div class="mt-auto pt-6 border-t border-white/10 hidden lg:flex lg:flex-col">
@@ -1701,17 +1593,6 @@ function kirRenderSidebarNow(activeTab) {
   kirRefreshAdminPingBadge();
 }
 
-/* ----------------------------------------------------------
-   Admin sidebar ping. A small red count badge on the Admin
-   Panel link (Discord-style unread ping) so admins can tell at a
-   glance, from any page, whether members are waiting to be
-   approved without having to open Admin Panel first.
-
-   Counts profiles rows whose status isn't 'approved' yet, same
-   definition admin.html itself uses for "Menunggu". Only runs when
-   the admin-only nav link (and its badge span) actually exist in
-   the DOM, i.e. only for admins.
-   ---------------------------------------------------------- */
 async function kirRefreshAdminPingBadge() {
   const badge = document.getElementById('admin-ping-badge');
   if (!badge || !window.supabaseClient) return;
@@ -1719,10 +1600,6 @@ async function kirRefreshAdminPingBadge() {
   const { count, error } = await supabaseClient
     .from('profiles')
     .select('id', { count: 'exact', head: true })
-    // Mirrors admin.html's client-side `a.status !== 'approved'` check:
-    // .neq() alone would silently exclude rows where status is NULL
-    // (SQL's <> yields UNKNOWN, not TRUE, against NULL), so an
-    // unapproved-but-not-yet-status-set row would be missed.
     .or('status.neq.approved,status.is.null');
 
   if (error) {
@@ -1740,21 +1617,6 @@ async function kirRefreshAdminPingBadge() {
   badge.classList.remove('hidden');
 }
 
-/* ----------------------------------------------------------
-   Settle the pill into place once layout is actually final.
-   Tailwind's CDN runtime applies utility CSS for freshly-injected
-   markup (like this sidebar, built via innerHTML) through an async
-   MutationObserver, not synchronously. This means measuring nav-link
-   positions right after injection can catch them before their real
-   padding or spacing exists. That stale measurement was the cause of
-   the pill rendering near the top of the sidebar and then visibly
-   animating down once Tailwind caught up a moment later.
-
-   The pill starts invisible (its default CSS state), so waiting a
-   couple of frames before the first kirPositionNavPill or kirWatchNavPill
-   call means it only ever becomes visible already in its correct
-   spot. It never has a wrong position to animate away from.
-   ---------------------------------------------------------- */
 function kirSettleNavPill() {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
@@ -1769,50 +1631,24 @@ function kirSettleNavPill() {
   });
 }
 
-/* ----------------------------------------------------------
-   Remember where the nav list was scrolled to, so navigating away
-   and back (or a hard page load or refresh, which gets a brand-new
-   #sidebar with no scroll history of its own) doesn't reset it to
-   the top every time. I use sessionStorage rather than localStorage
-   because this is throwaway UI state tied to the current browsing
-   session, not a preference that should follow the user forever.
-   Client-side nav between two sidebar-having pages actually reuses
-   the same #sidebar DOM node (see router.js), so scrollTop already
-   survives that case for free without any of this. This exists for
-   the cases where it doesn't, a hard reload or direct URL load (always
-   a fresh #sidebar), and the one full kirRenderSidebarNow() rebuild
-   path in kirInjectSidebar (admin status changed mid-session).
-   ---------------------------------------------------------- */
 function kirSaveNavScrollPos() {
   const navScroll = document.querySelector('#sidebar .sidebar-nav-scroll');
   if (!navScroll) return;
   try {
     sessionStorage.setItem(KIR_SIDEBAR_NAV_SCROLL_KEY, JSON.stringify({ top: navScroll.scrollTop, left: navScroll.scrollLeft }));
-  } catch (e) { /* sessionStorage unavailable (private mode, quota, etc.), position just won't persist */ }
+  } catch (e) {}
 }
 
 function kirRestoreNavScrollPos() {
   const navScroll = document.querySelector('#sidebar .sidebar-nav-scroll');
   if (!navScroll) return;
   let saved = null;
-  try { saved = JSON.parse(sessionStorage.getItem(KIR_SIDEBAR_NAV_SCROLL_KEY) || 'null'); } catch (e) { /* ignore */ }
+  try { saved = JSON.parse(sessionStorage.getItem(KIR_SIDEBAR_NAV_SCROLL_KEY) || 'null'); } catch (e) {}
   if (!saved) return;
   navScroll.scrollTop = saved.top || 0;
   navScroll.scrollLeft = saved.left || 0;
 }
 
-/* ----------------------------------------------------------
-   Nav-scroll edge fade. See .kir-fade-start/.kir-fade-end in
-   css/style.css for the actual gradients. This just decides whether
-   each edge should be faded right now. I read the container's real
-   scroll offset against its scrollable range, on whichever axis is
-   actually active (vertical for the default, left, or right bar,
-   horizontal once docked top or bottom), and toggle the two classes
-   accordingly. A list that fits with no overflow at all never gets
-   either class, so it never shows a fade. This follows the same
-   "only when there's really something cut off" rule the fade itself
-   is meant to signal.
-   ---------------------------------------------------------- */
 function kirUpdateNavScrollFade() {
   const navScroll = document.querySelector('#sidebar .sidebar-nav-scroll');
   if (!navScroll) return;
@@ -1821,7 +1657,6 @@ function kirUpdateNavScrollFade() {
   const scrollPos = horizontal ? navScroll.scrollLeft : navScroll.scrollTop;
   const viewportSize = horizontal ? navScroll.clientWidth : navScroll.clientHeight;
   const contentSize = horizontal ? navScroll.scrollWidth : navScroll.scrollHeight;
-  // 1px tolerance for sub-pixel rounding at either end of the range.
   navScroll.classList.toggle('kir-fade-start', scrollPos > 1);
   navScroll.classList.toggle('kir-fade-end', scrollPos < contentSize - viewportSize - 1);
 }
@@ -1834,8 +1669,6 @@ function kirWatchNavScrollFade() {
     navScroll.__kirFadeScrollInit = true;
     navScroll.addEventListener('scroll', () => {
       kirUpdateNavScrollFade();
-      // I throttle the sessionStorage write to once per frame because
-      // 'scroll' can fire far more often than that during a fast fling.
       if (navScroll.__kirScrollSaveScheduled) return;
       navScroll.__kirScrollSaveScheduled = true;
       requestAnimationFrame(() => {
@@ -1856,15 +1689,6 @@ function kirWatchNavScrollFade() {
   }
 }
 
-/* ----------------------------------------------------------
-   Traveling nav highlight. One shared "pill" sits behind
-   whichever .nav-link is active and gets repositioned to match
-   it, instead of each link owning its own static background.
-   Repositioning animates via CSS (.nav-active-pill in style.css),
-   so switching pages makes the highlight slide/resize into place.
-   A ResizeObserver keeps it aligned through the sidebar
-   collapse/expand animation and window resizes too.
-   ---------------------------------------------------------- */
 function kirPositionNavPill(animate) {
   const sidebar = document.getElementById('sidebar');
   const navScroll = sidebar ? sidebar.querySelector('.sidebar-nav-scroll') : null;
@@ -1882,13 +1706,6 @@ function kirPositionNavPill(animate) {
     pill.style.transition = 'none';
   }
 
-  // The pill is now a child of .sidebar-nav-scroll (a scroll container),
-  // not #sidebar directly, so its top and left need to be expressed in
-  // that container's unscrolled content coordinates. This means relative
-  // to its own box, with the current scroll offset added back in. Once
-  // placed there, the pill scrolls natively along with the rest of the
-  // nav links (being an absolutely-positioned descendant of the thing
-  // that's actually scrolling) with no further JS needed on scroll.
   const activeRect = active.getBoundingClientRect();
   pill.style.top = (activeRect.top - containerRect.top + navScroll.scrollTop) + 'px';
   pill.style.left = (activeRect.left - containerRect.left + navScroll.scrollLeft) + 'px';
@@ -1897,7 +1714,7 @@ function kirPositionNavPill(animate) {
   pill.style.opacity = '1';
 
   if (!animate) {
-    void pill.offsetHeight; // force reflow so removing the transition takes effect immediately
+    void pill.offsetHeight;
     pill.style.transition = '';
   }
 }
@@ -1911,12 +1728,7 @@ function kirWatchNavPill() {
   
   const ro = new ResizeObserver(() => {
     const currentWidth = sidebar.offsetWidth;
-    
-    if (currentWidth === 0) return; // ignore detached state
-    
-    // Track ONLY offsetWidth to handle sidebar collapse/expand animations and window resizes.
-    // Ignoring offsetHeight prevents minor vertical layout shifts (like scrollbars appearing
-    // on a new page) from instantly killing the nav pill's slide animation via a false-positive snap.
+    if (currentWidth === 0) return;
     if (currentWidth !== lastWidth) {
       lastWidth = currentWidth;
       kirPositionNavPill(false);
@@ -1926,43 +1738,8 @@ function kirWatchNavPill() {
   sidebar.__kirPillObserver = ro;
 }
 
-/* ----------------------------------------------------------
-   Top or bottom taskbar clearance for fixed-position UI.
-   When the taskbar is docked to the top or bottom of the screen
-   (Settings → Taskbar Position → Atas/Bawah), it's `position: fixed`
-   (see the media query above) and no longer reserves any space in
-   .kir-app-shell's flex flow. <main>'s own padding-top or padding-bottom
-   compensates for that (see the `html[data-sidebar-pos="top"/"bottom"]
-   main` rules in css/style.css). Without it the taskbar just renders
-   on top of whatever's at the very top of the page (for example the
-   page's <h1> heading) when docked to the top, or the very bottom
-   otherwise. The admin FABs (+, Ekspedisi, Impor JSON, Tinjau integritas)
-   and the admin toast (both `position: fixed`, see css/admin-shared.css)
-   have the exact same problem on the bottom side.
-
-   Rather than hardcode a second offset per element (which would also
-   have to track collapsed versus expanded taskbar height, and only apply
-   above the lg breakpoint where top or bottom taskbars exist at all),
-   I measure the taskbar's real rendered height and publish it as
-   --kir-top-taskbar-h or --kir-bottom-taskbar-h on <html>, whichever
-   side it's actually docked to right now. I reset the other one to
-   0px on every call so a leftover clearance from before the position
-   was last changed never lingers on the side that's no longer active.
-   admin-shared.css and style.css both add these on top of each
-   element's normal offset.
-
-   A single ResizeObserver on #sidebar keeps this correct through
-   collapse or expand, switching taskbar position, and window resizes
-   crossing the lg breakpoint. Every one of those changes #sidebar's
-   own rendered box size, which is exactly what ResizeObserver reports.
-   ---------------------------------------------------------- */
 function kirUpdateTaskbarClearance() {
   const sidebar = document.getElementById('sidebar');
-  // I read the CURRENT position fresh on every call rather than caching
-  // which side was last measured. This is what makes switching directly
-  // from "top" to "bottom" (or back) clear the side that's no longer
-  // docked instead of leaving its old clearance applied underneath the
-  // newly active side's.
   const position = document.documentElement.getAttribute('data-sidebar-pos');
   const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
   const height = (sidebar && isDesktop && (position === 'top' || position === 'bottom'))
@@ -1981,14 +1758,6 @@ function kirWatchTaskbarClearance() {
   ro.observe(sidebar);
   sidebar.__kirTaskbarClearanceObserver = ro;
 
-  // Belt and suspenders. I use a plain window resize listener as a
-  // fallback alongside the observer above and the explicit calls in
-  // kirSetSidebarPosition or kirToggleSidebarCollapse. Window resize
-  // covers crossing the lg breakpoint even in the rare case the
-  // observer's own timing gets missed. I register this once per session
-  // Window and document listeners aren't torn down on SPA navigation
-  // (see router.js's header comment), so I guard against piling up
-  // duplicates across repeat kirWatchTaskbarClearance() calls.
   if (!window.__kirTaskbarClearanceResizeInit) {
     window.__kirTaskbarClearanceResizeInit = true;
     window.addEventListener('resize', () => kirUpdateTaskbarClearance());
@@ -2015,15 +1784,10 @@ function kirInitSidebarDrag() {
 
   btn.addEventListener('pointermove', (e) => {
     if (!isDragging) return;
-    
-    // Apply friction to the raw mouse movement
     let rawY = e.clientY - startY;
     let y = rawY * 0.4;
-    
-    // Strict tactile boundaries
     const limit = 24;
     y = Math.max(-limit, Math.min(y, limit));
-    
     currentY = y;
     btn.style.transform = `translateY(${y}px)`;
   });
@@ -2032,13 +1796,9 @@ function kirInitSidebarDrag() {
     if (!isDragging) return;
     isDragging = false;
     btn.releasePointerCapture(e.pointerId);
-    
-    // Check actual mouse travel distance to distinguish clicks from drags
     if (Math.abs(e.clientY - clickStartY) < 5) {
       kirToggleSidebarCollapse();
     }
-    
-    // Release the tension
     currentY = 0;
     btn.classList.add('rubber-bounce');
     btn.style.transform = `translateY(0px)`;
@@ -2052,9 +1812,6 @@ function kirToggleSidebarCollapse() {
   const sidebar = document.getElementById('sidebar');
   const collapsed = sidebar.classList.toggle('sidebar-collapsed');
   localStorage.setItem(KIR_SIDEBAR_COLLAPSED_KEY, collapsed ? 'true' : 'false');
-  // Collapsing or expanding changes the top or bottom docked taskbar's
-  // own height (slimmer padding when collapsed, see style.css), so the
-  // clearance needs a fresh measurement too, not just the ResizeObserver.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     kirUpdateTaskbarClearance();
     kirUpdateNavScrollFade();
@@ -2067,11 +1824,9 @@ function kirToggleSidebarCollapse() {
 }
 
 function kirInitSidebarShortcuts() {
-  // Prevent duplicate global event listeners if the sidebar re-injects
   if (window.kirSidebarShortcutsInit) return;
   window.kirSidebarShortcutsInit = true;
 
-  // Inject the visual tactile state for held items
   const style = document.createElement('style');
   style.innerHTML = `
     .nav-link.shortcut-highlight {
@@ -2087,26 +1842,21 @@ function kirInitSidebarShortcuts() {
   let activeShortcutTarget = null;
 
   document.addEventListener('keydown', (e) => {
-    // Abort if typing inside an input field or using modifier keys
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
     const key = e.key;
     if (/^[0-9]$/.test(key)) {
       const sidebar = document.getElementById('sidebar');
-      if (!sidebar) return; // Disables shortcuts on index, gallery, and program kerja
+      if (!sidebar) return;
 
       const links = Array.from(sidebar.querySelectorAll('.nav-link'));
-      // Map 1-9 to index 0-8, and map 0 to the 10th item (index 9)
       const index = key === '0' ? 9 : parseInt(key, 10) - 1;
 
       if (links[index]) {
         e.preventDefault();
-        
-        // Update the active tracking state to the newest key held
         activeShortcutKey = key;
         activeShortcutTarget = links[index];
-
         links.forEach(l => l.classList.remove('shortcut-highlight'));
         activeShortcutTarget.classList.add('shortcut-highlight');
       }
@@ -2114,20 +1864,15 @@ function kirInitSidebarShortcuts() {
   });
 
   document.addEventListener('keyup', (e) => {
-    // Only fire the click if the key released matches the CURRENT active highlight
-    // This allows rolling your fingers over 1 then 2 without triggering 1 when released.
     if (e.key === activeShortcutKey && activeShortcutTarget) {
       const target = activeShortcutTarget;
-      
       activeShortcutKey = null;
       activeShortcutTarget = null;
       document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('shortcut-highlight'));
-      
       target.click();
     }
   });
 
-  // Failsafe: Clear visual state if the user alt-tabs away while holding a key
   window.addEventListener('blur', () => {
     activeShortcutKey = null;
     activeShortcutTarget = null;
@@ -2162,6 +1907,7 @@ function kirPageTitleKey() {
     'catalog.html': 'page_title_katalog',
     'labs.html': 'page_title_labs',
     'auth.html': 'page_title_auth',
+    'inbox.html': 'page_title_inbox',
   };
   return titleMap[filename] || 'page_title_home';
 }
@@ -2181,54 +1927,46 @@ function resolveBrandAssetName(type = 'icon') {
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   const suffix = type === 'glow' ? '_glow' : '';
   const invertedTheme = theme === 'light' ? 'dark' : 'light';
-
-  // "Nonaktifkan Warna Cabang" ("Disable Branch Colouring") only
-  // neutralizes the accent colors (see tailwind-config.js or
-  // --accent-rgb overrides). The logo and favicon stay the branded
-  // cabang mark either way, it just switches from the plain version to
-  // the light or dark inverted one so it still reads against the theme,
-  // using the same reasoning as the neutral mark below.
   const disableBranchColor = localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
 
   if (loggedIn && cabang !== 'both') {
     if (cabang === 'robotik') return disableBranchColor ? `assets/robotik_${invertedTheme}${suffix}.PNG` : `assets/robotik${suffix}.PNG`;
     if (cabang === 'sains') return disableBranchColor ? `assets/sains_${invertedTheme}${suffix}.PNG` : `assets/sains${suffix}.PNG`;
   }
-
-  // Neutral kir mark. Used for logged-out visitors (no settings to
-  // toggle, so always themed) and the "both" or hybrid cabang (no
-  // dedicated asset, it's the same plain mark, tinted purple via CSS
-  // accent vars instead). Inverted on purpose because light theme's white
-  // background needs the dark-inked logo, and vice versa.
   return `assets/kir_${invertedTheme}${suffix}.PNG`;
 }
 
-function kirApplyBrandAssets() {
-  const faviconLink = document.querySelector('link[rel="icon"]');
+function kirPreloadBrandAssets() {
+  try {
+    const glowSrc = resolveBrandAssetName('glow');
+    const iconSrc = resolveBrandAssetName('icon');
+    const img1 = new Image(); img1.src = glowSrc;
+    const img2 = new Image(); img2.src = iconSrc;
+  } catch (e) {}
+}
+
+function kirApplyBrandAssets(root = document) {
+  kirPreloadBrandAssets();
+  const targetDoc = root.ownerDocument || (root.nodeType === 9 ? root : document);
+  const faviconLink = targetDoc.querySelector('link[rel="icon"]');
+  const iconSrc = resolveBrandAssetName('icon');
   if (faviconLink) {
-    faviconLink.href = resolveBrandAssetName('icon');
-  } else {
-    const newLink = document.createElement('link');
+    if (faviconLink.getAttribute('href') !== iconSrc) faviconLink.href = iconSrc;
+  } else if (targetDoc.head) {
+    const newLink = targetDoc.createElement('link');
     newLink.rel = 'icon';
     newLink.type = 'image/png';
-    newLink.href = resolveBrandAssetName('icon');
-    document.head.appendChild(newLink);
+    newLink.href = iconSrc;
+    targetDoc.head.appendChild(newLink);
   }
 
-  document.querySelectorAll('img[data-kir-brand-logo]').forEach(img => {
-    img.src = resolveBrandAssetName('glow');
+  const glowSrc = resolveBrandAssetName('glow');
+  const scope = (root.querySelectorAll ? root : targetDoc);
+  scope.querySelectorAll('img[data-kir-brand-logo]').forEach(img => {
+    if (img.getAttribute('src') !== glowSrc) img.src = glowSrc;
   });
 }
 
-// Parametrized so router.js can call this on a detached, freshly-fetched
-// document (before it's ever attached to the live DOM, let alone painted)
-// as well as on the live `document` itself. Translating off-DOM content
-// means a page navigated to via the SPA router already has correct
-// language text baked in the instant it's attached. This avoids a visible
-// swap after the fact, which is what running this only against the live
-// document (as it used to) couldn't avoid. The router's re-run of a
-// page's own inline scripts (which is what used to call this) only
-// happens after the swap is already visible or mid-view-transition.
 function kirTranslateElements(root) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
   root.querySelectorAll('[data-i18n]').forEach(el => {
@@ -2278,44 +2016,18 @@ function kirApplyTranslations() {
   kirSyncPublicHeaderAuth();
   if (typeof kirRenderUserChrome === 'function') kirRenderUserChrome();
 
-  // Not every piece of translated UI is covered by [data-i18n]. For
-  // example, schedule.html's calendar grid (weekday headers, month title)
-  // is built by renderScheduleCalendar() using Intl.DateTimeFormat(locale,
-  // ...), so it needs an explicit re-render rather than a text swap. I
-  // dispatch a page-agnostic event instead of reaching into page-specific
-  // globals here, so any page with its own locale-dependent rendering can
-  // listen and refresh itself.
   window.dispatchEvent(new CustomEvent('kir:lang-changed', { detail: { lang } }));
 
   kirRevealPage();
   kirInitNavIndicator();
 }
 
-/* ----------------------------------------------------------
-   Header Nav (Plain Link Navigation)
-   ---------------------------------------------------------- */
-function kirInitNavIndicator() {
-  // Plain header nav style used - pill indicator disabled
-}
+function kirInitNavIndicator() {}
 
-// Every page's body is hidden by default (see the `html:not(.kir-ready)
-// body { visibility: hidden }` rule in style.css) so it never paints the
-// hardcoded Indonesian default text or Tailwind-CDN-unstyled icons at
-// their raw intrinsic size before this runs. This is the same "apply
-// before paint" idea as applyThemeImmediately() above, just finished
-// here instead, since translating [data-i18n] elements needs them to
-// actually exist in the DOM first, which theme attributes don't.
 function kirRevealPage() {
   document.documentElement.classList.add('kir-ready');
 }
 
-/* ----------------------------------------------------------
-   Theme application. Runs immediately (top-level, not inside
-   a function) the instant this script loads, which is before
-   the rest of <head> renders anything. This is what prevents
-   a flash of the wrong color or theme on page load. Every page
-   includes this script as the very first thing in <head>.
-   ---------------------------------------------------------- */
 (function applyThemeImmediately() {
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
@@ -2329,8 +2041,6 @@ function kirRevealPage() {
   const sidebarPos = localStorage.getItem(KIR_SIDEBAR_POSITION_KEY) || 'left';
   document.documentElement.setAttribute('data-sidebar-pos', sidebarPos);
 
-  // Only apply a colored cabang theme while logged in. Logged-out
-  // visitors (landing + auth pages) stay black & white.
   if (localStorage.getItem(KIR_SESSION_KEY) === 'true') {
     const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
     document.documentElement.setAttribute('data-cabang', cabang);
@@ -2342,36 +2052,16 @@ function kirRevealPage() {
   kirApplyBrandAssets();
 })();
 
-// Safety net for kirRevealPage(). Most pages reach it via
-// kirApplyTranslations() (called either directly, inline near the end of
-// <body>, or indirectly through kirInjectSidebar()). But a page like
-// auth.html has no [data-i18n] content and calls neither, so it would
-// otherwise never get `.kir-ready` and stay hidden behind the CSS rule
-// in style.css forever. `load` fires only after every resource on the
-// page (fonts, the Tailwind CDN script, images, etc.) has finished, so
-// by then it's always safe to reveal regardless of which path got us
-// here. It's harmless to also fire on pages that already revealed
-// themselves earlier via kirApplyTranslations() because classList.add()
-// on a class that's already there is a no-op.
 window.addEventListener('load', () => {
   if (!document.documentElement.classList.contains('kir-ready')) kirRevealPage();
   kirInitNavIndicator();
 });
 
-/* ----------------------------------------------------------
-   Session
-   ---------------------------------------------------------- */
 function kirIsLoggedIn() {
-  // I check localStorage for the session flag. With Supabase auth,
-  // this is set when the user successfully logs in.
   return localStorage.getItem(KIR_SESSION_KEY) === 'true';
 }
 
 function kirLogin(name, cabang) {
-  // I set the session flag and store user data in localStorage.
-  // cabang is optional here. If omitted (for example the Login tab,
-  // where there's no real account record to check yet) I fall back to
-  // whatever cabang this browser last used.
   const resolvedCabang = cabang || kirLastKnownCabang();
   localStorage.setItem(KIR_SESSION_KEY, 'true');
   localStorage.setItem(KIR_NAME_KEY, name || 'Anggota');
@@ -2385,13 +2075,6 @@ function kirLastKnownCabang() {
   return localStorage.getItem(KIR_LAST_CABANG_KEY) || 'robotik';
 }
 
-// scope: 'local' (default) ends only this browser's session, leaving any
-// other logged-in devices or tabs untouched. Pass 'global' (see
-// confirmLogoutAll below, gated behind its own confirmation modal) to
-// end every session everywhere instead. Supabase's own default for
-// signOut() is 'global', so this MUST be passed explicitly here. I never
-// call supabaseClient.auth.signOut() bare, or a plain "Keluar" click would
-// silently sign the person out everywhere too.
 async function kirLogout(scope = 'local') {
   await supabaseClient.auth.signOut({ scope });
   localStorage.removeItem(KIR_SESSION_KEY);
@@ -2406,10 +2089,7 @@ async function kirLogout(scope = 'local') {
 
 async function kirRequestPasswordReset(email) {
   if (!window.supabaseClient) return { success: false, error: 'Supabase client unavailable.' };
-  
-  // Use the exact clean path so Supabase strictly matches your Redirect URLs whitelist
   const redirectUrl = window.location.origin + window.location.pathname; 
-  
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl,
   });
@@ -2424,13 +2104,6 @@ async function kirUpdatePassword(newPassword) {
   return { success: true, error: null };
 }
 
-/* ----------------------------------------------------------
-   Log out of all sessions. Signs out every device or tab the
-   account is currently logged into (Supabase scope: 'global'),
-   not just this browser. More far-reaching than the plain
-   "Keluar" button above, so it lives behind its own lightweight
-   confirm modal rather than firing on a single click.
-   ---------------------------------------------------------- */
 function openLogoutAllModal() {
   const statusEl = document.getElementById('logout-all-status');
   if (statusEl) statusEl.classList.add('hidden');
@@ -2457,8 +2130,6 @@ async function confirmLogoutAll() {
 
   try {
     await kirLogout('global');
-    // kirLogout() redirects to index.html on success, so there's
-    // normally nothing left to do here.
   } catch (err) {
     statusEl.textContent = I18N[lang].logout_all_error;
     statusEl.className = 'text-xs text-red-400 mb-3';
@@ -2479,15 +2150,12 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 
   if (event === 'PASSWORD_RECOVERY') {
     localStorage.setItem('kir_password_recovery_mode', 'true');
-    
     if (window.location.pathname.indexOf('auth.html') === -1) {
-      // Safely route to auth.html regardless of Github Pages subdirectories
       let basePath = window.location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '').replace(/\/$/, '');
       let targetUrl = basePath + '/auth.html';
       if (window.location.hash) targetUrl += window.location.hash;
       window.location.href = targetUrl;
     } else {
-      // Race condition fix: the page already loaded, so force the UI to swap immediately
       if (typeof switchAuthPanel === 'function') {
         document.getElementById('auth-tabs').classList.add('hidden');
         switchAuthPanel('update', { instant: true });
@@ -2496,36 +2164,11 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
 });
 
-/* Call this at the very top of any protected page's <head>,
-   right after loading this script, so it runs before the
-   page paints. It sends logged-out visitors to auth.html. */
-// kirRequireAuth() lives in an inline <script> in every protected page's
-// <head>, and router.js re-runs EVERY inline head script on EVERY SPA
-// navigation (it has no way to know which ones are safe to skip, see
-// router.js's own header comment on why). Without this throttle, that
-// meant a full network round-trip to Supabase (kirRefreshCurrentProfile)
-// plus a re-apply of brand assets, cabang, and several localStorage keys
-// fired on every single in-app navigation, landing asynchronously some
-// time after the page had already painted. This read as the sidebar
-// (and brand assets generally) "randomly flashing or rebuilding
-// itself" a moment after each nav, and could also race with
-// kirInjectSidebar's admin-status check into an unwanted full
-// kirRenderSidebarNow() rebuild (which always positions the nav pill
-// instantly, never animated, see kirSettleNavPill), masking the pill's
-// intended slide animation. The revocation check this exists for
-// (catching an account a pengurus just un-approved) doesn't need to run
-// on every click to still be effective. I recheck at most once per
-// interval instead, and just reuse the already-settled promise or profile
-// otherwise, same as router.js already does for heavy shared assets.
 let kirLastProfileCheckAt = 0;
 const KIR_PROFILE_RECHECK_INTERVAL_MS = 60000;
 
 async function kirRequireAuth() {
   if (kirIsLoggedIn()) {
-    // Optimistic path. We already have a cached session, so I let the
-    // page start painting immediately, then verify and refresh in the
-    // background. If a pengurus has since revoked or un-approved this
-    // account, kirRefreshCurrentProfile below will sign them out and redirect.
     const isFreshEnough = window.__kirProfileReady
       && (Date.now() - kirLastProfileCheckAt < KIR_PROFILE_RECHECK_INTERVAL_MS);
     if (!isFreshEnough) {
@@ -2536,16 +2179,8 @@ async function kirRequireAuth() {
     return;
   }
 
-  // No cached session, but I don't assume logged-out yet. If a real
-  // Supabase session already exists (for example they registered earlier
-  // and were waiting on approval, or logged in on another tab), this picks
-  // it up. If the account is now approved, I let them straight in
-  // with no re-entering credentials required.
   window.__kirProfileReady = kirRefreshCurrentProfile();
   const result = await window.__kirProfileReady;
-  // 'pending' already triggered its own redirect inside
-  // kirRefreshCurrentProfile. Only the "no session at all" case is
-  // still ours to handle, so I don't clobber that redirect with this one.
   if (result !== 'approved' && result !== 'pending') {
     window.location.href = 'auth.html';
   }
@@ -2573,9 +2208,6 @@ async function kirRefreshCurrentProfile() {
       .single();
     if (profileErr || !profile) return 'none';
 
-    // Accounts that haven't been approved by a pengurus yet (or have had
-    // approval revoked) never get a live session on protected pages.
-    // I send them back to the waiting screen instead.
     if (profile.status && profile.status !== 'approved') {
       localStorage.removeItem(KIR_SESSION_KEY);
       if (!/\/?auth\.html/.test(window.location.pathname)) {
@@ -2638,9 +2270,6 @@ async function kirRefreshCurrentProfile() {
   }
 }
 
-/* ----------------------------------------------------------
-   Profile: name, cabang, avatar
-   ---------------------------------------------------------- */
 function kirCurrentUserName() {
   return localStorage.getItem(KIR_NAME_KEY) || 'Anggota';
 }
@@ -2660,7 +2289,6 @@ function kirSetUserNickname(nick) {
   } else {
     localStorage.setItem(KIR_NICKNAME_KEY, trimmed);
   }
-  // Sync to Supabase profiles.nickname if available
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
       if (userData?.user) supabaseClient.from('profiles').update({ nickname: trimmed || null }).eq('id', userData.user.id).then();
@@ -2695,7 +2323,6 @@ function kirSetUserCabang(cabang) {
   kirApplyBrandAssets();
 }
 
-/* Human-readable label + badge class for a cabang value. */
 function kirCabangLabel(cabang) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
   if (cabang === 'sains') return I18N[lang]['sains'];
@@ -2723,7 +2350,6 @@ function kirSetUserAboutMe(text) {
   const trimmed = (text || '').trim().slice(0, 200);
   if (trimmed) localStorage.setItem(KIR_ABOUT_ME_KEY, trimmed);
   else localStorage.removeItem(KIR_ABOUT_ME_KEY);
-  // Sync to Supabase profiles.about_me if available
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
       if (userData?.user) supabaseClient.from('profiles').update({ about_me: trimmed || null }).eq('id', userData.user.id).then();
@@ -2731,9 +2357,6 @@ function kirSetUserAboutMe(text) {
   }
 }
 
-/* ----------------------------------------------------------
-   Appearance
-   ---------------------------------------------------------- */
 function kirCurrentTheme() {
   return localStorage.getItem(KIR_THEME_KEY) || 'dark';
 }
@@ -2763,47 +2386,102 @@ function kirSetReduceMotion(enabled) {
   }
 }
 
-/* Global "disable branch colouring" toggle (Settings → Tampilan &
-   Bahasa). Forces the --accent-* variables back to a neutral
-   grayscale (see the html[data-disable-branch-color="true"] rules in
-   css/style.css) regardless of the user's cabang, independent of
-   dark or light theme. The CSS picks white-ish versus near-black neutrals
-   on its own based on data-theme. */
 function kirCurrentDisableBranchColor() {
   return localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
 }
 
+function kirCrossFadeBrandLogos(targetGlowSrc) {
+  const brandLogos = document.querySelectorAll('img[data-kir-brand-logo]');
+  const clones = [];
+
+  brandLogos.forEach(img => {
+    if (img.getAttribute('src') === targetGlowSrc) return;
+    const parent = img.parentElement;
+    if (!parent) return;
+
+    const rect = img.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const csParent = window.getComputedStyle(parent);
+    const origPos = parent.style.position;
+    if (csParent.position === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    const clone = img.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.removeAttribute('data-kir-brand-logo');
+    clone._origParentPos = origPos;
+    const csImg = window.getComputedStyle(img);
+
+    clone.style.position = 'absolute';
+    clone.style.top = `${img.offsetTop}px`;
+    clone.style.left = `${img.offsetLeft}px`;
+    clone.style.width = `${img.offsetWidth || rect.width}px`;
+    clone.style.height = `${img.offsetHeight || rect.height}px`;
+    clone.style.margin = csImg.margin;
+    clone.style.transform = csImg.transform;
+    clone.style.borderRadius = csImg.borderRadius;
+    clone.style.objectFit = csImg.objectFit;
+    clone.style.pointerEvents = 'none';
+    clone.style.zIndex = '5';
+    clone.style.opacity = '1';
+    clone.style.transition = 'opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+
+    parent.appendChild(clone);
+    clones.push(clone);
+  });
+
+  return clones;
+}
+
 function kirSetDisableBranchColor(enabled) {
   localStorage.setItem(KIR_DISABLE_BRANCH_COLOR_KEY, enabled ? 'true' : 'false');
-  document.documentElement.setAttribute('data-disable-branch-color', enabled ? 'true' : 'false');
-  kirApplyBrandAssets();
-  // Most pages pick this up for free through the --accent-* CSS
-  // variable cascade (see html[data-disable-branch-color="true"] in
-  // css/style.css). Pages that compute colors in JS instead of pure
-  // CSS (for example js/course.html's per-node-type accent shades, baked into
-  // rendered inline styles) can't rely on that cascade and need to
-  // re-render themselves. This event is their hook to do so.
+
+  const isReducedMotion = document.documentElement.getAttribute('data-reduce-motion') === 'true'
+    || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  if (!isReducedMotion) {
+    document.documentElement.classList.add('kir-color-transitioning');
+    
+    document.documentElement.setAttribute('data-disable-branch-color', enabled ? 'true' : 'false');
+    const newGlowSrc = resolveBrandAssetName('glow');
+    
+    const clones = kirCrossFadeBrandLogos(newGlowSrc);
+    kirApplyBrandAssets();
+
+    if (clones.length > 0) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          clones.forEach(c => { c.style.opacity = '0'; });
+        });
+      });
+      setTimeout(() => {
+        clones.forEach(c => {
+          if (c.parentElement && c._origParentPos !== undefined) {
+            c.parentElement.style.position = c._origParentPos;
+          }
+          c.remove();
+        });
+      }, 450);
+    }
+
+    setTimeout(() => {
+      document.documentElement.classList.remove('kir-color-transitioning');
+    }, 500);
+  } else {
+    document.documentElement.setAttribute('data-disable-branch-color', enabled ? 'true' : 'false');
+    kirApplyBrandAssets();
+  }
+
   window.dispatchEvent(new CustomEvent('kir:branch-color-change', { detail: { enabled } }));
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
-      // Requires a `disable_branch_color` boolean column on `profiles`.
-      // Harmless no-op error if that column doesn't exist yet. The
-      // setting still works locally via localStorage either way.
       if (userData?.user) supabaseClient.from('profiles').update({ disable_branch_color: enabled }).eq('id', userData.user.id).then();
     });
   }
 }
 
-/* ----------------------------------------------------------
-   Taskbar (sidebar) position. 'left' (default), 'right',
-   'top', or 'bottom'. Applied as a data-attribute on <html> so
-   css/style.css can restyle #sidebar into a horizontal bar (top
-   or bottom) or mirror it (right) purely with CSS, without any of
-   the surrounding markup changing. The collapse-to-icons toggle
-   (KIR_SIDEBAR_COLLAPSED_KEY) is independent of position. It
-   works the same "show icons only" way on all four sides, so
-   switching position never needs to touch it.
-   ---------------------------------------------------------- */
 function kirCurrentSidebarPosition() {
   return localStorage.getItem(KIR_SIDEBAR_POSITION_KEY) || 'left';
 }
@@ -2812,25 +2490,15 @@ function kirSetSidebarPosition(position) {
   localStorage.setItem(KIR_SIDEBAR_POSITION_KEY, position);
   document.documentElement.setAttribute('data-sidebar-pos', position);
 
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && sidebar.classList.contains('kir-sidebar-frozen')) {
+    __kirFreezeSidebar(false);
+    __kirFreezeSidebar(true);
+  }
+
   kirUpdateSidebarPositionModalUI();
-  // Rects everywhere (nav pill, collapse button) shift the instant the
-  // layout flips, so re-measure once the browser's had a frame to apply
-  // the new CSS instead of positioning the pill against the old rects.
   requestAnimationFrame(() => requestAnimationFrame(() => kirPositionNavPill(false)));
-  // Ensure the pill catches the final settled dimensions after the 
-  // internal navigation links finish morphing their CSS transitions.
   setTimeout(() => kirPositionNavPill(false), 350);
-  // I use the same reasoning for the top or bottom taskbar clearance.
-  // I don't wait on the ResizeObserver alone (this setting is usually
-  // changed from inside the Settings modal, which freezes #sidebar's box
-  // via __kirFreezeSidebar while it's open, see admin-shared.js). So a
-  // resize triggered here can land before or without a clean observer
-  // tick. I recompute directly, both right away and once the new layout's
-  // definitely settled. kirUpdateTaskbarClearance() always reads
-  // data-sidebar-pos fresh (set just above, a few lines up), so both
-  // calls reflect the position we just switched to, not whatever the
-  // clearance was before this change, and the side we switched away from.
-  // FROM is correctly zeroed out rather than left stale.
   kirUpdateTaskbarClearance();
   kirUpdateNavScrollFade();
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -2868,14 +2536,6 @@ function kirUpdateSidebarPositionModalUI() {
   }
 }
 
-/* ----------------------------------------------------------
-   Voyages + Deltas
-   --------------------------------------------------------
-   Prototype point balance, kept in localStorage so Voyages
-   and Leaderboard can share it. Starts at 1240 to match the
-   dummy number already shown on the Dashboard "Deltas" card.
-   TODO(real backend): replace with a real deltas ledger.
-   ---------------------------------------------------------- */
 const KIR_DELTAS_KEY = 'kir_deltas_total';
 const KIR_FLAGS_KEY = 'kir_flags_total';
 const KIR_VOYAGE_DONE_PREFIX = 'kir_voyage_done_';
@@ -2942,7 +2602,7 @@ function kirAddDeltas(amount) {
 function kirVoyageCompletion(voyageId) {
   if (typeof window.USER_COMPLETIONS !== 'undefined') return window.USER_COMPLETIONS[voyageId] || null;
   const raw = localStorage.getItem(KIR_VOYAGE_DONE_PREFIX + voyageId);
-  return raw ? JSON.parse(raw) : null; // { deltas, completedAt } or null
+  return raw ? JSON.parse(raw) : null;
 }
 
 async function kirMarkVoyageCompleted(voyageId, deltas) {
@@ -2961,15 +2621,6 @@ async function kirMarkVoyageCompleted(voyageId, deltas) {
   }
 }
 
-/* ----------------------------------------------------------
-   Comments. Shared mini widget used on Tasks and Voyages.
-   --------------------------------------------------------
-   Each comment: { id, author, avatar, text, attachment, createdAt }
-   attachment (optional): { name, type, size, dataUrl }
-   Stored per (scope, itemId) so 'task:t1' and 'voyage:v1' each
-   get their own thread. All in localStorage for now.
-   TODO(real backend): swap for a real comments API.
-   ---------------------------------------------------------- */
 const KIR_COMMENTS_PREFIX = 'kir_comments_';
 const KIR_COMMENT_MAX_ATTACHMENT_BYTES = 1.5 * 1024 * 1024;
 const kirPendingCommentAttachments = {};
@@ -3030,17 +2681,7 @@ function kirRenderCommentItem(containerId, scope, itemId, c, lang, youId, isRepl
   const initial = c.author.charAt(0).toUpperCase();
   const avatarStyle = c.avatar ? `style="background-image:url('${c.avatar}');background-size:cover;background-position:center;"` : '';
   const replyBoxId = `${containerId}-replybox-${c.id}`;
-  // mentionAuthor is only set once thread depth is capped (see
-  // MAX_NEST_DEPTH in kirRenderCommentSection): instead of nesting this
-  // reply another level deeper, it renders as a sibling of its parent
-  // with an "@parent's-author" tag at the start of the text so it's
-  // still clear who it's actually replying to.
   const mentionHtml = mentionAuthor ? `<span class="comment-mention text-accent-300 font-medium">@${kirEscapeHtml(mentionAuthor)}</span> ` : '';
-  // hasReplies is only true when this comment will actually be followed
-  // by a nested .comment-replies block (see renderThread). The
-  // connector visually links this comment's own avatar down into that
-  // thread's trunk, so it's only rendered when there's a trunk below to
-  // link to (see .comment-thread-connector in style.css).
   const threadConnectorHtml = hasReplies ? `<span class="comment-thread-connector"></span>` : '';
   return `
     <div class="comment-item${isReply ? ' comment-item-reply' : ''}">
@@ -3073,8 +2714,6 @@ async function kirRenderCommentSection(containerId, scope, itemId, closeCallback
   if (!container) return;
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
 
-  // Persist the close callback so internal re-renders (submit, delete)
-  // can restore it without callers needing to pass it again.
   if (closeCallbackExpr !== undefined) {
     container.dataset.kirClose = closeCallbackExpr;
   }
@@ -3120,21 +2759,12 @@ async function kirRenderCommentSection(containerId, scope, itemId, closeCallback
     userId: c.user_id
   }));
 
-  // Build a parent -> children map so replies-of-replies (and deeper)
-  // nest correctly, instead of only ever showing one level of replies.
   const byParent = {};
   formatted.forEach(c => {
     if (!c.parentId) return;
     (byParent[c.parentId] = byParent[c.parentId] || []).push(c);
   });
   const topLevel = formatted.filter(c => !c.parentId);
-
-  // Only indent two reply levels deep. Past that, replies stop nesting
-  // (and stop growing the indent further) and instead render as flat
-  // siblings of the deepest indented comment, each tagged with an
-  // "@author" mention pointing at whichever comment they actually
-  // replied to, so the thread stays readable instead of marching off
-  // the edge of the panel.
   const MAX_NEST_DEPTH = 2;
 
   const renderThread = (c, depth, mentionAuthor) => {
@@ -3189,11 +2819,6 @@ function kirToggleReplyBox(containerId, scope, itemId, commentId) {
   const box = document.getElementById(boxId);
   if (!box) return;
   const wasHidden = box.classList.contains('hidden');
-  // Scoped to .comment-reply-composer (not just an id-prefix match).
-  // Each box's own textarea has an id of the same "<boxId>-text" shape,
-  // which also starts with this prefix, so a bare `[id^=...]` selector
-  // here would catch the textarea too and permanently stick a `hidden`
-  // class on it the first time any reply box was ever opened.
   document.querySelectorAll(`.comment-reply-composer[id^="${containerId}-replybox-"]`).forEach(el => el.classList.add('hidden'));
   if (wasHidden) {
     box.classList.remove('hidden');
@@ -3277,19 +2902,10 @@ async function kirSubmitComment(containerId, scope, itemId) {
 }
 
 async function kirDeleteCommentAndRerender(containerId, scope, itemId, commentId) {
-  // Any attachment on this comment is cleaned up automatically by a DB
-  // trigger (trg_cleanup_comment_attachment_on_delete) as soon as the row
-  // below is deleted — no need to fetch/remove it from storage here first.
   await supabaseClient.from('comments').delete().eq('id', commentId);
   await kirRenderCommentSection(containerId, scope, itemId);
 }
 
-/* ----------------------------------------------------------
-   Shared UI helper: fills in any element on the page that
-   wants to show the logged-in user's name/initial/avatar.
-   Looks for elements with data-kir="name" / "initial" / "avatar".
-   Call this once at the bottom of a logged-in page.
-   ---------------------------------------------------------- */
 function kirRenderUserChrome(root = document) {
   const fullName = kirCurrentUserName();
   const nickname = kirCurrentUserNickname();
@@ -3314,23 +2930,10 @@ function kirRenderUserChrome(root = document) {
     }
   };
   root.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
-  // Also refresh the profile modal avatar if it's open
   const modalAvatar = root.querySelector('[data-kir="profile-modal-avatar"]');
   if (modalAvatar) applyAvatar(modalAvatar, avatar);
 }
 
-/* ----------------------------------------------------------
-   Profile Modal — Discord-style profile card accessible from
-   clicking the sidebar user card. Shows banner, avatar
-   (clickable to change), name, role, cabang, and about me.
-
-   The banner auto-derives its colour from the dominant tone in
-   the user's profile picture using a tiny canvas sample. If
-   there's no avatar, it falls back to the accent gradient.
-   ---------------------------------------------------------- */
-
-/* Cached banner colour so we don't re-sample on every open.
-   Invalidated whenever the avatar changes (see confirmAvatarCrop). */
 let __kirCachedBannerColor = null;
 let __kirCachedBannerAvatarSrc = null;
 
@@ -3340,21 +2943,19 @@ function kirExtractDominantColor(imgSrc) {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const size = 8; // sample at a tiny resolution for speed
+        const size = 8;
         const c = document.createElement('canvas');
         c.width = size; c.height = size;
         const ctx = c.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(img, 0, 0, size, size);
         const data = ctx.getImageData(0, 0, size, size).data;
 
-        // Weighted average — skip very dark and very bright pixels,
-        // which are usually background or specular highlights.
         let r = 0, g = 0, b = 0, count = 0;
         for (let i = 0; i < data.length; i += 4) {
           const pr = data[i], pg = data[i + 1], pb = data[i + 2], pa = data[i + 3];
-          if (pa < 128) continue;        // transparent
+          if (pa < 128) continue;
           const luma = pr * 0.299 + pg * 0.587 + pb * 0.114;
-          if (luma < 15 || luma > 240) continue; // too dark / too bright
+          if (luma < 15 || luma > 240) continue;
           r += pr; g += pg; b += pb; count++;
         }
         if (count === 0) { resolve(null); return; }
@@ -3375,7 +2976,6 @@ function kirApplyBannerFromColor(bannerEl, rgb) {
     const { r, g, b } = rgb;
     bannerEl.style.background = `rgb(${r},${g},${b})`;
   } else {
-    // Fallback to neutral solid color
     bannerEl.style.background = 'var(--zinc-700, #3f3f46)';
   }
 }
@@ -3429,7 +3029,6 @@ async function kirOpenProfileModal(targetUserId = null) {
     createdAt = profile.created_at || profile.joined_at || null;
   }
 
-  // Populate fields
   const nameEl = document.getElementById('kir-profile-modal-name');
   if (nameEl) nameEl.textContent = nickname || name;
   const usernameEl = document.getElementById('kir-profile-modal-username');
@@ -3470,7 +3069,6 @@ async function kirOpenProfileModal(targetUserId = null) {
     deltasEl.textContent = formatter.format(deltasTotal || 0);
   }
 
-  // Handle Edit/Readonly UI states
   const nameView = document.getElementById('kir-profile-name-view');
   const aboutView = document.getElementById('kir-profile-about-view');
   const avatarLabel = document.querySelector('#kir-profile-modal .kir-profile-avatar-ring label');
@@ -3510,7 +3108,6 @@ async function kirOpenProfileModal(targetUserId = null) {
     if (avatarInput) avatarInput.disabled = true;
   }
 
-  // Apply avatar to modal avatar element
   const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
   if (modalAvatar) {
     if (avatar) {
@@ -3524,20 +3121,15 @@ async function kirOpenProfileModal(targetUserId = null) {
     }
   }
 
-  // Apply banner — dominant-colour extraction from avatar
   const bannerEl = document.getElementById('kir-profile-banner');
   const customBanner = localStorage.getItem(KIR_BANNER_KEY);
   if (customBanner) {
-    // User has an explicit custom banner override
     if (bannerEl) bannerEl.style.background = customBanner;
   } else if (avatar) {
-    // Derive from avatar: use cache if the source hasn't changed
     if (__kirCachedBannerAvatarSrc === avatar && __kirCachedBannerColor !== undefined) {
       kirApplyBannerFromColor(bannerEl, __kirCachedBannerColor);
     } else {
-      // Apply accent fallback instantly so the modal doesn't look blank
       kirApplyBannerFromColor(bannerEl, null);
-      // Then async-extract and re-paint
       kirExtractDominantColor(avatar).then(rgb => {
         __kirCachedBannerColor = rgb;
         __kirCachedBannerAvatarSrc = avatar;
@@ -3548,10 +3140,8 @@ async function kirOpenProfileModal(targetUserId = null) {
     kirApplyBannerFromColor(bannerEl, null);
   }
 
-  // Populate about me view
   kirRefreshProfileAboutView(about, isSelf);
 
-  // Populate created-at
   const createdAtEl = document.getElementById('kir-profile-modal-createdat');
   if (createdAtEl) {
     if (createdAt) {
@@ -3682,7 +3272,6 @@ function kirToggleProfileNameEdit() {
     input.focus();
     input.select();
     
-    // Bind enter/esc if not bound
     if (!input._kirBound) {
       input._kirBound = true;
       input.addEventListener('keydown', e => {
@@ -3698,14 +3287,12 @@ function kirSaveProfileName() {
   const input = document.getElementById('kir-profile-name-input');
   if (!input) return;
   const nameVal = input.value.trim().slice(0, 30);
-  // Only save as nickname if it's not the original name
   if (nameVal && nameVal !== kirCurrentUserName()) {
     kirSetUserNickname(nameVal);
   } else {
-    kirSetUserNickname(null); // Clear nickname
+    kirSetUserNickname(null);
   }
   
-  // Refresh view
   const nameEl = document.getElementById('kir-profile-modal-name');
   if (nameEl) nameEl.textContent = kirCurrentUserNickname() || kirCurrentUserName();
   kirCancelProfileNameEdit();
@@ -3724,7 +3311,6 @@ function kirUpdateAboutMeCounter() {
   const input   = document.getElementById('kir-profile-about-input');
   const counter = document.getElementById('kir-profile-about-counter');
   if (input && counter) counter.textContent = `${input.value.length}/200`;
-  // Bind oninput if not already
   if (input && !input._kirBound) {
     input._kirBound = true;
     input.addEventListener('input', kirUpdateAboutMeCounter);
@@ -3763,23 +3349,25 @@ function kirUpdateAboutMeCounter() {
    trigger's). That means a panel CAN spill past the viewport edge in a
    way the old fixed-to-trigger-width version never could: a narrow
    trigger near the right edge of the screen, or a trigger near the
-   bottom, needs its panel shifted/flipped rather than clipped.
-   Called right after a panel is un-hidden; getBoundingClientRect()
-   forces the layout it needs to measure.
+   bottom, needs its panel shifted/flipped rather than clipped. */
 
-   The panel is position: fixed (see style.css), so every measurement
-   and every value written back here is in real VIEWPORT pixels off
-   trigger.getBoundingClientRect(). None of this can be expressed as a
-   percentage or keyword relative to the wrapper anymore, unlike the old
-   position: absolute version. */
+function kirScrollSelectOptionToCenter(panel) {
+  if (!panel) return;
+  const selectedOpt = panel.querySelector('.kir-select-option.selected') || panel.querySelector('.kir-select-option');
+  if (selectedOpt && panel.scrollHeight > panel.clientHeight) {
+    const optTop = selectedOpt.offsetTop;
+    const optHeight = selectedOpt.offsetHeight;
+    const panelHeight = panel.clientHeight;
+    panel.scrollTop = Math.max(0, optTop - (panelHeight / 2) + (optHeight / 2));
+  }
+}
+
 function kirPositionSelectPanel(panel, trigger) {
+  if (!panel || !trigger) return;
   const margin = 8;
   const triggerRect = trigger.getBoundingClientRect();
 
-  // Reset to the default "grow down-right from the trigger" pose first
-  // so re-measuring below (panelRect) reflects this panel's own natural
-  // size, not leftover overrides from the last time it was positioned.
-  panel.style.minWidth = triggerRect.width + 'px';
+  panel.style.minWidth = Math.max(120, triggerRect.width) + 'px';
   panel.style.left = triggerRect.left + 'px';
   panel.style.right = '';
   panel.style.top = (triggerRect.bottom + 6) + 'px';
@@ -3787,28 +3375,30 @@ function kirPositionSelectPanel(panel, trigger) {
 
   const panelRect = panel.getBoundingClientRect();
 
-  // Grows from the trigger's left edge by default; if that would push
-  // it past the right edge of the viewport, anchor to the trigger's
-  // right edge instead so it grows leftward.
   if (triggerRect.left + panelRect.width > window.innerWidth - margin) {
     panel.style.left = Math.max(margin, triggerRect.right - panelRect.width) + 'px';
   }
 
-  // Opens below the trigger by default; if there's not enough room
-  // below but there IS more room above, flip it above instead.
   const spaceBelow = window.innerHeight - triggerRect.bottom;
   const spaceAbove = triggerRect.top;
   if (panelRect.height > spaceBelow - margin && spaceAbove > spaceBelow) {
-    panel.style.top = (triggerRect.top - panelRect.height - 6) + 'px';
+    panel.style.top = Math.max(margin, triggerRect.top - panelRect.height - 6) + 'px';
   }
 }
 
-function kirCloseAllCustomSelects(exceptWrapper) {
+function kirCloseAllCustomSelects(exceptPanel) {
   document.querySelectorAll('.kir-select-panel').forEach(p => {
-    if (!exceptWrapper || !exceptWrapper.contains(p)) p.classList.add('hidden');
+    if (!exceptPanel || p !== exceptPanel) {
+      p.classList.add('hidden');
+    }
   });
   document.querySelectorAll('.kir-select-trigger').forEach(t => {
-    if (!exceptWrapper || !exceptWrapper.contains(t)) t.classList.remove('open');
+    const panelId = t.dataset.panelId;
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (!panel || panel.classList.contains('hidden')) {
+      t.classList.remove('open');
+      t.setAttribute('aria-expanded', 'false');
+    }
   });
 }
 
@@ -3816,6 +3406,7 @@ function kirRefreshCustomSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
   select.classList.add('hidden');
+  select.style.setProperty('display', 'none', 'important');
 
   let wrapper = select.nextElementSibling;
   if (!wrapper || !wrapper.classList.contains('kir-select')) {
@@ -3823,9 +3414,6 @@ function kirRefreshCustomSelect(selectId) {
     wrapper.className = 'kir-select';
     select.insertAdjacentElement('afterend', wrapper);
   }
-  // Carry over layout/spacing utility classes from the (now-hidden)
-  // native select so surrounding layout (margins, flex sizing) doesn't
-  // collapse once it's swapped for the custom trigger.
   Array.from(select.classList).forEach(cls => {
     if (/^(m[trblxy]?-|flex-|w-|grow|shrink|basis-)/.test(cls)) wrapper.classList.add(cls);
   });
@@ -3833,46 +3421,20 @@ function kirRefreshCustomSelect(selectId) {
   const options = Array.from(select.options);
   const selectedOption = select.options[select.selectedIndex] || null;
   const isPlaceholder = !select.value;
-  // Optional extra classes for the trigger itself. For example
-  // data-trigger-class="kir-select-pill bg-accent-15 text-accent-300
-  // border border-accent-30" on the source <select> to keep a
-  // status-style colored pill look. Kept as a data attribute (not just
-  // more classes on the <select>) so it's a deliberate opt-in per
-  // dropdown rather than something the generic layout-class carry-over
-  // above could stumble into by accident.
   const triggerClassTokens = (select.dataset.triggerClass || '').split(/\s+/).filter(Boolean);
   const extraTriggerClass = triggerClassTokens.length ? ' ' + triggerClassTokens.join(' ') : '';
-  // "kir-select-pill" also has to land on the WRAPPER (not just the
-  // trigger), see the .kir-select.kir-select-pill rule in style.css.
-  // This is so the wrapper shrink-wraps to the pill's own content width
-  // instead of stretching to fill whatever layout slot it's sitting in.
-  // Synced with classList.toggle (not just .add) so re-running this on a
-  // select whose data-trigger-class changed can't leave a stale pill
-  // wrapper behind.
   wrapper.classList.toggle('kir-select-pill', triggerClassTokens.includes('kir-select-pill'));
 
   const selectedI18n = selectedOption && selectedOption.getAttribute('data-i18n') ? ` data-i18n="${selectedOption.getAttribute('data-i18n')}"` : '';
 
+  const panelId = 'kir-select-panel-' + selectId;
+
   wrapper.innerHTML = `
-    <button type="button" class="kir-select-trigger${extraTriggerClass}${isPlaceholder ? ' placeholder' : ''}" aria-haspopup="listbox" aria-expanded="false" ${select.disabled ? 'disabled' : ''}>
+    <button type="button" class="kir-select-trigger${extraTriggerClass}${isPlaceholder ? ' placeholder' : ''}" data-panel-id="${panelId}" aria-haspopup="listbox" aria-expanded="false" ${select.disabled ? 'disabled' : ''}>
       <span class="kir-select-trigger-label"${selectedI18n}>${selectedOption ? kirEscapeHtml(selectedOption.textContent) : ''}</span>
       <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
     </button>`;
 
-  // The option panel is intentionally NOT nested inside the wrapper.
-  // It's appended straight to <body> (one reused element per select id,
-  // so refreshing the same select repeatedly doesn't pile up copies).
-  // The reason is that it's position: fixed and measured in viewport pixels
-  // (see kirPositionSelectPanel), which only lines up correctly when nothing
-  // between it and <body> introduces a transform. Any ancestor with a
-  // transform becomes the fixed element's containing block instead of
-  // the viewport, silently breaking that math. Cards like the task list
-  // rows animate in with a transform that lingers afterward (fill-mode
-  // both) and are also overflow-hidden, so a panel left inside them ended
-  // up mispositioned and clipped. Clicking the trigger looked like it
-  // did nothing. Living in <body> sidesteps both problems for every
-  // dropdown that uses this component, not just this one.
-  const panelId = 'kir-select-panel-' + selectId;
   let panel = document.getElementById(panelId);
   if (!panel) {
     panel = document.createElement('div');
@@ -3885,7 +3447,8 @@ function kirRefreshCustomSelect(selectId) {
     const i18nAttr = o.getAttribute('data-i18n') ? ` data-i18n="${o.getAttribute('data-i18n')}"` : '';
     return `
     <div class="kir-select-option${o.value === select.value ? ' selected' : ''}${o.disabled ? ' disabled' : ''}" data-value="${kirEscapeHtml(o.value)}" role="option" aria-selected="${o.value === select.value}" aria-disabled="${o.disabled ? 'true' : 'false'}"${i18nAttr}>
-      ${kirEscapeHtml(o.textContent)}
+      <span>${kirEscapeHtml(o.textContent)}</span>
+      ${o.value === select.value ? '<svg class="kir-select-check" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : ''}
     </div>`;
   }).join('');
 
@@ -3900,39 +3463,34 @@ function kirRefreshCustomSelect(selectId) {
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
       kirPositionSelectPanel(panel, trigger);
+      kirScrollSelectOptionToCenter(panel);
     }
   };
 
-  // Disabled options stay in the list (grayed out via CSS) so it's
-  // clear the choice exists. They just don't get a click handler,
-  // same intent as the native <option disabled> they mirror.
+  trigger.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      trigger.click();
+    }
+  };
+
   panel.querySelectorAll('.kir-select-option:not(.disabled)').forEach(opt => {
     opt.onclick = (e) => {
       e.stopPropagation();
       select.value = opt.getAttribute('data-value');
       select.dispatchEvent(new Event('change', { bubbles: true }));
       kirRefreshCustomSelect(selectId);
+      kirCloseAllCustomSelects();
     };
   });
 }
 
-/* ----------------------------------------------------------
-   Multi-select variant. Same visual shell as kirRefreshCustomSelect,
-   but for filters where more than one option can be active at once
-   (for example Voyages' subject filter). The backing <select multiple>
-   keeps working with .selectedOptions like normal, so existing
-   change-event listeners don't need to know anything changed.
-   The difference is the panel stays open across picks and each
-   row renders as a checkbox instead of swapping the trigger value.
-
-   Usage: call kirRefreshMultiSelect('some-select-id') any time
-   AFTER the underlying <select multiple id="some-select-id">
-   exists in the DOM with its <option>s in place.
-   ---------------------------------------------------------- */
+/* Multi-select variant. */
 function kirRefreshMultiSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
   select.classList.add('hidden');
+  select.style.setProperty('display', 'none', 'important');
 
   let wrapper = select.nextElementSibling;
   if (!wrapper || !wrapper.classList.contains('kir-select')) {
@@ -3950,38 +3508,51 @@ function kirRefreshMultiSelect(selectId) {
 
   let label;
   if (selected.length === 0) {
-    label = I18N[lang].voyages_filter_none;
+    label = (I18N[lang] && I18N[lang].voyages_filter_none) || 'Tidak Ada';
   } else if (selected.length === options.length) {
-    label = I18N[lang].voyages_filter_all;
+    label = (I18N[lang] && I18N[lang].voyages_filter_all) || 'Semua';
   } else if (selected.length === 1) {
     label = selected[0].textContent;
   } else {
-    label = `${selected.length} ${I18N[lang].voyages_filter_selected}`;
+    label = `${selected.length} ${ (I18N[lang] && I18N[lang].voyages_filter_selected) || 'terpilih' }`;
   }
 
-  const wasOpen = wrapper.querySelector('.kir-select-panel') && !wrapper.querySelector('.kir-select-panel').classList.contains('hidden');
+  const panelId = 'kir-select-panel-' + selectId;
+  let panel = document.getElementById(panelId);
+  const wasOpen = panel && !panel.classList.contains('hidden');
+  const prevScrollTop = panel ? panel.scrollTop : 0;
 
   wrapper.innerHTML = `
-    <button type="button" class="kir-select-trigger${selected.length === 0 ? ' placeholder' : ''}" aria-haspopup="listbox" aria-expanded="${wasOpen}">
+    <button type="button" class="kir-select-trigger${select.disabled ? ' disabled' : ''}" data-panel-id="${panelId}" aria-haspopup="listbox" aria-expanded="${wasOpen ? 'true' : 'false'}" ${select.disabled ? 'disabled' : ''}>
       <span class="kir-select-trigger-label">${kirEscapeHtml(label)}</span>
       <svg class="kir-select-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-    </button>
-    <div class="kir-select-panel${wasOpen ? '' : ' hidden'}" role="listbox" aria-multiselectable="true">
-      ${options.map(o => {
-        const i18nAttr = o.getAttribute('data-i18n') ? ` data-i18n="${o.getAttribute('data-i18n')}"` : '';
-        return `
-        <div class="kir-select-option multi${o.selected ? ' selected' : ''}" data-value="${kirEscapeHtml(o.value)}" role="option" aria-selected="${o.selected}">
-          <span class="kir-select-checkbox"></span>
-          <span${i18nAttr}>${kirEscapeHtml(o.textContent)}</span>
-        </div>`;
-      }).join('')}
+    </button>`;
+
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = panelId;
+    document.body.appendChild(panel);
+  }
+
+  panel.className = 'kir-select-panel' + (wasOpen ? '' : ' hidden');
+  panel.setAttribute('role', 'listbox');
+  panel.setAttribute('aria-multiselectable', 'true');
+  panel.innerHTML = options.map(o => {
+    const checked = o.selected;
+    const i18nAttr = o.getAttribute('data-i18n') ? ` data-i18n="${o.getAttribute('data-i18n')}"` : '';
+    return `
+    <div class="kir-select-option multi${checked ? ' selected' : ''}${o.disabled ? ' disabled' : ''}" data-value="${kirEscapeHtml(o.value)}" role="option" aria-selected="${checked}" aria-disabled="${o.disabled ? 'true' : 'false'}">
+      <span class="kir-select-checkbox"></span>
+      <span${i18nAttr}>${kirEscapeHtml(o.textContent)}</span>
     </div>`;
+  }).join('');
 
   const trigger = wrapper.querySelector('.kir-select-trigger');
-  const panel = wrapper.querySelector('.kir-select-panel');
+
   if (wasOpen) {
     trigger.classList.add('open');
-    kirPositionSelectPanel(panel, trigger); // re-render keeps it open; content/width may have changed
+    kirPositionSelectPanel(panel, trigger);
+    panel.scrollTop = prevScrollTop;
   }
 
   trigger.onclick = (e) => {
@@ -3993,28 +3564,33 @@ function kirRefreshMultiSelect(selectId) {
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
       kirPositionSelectPanel(panel, trigger);
+      kirScrollSelectOptionToCenter(panel);
     }
   };
 
-  wrapper.querySelectorAll('.kir-select-option').forEach(opt => {
+  trigger.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      trigger.click();
+    }
+  };
+
+  panel.querySelectorAll('.kir-select-option:not(.disabled)').forEach(opt => {
     opt.onclick = (e) => {
       e.stopPropagation();
       const value = opt.getAttribute('data-value');
       const targetOption = options.find(o => o.value === value);
       if (targetOption) targetOption.selected = !targetOption.selected;
       select.dispatchEvent(new Event('change', { bubbles: true }));
-      kirRefreshMultiSelect(selectId); // panel re-opens automatically via wasOpen above
+      kirRefreshMultiSelect(selectId);
     };
   });
 }
 
 document.addEventListener('click', () => kirCloseAllCustomSelects());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') kirCloseAllCustomSelects(); });
-// The panel is position: fixed (see .kir-select-panel in style.css) so
-// it's anchored to the viewport, not to the trigger it opened from. If
-// the page (or some inner scroll container, for example a modal body) scrolls
-// while a panel's open, the trigger moves out from under it. Closing on
-// any scroll, captured so it also catches scroll events from inner
-// scroll containers (which don't bubble), is simpler and safer than
-// trying to re-track the trigger's position on every scroll tick.
-window.addEventListener('scroll', () => kirCloseAllCustomSelects(), true);
+window.addEventListener('resize', () => kirCloseAllCustomSelects());
+window.addEventListener('scroll', (e) => {
+  if (e.target && e.target.closest && e.target.closest('.kir-select-panel')) return;
+  kirCloseAllCustomSelects();
+}, true);

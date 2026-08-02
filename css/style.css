@@ -226,9 +226,17 @@
   .kir-app-shell > .lg\:hidden {
     view-transition-name: mobile-header;
   }
+  .glow-layer {
+    view-transition-name: glow-layer;
+  }
   ::view-transition-group(main-content) {
     animation-duration: 0.001ms !important;
     animation-delay: -1ms !important;
+  }
+  ::view-transition-group(glow-layer),
+  ::view-transition-old(glow-layer),
+  ::view-transition-new(glow-layer) {
+    animation: none !important;
   }
 
   :root {
@@ -364,6 +372,20 @@
     --accent-2-rgb: 30, 41, 59;
     --accent-light-rgb: 51, 65, 85;
     --accent-lighter-rgb: 71, 85, 105;
+  }
+
+  /* Smooth color transition when toggling branch coloring with reduced motion off */
+  html.kir-color-transitioning,
+  html.kir-color-transitioning *,
+  html.kir-color-transitioning *::before,
+  html.kir-color-transitioning *::after {
+    transition: color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                fill 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                stroke 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                outline-color 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 
   html[data-theme="light"] {
@@ -706,15 +728,17 @@
       flex-direction: row-reverse;
     }
     html[data-sidebar-pos="right"] #sidebar {
-      border-left: 1px solid var(--glass-border);
-      border-right: 0;
+      border-left: 1px solid var(--glass-border) !important;
+      border-right: 0 !important;
+      border-top: 0 !important;
+      border-bottom: 0 !important;
     }
     html[data-sidebar-pos="right"] #sidebar-collapse-btn {
-      right: auto;
-      left: -0.75rem;
+      right: auto !important;
+      left: -0.75rem !important;
     }
-    html[data-sidebar-pos="right"] .collapse-icon { transform: rotate(180deg); }
-    html[data-sidebar-pos="right"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(0deg); }
+    html[data-sidebar-pos="right"] .collapse-icon { transform: rotate(180deg) !important; }
+    html[data-sidebar-pos="right"] #sidebar.sidebar-collapsed .collapse-icon { transform: rotate(0deg) !important; }
 
     /* ---- top / bottom: fold the vertical bar into a horizontal one ---- */
     html[data-sidebar-pos="top"] .kir-app-shell,
@@ -1085,6 +1109,14 @@
     animation-duration: 22s !important;
   }
 
+  /* Optimize glow blobs on mobile for better performance while keeping visual appeal */
+  @media (max-width: 768px) {
+    .glow-blob {
+      --glow-opacity: 0.5;
+      scale: 0.7;
+    }
+  }
+
   /* Always animate glow blobs regardless of reduced motion settings */
   html[data-reduce-motion="true"] .glow-blob {
     animation-duration: 16s !important;
@@ -1137,147 +1169,117 @@
   /* ==========================================================
     Custom dropdown. Replaces native <select> appearance
     ========================================================== */
+  select {
+    background-color: var(--bg-color, #09090b);
+    color: var(--text-color, #f4f4f5);
+    border-radius: 0.5rem;
+  }
+  select option {
+    background-color: #000000;
+    color: #f4f4f5;
+    padding: 8px;
+  }
+
   .kir-select { position: relative; }
   .kir-select-trigger {
     display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
     width: 100%; text-align: left; cursor: pointer;
     border-radius: 0.5rem; padding: 0.625rem 0.875rem; font-size: 0.875rem;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
   }
-  /* Default ("glass-input") look. Scoped with :not() rather than layered on
-    top of .kir-select-pill below so that when a caller opts into the pill
-    variant, background, border, or color simply aren't set by this rule at
-    all. This leaves the caller's own utility classes (passed in via
-    data-trigger-class on the source <select>, see kirRefreshCustomSelect
-    in js/auth.js) completely free to color the trigger without having to
-    out-specificity anything here, regardless of CSS load order. */
   .kir-select-trigger:not(.kir-select-pill) {
     background: var(--glass-input-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: blur(8px); color: var(--text-color);
+    backdrop-filter: blur(12px); color: var(--text-color);
   }
-  .kir-select-trigger:not(.kir-select-pill):hover { border-color: rgba(var(--accent-rgb), 0.4); }
+  .kir-select-trigger:not(.kir-select-pill):hover {
+    border-color: rgba(var(--accent-rgb, 212, 212, 216), 0.45);
+    background: rgba(255, 255, 255, 0.05);
+  }
   .kir-select-trigger:not(.kir-select-pill).open {
-    border-color: rgba(var(--accent-rgb), 0.6);
-    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+    border-color: rgba(var(--accent-rgb, 212, 212, 216), 0.7);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 212, 212, 216), 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
   }
   .kir-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
   .kir-select-trigger.placeholder .kir-select-trigger-label { color: var(--muted-600); }
-  .kir-select-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kir-select-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
   .kir-select-chevron {
-    width: 1rem; height: 1rem; flex-shrink: 0; color: var(--muted-500);
-    transition: transform 0.15s ease;
+    width: 1rem; height: 1rem; flex-shrink: 0; color: var(--muted-400);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .kir-select-trigger.open .kir-select-chevron { transform: rotate(180deg); }
+  .kir-select-trigger.open .kir-select-chevron { transform: rotate(180deg); color: rgb(var(--accent-rgb, 212, 212, 216)); }
 
-  /* Compact colored-pill variant - e.g. the per-task status dropdown on
-    tasks.html, which needs to keep looking like the small rounded status
-    badge it always has, just with the site's real dropdown panel behind
-    it instead of the browser's native one. A caller opts in by adding
-    "kir-select-pill" (plus whatever bg-* / text-* / border-* classes give it
-    its color) to data-trigger-class - kirRefreshCustomSelect mirrors that
-    one token onto the WRAPPER too (not just the trigger button), which is
-    what this first rule is for: without it the wrapper stays a normal
-    block box that stretches to fill whatever layout slot it's sitting in
-    (see the plain .kir-select rule below, used everywhere else on the
-    site), and the trigger inside would visually balloon out to match even
-    though the trigger's own width is `auto`. */
   .kir-select.kir-select-pill { display: inline-block; width: auto; }
   .kir-select-trigger.kir-select-pill {
-    display: inline-flex; width: auto; gap: 0.3rem;
-    padding: 0.3rem 0.65rem 0.3rem 0.8rem; border-radius: 999px;
+    display: inline-flex; width: auto; gap: 0.35rem;
+    padding: 0.3rem 0.7rem 0.3rem 0.85rem; border-radius: 999px;
     font-size: 0.75rem; font-weight: 500;
   }
-  .kir-select-trigger.kir-select-pill:hover { filter: brightness(1.12); }
+  .kir-select-trigger.kir-select-pill:hover { filter: brightness(1.15); }
   .kir-select-trigger.kir-select-pill .kir-select-chevron {
     width: 0.7rem; height: 0.7rem; opacity: 0.75; color: currentColor;
   }
 
-
-  /* min-width is set inline per-open (see kirPositionSelectPanel in
-    js/auth.js) to match the trigger's own current width in real viewport
-    pixels. Position: fixed means a CSS percentage here can't resolve
-    against the wrapper the way it could when this was position: absolute.
-    width: max-content lets it grow WIDER than the trigger to fit its
-    longest option instead of wrapping or clipping (the trigger itself can be
-    as narrow as 7rem, for example Voyages' SUBJEK filter, while an option
-    like "Informatika" needs more room than that). max-width plus normal
-    white-space keeps it from running off-screen or off a single line if
-    an option is ever genuinely long. It wraps instead of overflowing.
-    No max-height or overflow-y here on purpose. Panels grow to fit every
-    option instead of scrolling. kirPositionSelectPanel (auth.js) flips
-    the panel above the trigger, or shifts it left, whenever growing
-    would push it past the viewport edge.
-
-    position: fixed (rather than absolute, relative to the wrapper) is
-    deliberate. An absolutely-positioned panel is clipped by ANY ancestor
-    with overflow:hidden, a task card, a modal's scrollable body, etc.,
-    which used to cut the panel off after a sliver of its first option.
-    Fixed positioning is relative to the viewport instead, so it always
-    renders in full regardless of what it's nested inside. The trade-off
-    is that a fixed element doesn't track the page scrolling underneath it
-    the way an absolute one would, so open panels are closed on scroll
-    (see the window 'scroll' listener further down this file) rather than
-    left visually detached from their trigger. z-index is set above every
-    modal-overlay z-index on the site (highest is 80, the admin toast) so
-    a dropdown opened from inside a modal still renders on top of it. */
   .kir-select-panel {
-    position: fixed; z-index: 100;
+    position: fixed; z-index: 9999 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     width: max-content; max-width: min(24rem, calc(100vw - 2rem));
-    background: var(--bg-color); border: 1px solid var(--glass-border);
-    border-radius: 0.65rem; padding: 0.35rem;
-    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    max-height: 16rem; overflow-y: auto;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.75rem; padding: 0.4rem;
+    box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.08);
     white-space: normal;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  .kir-select-panel::-webkit-scrollbar { width: 5px; }
+  .kir-select-panel::-webkit-scrollbar-track { background: transparent; margin-block: 4px; }
+  .kir-select-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    transition: background-color 0.15s ease;
+  }
+  .kir-select-panel::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--accent-rgb, 212, 212, 216), 0.6);
   }
   .kir-select-option {
-    padding: 0.5rem 0.7rem; border-radius: 0.45rem; font-size: 0.85rem;
-    color: var(--text-color); cursor: pointer; transition: background-color 0.12s ease;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.55rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem;
+    color: var(--text-color); cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease;
   }
-  .kir-select-option:hover { background: rgba(128,128,128,0.12); }
+  .kir-select-option:hover { background: rgba(255, 255, 255, 0.08); }
   .kir-select-option.selected {
-    background: rgba(var(--accent-rgb), 0.14); color: rgb(var(--accent-light-rgb)); font-weight: 600;
+    background: rgba(var(--accent-rgb, 212, 212, 216), 0.18);
+    color: rgb(var(--accent-light-rgb, 244, 244, 245));
+    font-weight: 600;
   }
-  /* Visible-but-unselectable option (for example "Kompetitif (Coding)" when
-    Subjek isn't Informatika). Shown grayed out rather than removed
-    from the list, so it's clear the choice exists but isn't valid
-    right now. See disabledIf in admin-shared.js. */
+  .kir-select-check {
+    width: 1.05rem; height: 1.05rem; color: rgb(var(--accent-rgb, 212, 212, 216)); flex-shrink: 0;
+  }
   .kir-select-option.disabled {
-    color: var(--muted-600); cursor: not-allowed; pointer-events: none;
+    color: var(--muted-600); cursor: not-allowed; pointer-events: none; opacity: 0.5;
   }
   .kir-select-option.disabled:hover { background: transparent; }
 
-  /* Multi-select variant. Checkbox rows that stay open across picks.
-    Unlike the single-select variant above, the row itself never gets
-    a hover or selected background or bold text here. Only
-    .kir-select-checkbox is allowed to visibly react (border on hover,
-    filled and checkmark once picked), so these two rules cancel out the
-    single-select `.kir-select-option:hover` or `.selected` styling
-    specifically for `.multi` rows. Both are one class more specific
-    than the rules they're overriding, so this wins regardless of
-    source order. Applies to every kirRefreshMultiSelect() dropdown in
-    the app. There's nothing page-specific about it. */
-  .kir-select-option.multi:hover { background: transparent; }
+  .kir-select-option.multi:hover { background: rgba(255, 255, 255, 0.06); }
   .kir-select-option.multi.selected {
-    background: transparent; color: var(--text-color); font-weight: 400;
+    background: rgba(var(--accent-rgb, 212, 212, 216), 0.1); color: var(--text-color); font-weight: 500;
   }
-  .kir-select-option.multi { display: flex; align-items: center; gap: 0.6rem; }
+  .kir-select-option.multi { display: flex; align-items: center; justify-content: start; gap: 0.65rem; }
   .kir-select-option.multi > span:last-child { min-width: 0; overflow-wrap: break-word; }
-  /* display:flex centering (rather than the checkmark's ::after
-    hardcoding its own left or top offsets) keeps the checkmark centered
-    automatically no matter what. Box size, border width, etc. all
-    stay in sync without re-deriving magic-number offsets by hand. */
   .kir-select-checkbox {
-    width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0;
+    width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0;
     border: 1.5px solid var(--glass-border);
     display: flex; align-items: center; justify-content: center;
     transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
   }
-  .kir-select-option.multi:hover .kir-select-checkbox { border-color: rgba(var(--accent-rgb), 0.5); }
+  .kir-select-option.multi:hover .kir-select-checkbox { border-color: rgba(var(--accent-rgb, 212, 212, 216), 0.6); }
   .kir-select-option.multi.selected .kir-select-checkbox {
-    background: rgb(var(--accent-rgb)); border-color: rgb(var(--accent-rgb)); transform: scale(1.05);
+    background: rgb(var(--accent-rgb, 212, 212, 216)); border-color: rgb(var(--accent-rgb, 212, 212, 216)); transform: scale(1.05);
   }
   .kir-select-option.multi.selected .kir-select-checkbox::after {
     content: ''; width: 4px; height: 8px;
-    border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+    border: solid black; border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
 
   .nav-link {
@@ -1722,6 +1724,41 @@
 
   .accent-theme {
     accent-color: rgb(var(--accent-rgb));
+  }
+
+  /* Inbox modal: placeholder message row. Plain hover state, no
+    background tint on unread rows (the left accent bar + dot below
+    already carry that signal, and a tint would clash with the
+    per-branch accent color used elsewhere on hover). */
+  .kir-inbox-row {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.65rem 0.6rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .kir-inbox-row:hover {
+    background: var(--glass-input-bg);
+    border-color: var(--glass-border);
+  }
+  .kir-inbox-row.kir-inbox-unread {
+    border-left: 2px solid rgb(var(--accent-rgb));
+    padding-left: calc(0.6rem - 2px);
+  }
+  .kir-inbox-avatar {
+    width: 2rem; height: 2rem; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 0.7rem;
+    background: rgba(128,128,128,0.18);
+    color: var(--text-color);
+    flex-shrink: 0;
+  }
+  .kir-inbox-dot {
+    width: 0.4rem; height: 0.4rem; border-radius: 999px;
+    background: rgb(var(--accent-rgb));
+    margin-top: 0.4rem;
+    flex-shrink: 0;
   }
 
   /* Settings: toggle switch */

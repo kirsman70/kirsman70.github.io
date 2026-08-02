@@ -1596,6 +1596,7 @@
         r.answers[r.currentIndex] = select.value === '' ? null : parseInt(select.value, 10);
         renderCourseVoyageNavGrid();
       };
+      if (typeof kirRefreshCustomSelect === 'function') kirRefreshCustomSelect('cvm-dropdown-select');
     } else if (v.type === 'essay') {
       // kirRichEditorSetValue re-parses the raw stored value straight
       // into rendered chips on the surface, same as voyages.html.

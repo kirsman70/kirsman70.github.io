@@ -92,16 +92,6 @@
   <div class="glow-blob w-[350px] h-[350px] bg-accent-10 bottom-0 left-1/4"></div>
 </div>
 
-<style>
-  /* Optimize glow blobs on mobile for better performance while keeping visual appeal */
-  @media (max-width: 768px) {
-    .glow-blob {
-      opacity: 0.5;
-      transform: scale(0.7);
-    }
-  }
-</style>
-
 <div class="relative z-10 min-h-screen lg:flex kir-app-shell">
 
   <div class="lg:hidden flex items-center justify-between px-4 py-3 glass border-x-0 border-t-0 sticky top-0 z-20">
@@ -439,7 +429,7 @@
     wrap.dataset.rendered = '1';
     const lang = localStorage.getItem('kir_lang') || 'id';
     wrap.innerHTML = `
-      <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">${kirEscapeHtml(I18N[lang].voyages_your_answer)}</label>
+      <label class="text-[11px] font-medium text-zinc-500 uppercase tracking-wide mb-2 block" data-i18n="voyages_your_answer">${kirEscapeHtml(I18N[lang].voyages_your_answer)} <span class="text-accent-300 ml-0.5">*</span></label>
       <div class="wce-editor">
         ${kirWceToolbarHtml('vm-essay-textarea')}
         <textarea id="vm-essay-textarea" rows="5" class="wce-source" data-i18n-placeholder="voyages_essay_placeholder" placeholder="${kirEscapeHtml(I18N[lang].voyages_essay_placeholder)}"></textarea>
@@ -2151,7 +2141,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
       { id: 'options', label: 'Opsi Jawaban', type: 'options', hint: 'Tandai lingkaran di samping opsi untuk menjadikannya jawaban benar. Notasi matematika ($...$) juga didukung di sini untuk soal Pilihan Ganda.',
         addLabel: 'Tambah Opsi', optionPlaceholder: 'Opsi jawaban...', correctField: 'correct_index',
         showIf: { field: 'type', in: ['mc', 'dropdown'] } },
-      { id: 'essay_ref', label: 'Jawaban Referensi (Opsional)', type: 'mathtext', rows: 3,
+      { id: 'essay_ref', label: 'Jawaban Referensi', type: 'mathtext', rows: 3,
         hint: 'Dipakai Penilaian Cerdas sebagai kunci jawaban, boleh berisi notasi matematika seperti di atas.',
         showIf: { field: 'type', equals: 'essay' } },
       { id: 'ai_grading_enabled', label: 'Aktifkan Penilaian Cerdas', type: 'checkbox', default: true,
@@ -2166,7 +2156,7 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
           model: KIR_GRADING_MODEL_NAME,
           modelLabel: 'Model saat ini'
         } },
-      { id: 'image_url', label: 'URL Gambar (Opsional)', type: 'image' },
+      { id: 'image_url', label: 'URL Gambar', type: 'image' },
       { id: 'allowed_languages', label: 'Bahasa yang Diizinkan', type: 'checkboxes', required: true,
         options: [
           { value: 'all', label: 'Semua Bahasa', exclusive: true },

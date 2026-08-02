@@ -344,6 +344,11 @@ function kirAdminRefreshVisibility() {
     const visible = kirAdminIsFieldVisible(f);
     group.classList.toggle('admin-field-hidden', !visible);
   });
+  document.querySelectorAll('#admin-modal-fields .admin-field-row').forEach(row => {
+    const fields = row.querySelectorAll('.admin-field-group');
+    const hidden = row.querySelectorAll('.admin-field-group.admin-field-hidden');
+    row.classList.toggle('admin-field-row-hidden', fields.length > 0 && fields.length === hidden.length);
+  });
   kirAdminRefreshOptionDisabling();
 }
 
@@ -448,8 +453,9 @@ function kirAdminFieldInfoBtnHtml(field, title) {
 }
 
 function kirAdminRangeLabelHtml(field) {
+  const reqStar = field.required ? ' <span class="text-accent-300 ml-0.5">*</span>' : '';
   return `<div class="flex items-center gap-1.5">
-      <label for="admin-field-${field.id}" class="admin-field-label">${kirEscapeHtml(field.label || '')}</label>
+      <label for="admin-field-${field.id}" class="admin-field-label">${kirEscapeHtml(field.label || '')}${reqStar}</label>
       ${kirAdminFieldInfoBtnHtml(field, 'Lihat skala')}
     </div>`;
 }
@@ -645,7 +651,8 @@ function kirWceToolbarHtml(inputId) {
 function kirAdminFieldHtml(field) {
   const value = kirAdminFieldValue(field);
   const inputId = `admin-field-${field.id}`;
-  const labelHtml = field.type === 'checkbox' || field.type === 'range' ? '' : `<label for="${inputId}" class="admin-field-label">${kirEscapeHtml(field.label || '')}</label>`;
+  const reqStar = field.required ? ' <span class="text-accent-300 ml-0.5">*</span>' : '';
+  const labelHtml = field.type === 'checkbox' || field.type === 'range' ? '' : `<label for="${inputId}" class="admin-field-label">${kirEscapeHtml(field.label || '')}${reqStar}</label>`;
   const hintHtml = field.hint ? `<p class="admin-field-hint">${kirEscapeHtml(field.hint)}</p>` : '';
   const errorHtml = `<p class="admin-field-error">${kirEscapeHtml(field.requiredMessage || 'Wajib diisi.')}</p>`;
 
@@ -693,7 +700,7 @@ function kirAdminFieldHtml(field) {
       controlHtml = `
         <div class="admin-checkbox-row">
           <div class="flex items-center gap-1.5">
-            <label for="${inputId}" class="admin-field-label">${kirEscapeHtml(field.label || '')}</label>
+            <label for="${inputId}" class="admin-field-label">${kirEscapeHtml(field.label || '')}${reqStar}</label>
             ${kirAdminFieldInfoBtnHtml(field, 'Info')}
           </div>
           <div class="toggle-track${value ? ' on' : ''}" id="${inputId}-track" onclick="kirAdminToggleCheckbox('${inputId}')">
@@ -993,6 +1000,7 @@ function kirAdminImageFileSelected(fieldId, event) {
    ---------------------------------------------------------- */
 const KIR_DP_WEEKDAYS_ID = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const KIR_DP_MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const KIR_DP_MONTHS_SHORT_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
 function kirAdminDpFormatDisplay(rawValue, withTime) {
   if (!rawValue) return 'Pilih tanggal...';
@@ -1030,10 +1038,14 @@ function kirAdminDpInit(fieldId, withTime) {
     if (!isNaN(d.getTime())) selected = d;
   }
   const base = selected || new Date();
+  if (!kirAdminModalConfig) kirAdminModalConfig = {};
+  if (!kirAdminModalConfig.dpState) kirAdminModalConfig.dpState = {};
   kirAdminModalConfig.dpState[fieldId] = {
     withTime,
     viewYear: base.getFullYear(),
     viewMonth: base.getMonth(),
+    viewMode: 'days',
+    yearPageStart: Math.floor(base.getFullYear() / 12) * 12,
     selected,
     hour: selected ? selected.getHours() : 9,
     minute: selected ? selected.getMinutes() : 0,
@@ -1042,6 +1054,10 @@ function kirAdminDpInit(fieldId, withTime) {
 
 function kirAdminDpCloseAll() {
   document.querySelectorAll('.kir-calendar-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.kir-datepicker').forEach(dp => dp.classList.remove('is-open'));
+  document.querySelectorAll('.admin-field-group').forEach(fg => fg.classList.remove('kir-dp-active'));
+  document.querySelectorAll('.admin-field-row').forEach(fr => fr.classList.remove('kir-dp-active'));
+  if (typeof kirCloseAllCustomSelects === 'function') kirCloseAllCustomSelects();
 }
 
 function kirAdminDpToggle(fieldId) {
@@ -1052,44 +1068,180 @@ function kirAdminDpToggle(fieldId) {
   if (willOpen) {
     kirAdminDpRender(fieldId);
     panel.classList.remove('hidden');
+    const wrap = panel.closest('.kir-datepicker');
+    if (wrap) {
+      wrap.classList.add('is-open');
+      const fg = wrap.closest('.admin-field-group');
+      if (fg) fg.classList.add('kir-dp-active');
+      const fr = wrap.closest('.admin-field-row');
+      if (fr) fr.classList.add('kir-dp-active');
+    }
   }
 }
 
 document.addEventListener('click', (e) => {
   if (!e.target.isConnected || !document.body.contains(e.target)) return;
+  if (e.target.closest('.kir-select-panel')) return;
   if (!e.target.closest('.kir-datepicker')) kirAdminDpCloseAll();
 });
 
+function kirAdminDpSetViewMode(fieldId, mode) {
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
+  state.viewMode = state.viewMode === mode ? 'days' : mode;
+  if (state.viewMode === 'years') {
+    state.yearPageStart = Math.floor(state.viewYear / 12) * 12;
+  }
+  kirAdminDpRender(fieldId);
+}
+
 function kirAdminDpMonthChange(fieldId, val) {
-  const state = kirAdminModalConfig.dpState[fieldId];
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
   if (!state) return;
   state.viewMonth = parseInt(val, 10);
+  state.viewMode = 'days';
   kirAdminDpRender(fieldId);
 }
 
 function kirAdminDpYearChange(fieldId, val) {
-  const state = kirAdminModalConfig.dpState[fieldId];
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
   if (!state) return;
   state.viewYear = parseInt(val, 10);
+  state.viewMode = 'days';
+  kirAdminDpRender(fieldId);
+}
+
+function kirAdminDpSelectMonth(fieldId, monthIdx) {
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
+  state.viewMonth = monthIdx;
+  state.viewMode = 'days';
+  kirAdminDpRender(fieldId);
+}
+
+function kirAdminDpSelectYear(fieldId, year) {
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
+  state.viewYear = year;
+  state.viewMode = 'days';
+  kirAdminDpRender(fieldId);
+}
+
+function kirAdminDpDecadeNav(fieldId, delta) {
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
+  if (state.yearPageStart === undefined) state.yearPageStart = Math.floor(state.viewYear / 12) * 12;
+  state.yearPageStart += delta * 12;
   kirAdminDpRender(fieldId);
 }
 
 function kirAdminDpRender(fieldId) {
-  const state = kirAdminModalConfig.dpState[fieldId];
+  if (!kirAdminModalConfig) kirAdminModalConfig = {};
+  if (!kirAdminModalConfig.dpState) kirAdminModalConfig.dpState = {};
+  let state = kirAdminModalConfig.dpState[fieldId];
+  if (!state) {
+    kirAdminDpInit(fieldId, false);
+    state = kirAdminModalConfig.dpState[fieldId];
+  }
   const panel = document.getElementById(`admin-field-${fieldId}-panel`);
   if (!state || !panel) return;
 
-  const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
-  const startOffset = firstOfMonth.getDay();
-  const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
-  const today = new Date();
+  const viewMode = state.viewMode || 'days';
 
-  let cells = '';
-  for (let i = 0; i < startOffset; i++) cells += `<div class="kir-cal-day empty"></div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = today.getFullYear() === state.viewYear && today.getMonth() === state.viewMonth && today.getDate() === d;
-    const isSelected = state.selected && state.selected.getFullYear() === state.viewYear && state.selected.getMonth() === state.viewMonth && state.selected.getDate() === d;
-    cells += `<div class="kir-cal-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" onclick="kirAdminDpSelect('${fieldId}', ${state.viewYear}, ${state.viewMonth}, ${d})">${d}</div>`;
+  let headerHtml = '';
+  let bodyHtml = '';
+
+  if (viewMode === 'days') {
+    headerHtml = `
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', -1)" title="Bulan sebelumnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="kir-cal-title-selects">
+        <button type="button" class="kir-cal-title-btn" onclick="kirAdminDpSetViewMode('${fieldId}', 'months')" title="Pilih Bulan">
+          <span>${KIR_DP_MONTHS_ID[state.viewMonth]}</span>
+          <svg class="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <button type="button" class="kir-cal-title-btn" onclick="kirAdminDpSetViewMode('${fieldId}', 'years')" title="Pilih Tahun">
+          <span>${state.viewYear}</span>
+          <svg class="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+      </div>
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', 1)" title="Bulan berikutnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>`;
+
+    const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
+    const startOffset = firstOfMonth.getDay();
+    const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
+    const today = new Date();
+
+    let cells = '';
+    for (let i = 0; i < startOffset; i++) cells += `<div class="kir-cal-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday = today.getFullYear() === state.viewYear && today.getMonth() === state.viewMonth && today.getDate() === d;
+      const isSelected = state.selected && state.selected.getFullYear() === state.viewYear && state.selected.getMonth() === state.viewMonth && state.selected.getDate() === d;
+      cells += `<div class="kir-cal-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" onclick="kirAdminDpSelect('${fieldId}', ${state.viewYear}, ${state.viewMonth}, ${d})">${d}</div>`;
+    }
+
+    bodyHtml = `
+      <div class="kir-cal-grid">
+        ${KIR_DP_WEEKDAYS_ID.map(w => `<div class="kir-cal-weekday">${w}</div>`).join('')}
+        ${cells}
+      </div>`;
+  } else if (viewMode === 'months') {
+    headerHtml = `
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', -12)" title="Tahun sebelumnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="kir-cal-title-selects">
+        <button type="button" class="kir-cal-title-btn active" onclick="kirAdminDpSetViewMode('${fieldId}', 'months')" title="Kembali ke kalender">
+          <span>${KIR_DP_MONTHS_ID[state.viewMonth]}</span>
+          <svg class="w-3 h-3 text-zinc-400 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <button type="button" class="kir-cal-title-btn" onclick="kirAdminDpSetViewMode('${fieldId}', 'years')" title="Pilih Tahun">
+          <span>${state.viewYear}</span>
+          <svg class="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+      </div>
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', 12)" title="Tahun berikutnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>`;
+
+    const monthItems = KIR_DP_MONTHS_SHORT_ID.map((m, idx) => {
+      const isSelected = state.viewMonth === idx;
+      return `<div class="kir-cal-month-item${isSelected ? ' selected' : ''}" onclick="kirAdminDpSelectMonth('${fieldId}', ${idx})">${m}</div>`;
+    }).join('');
+
+    bodyHtml = `<div class="kir-cal-grid-months">${monthItems}</div>`;
+  } else if (viewMode === 'years') {
+    const startYear = state.yearPageStart !== undefined ? state.yearPageStart : (Math.floor(state.viewYear / 12) * 12);
+    const endYear = startYear + 11;
+
+    headerHtml = `
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpDecadeNav('${fieldId}', -1)" title="Dekade sebelumnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="kir-cal-title-selects">
+        <button type="button" class="kir-cal-title-btn" onclick="kirAdminDpSetViewMode('${fieldId}', 'months')" title="Pilih Bulan">
+          <span>${KIR_DP_MONTHS_ID[state.viewMonth]}</span>
+          <svg class="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <button type="button" class="kir-cal-title-btn active" onclick="kirAdminDpSetViewMode('${fieldId}', 'years')" title="Kembali ke kalender">
+          <span>${state.viewYear}</span>
+          <svg class="w-3 h-3 text-zinc-400 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+      </div>
+      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpDecadeNav('${fieldId}', 1)" title="Dekade berikutnya">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>`;
+
+    const yearItems = [];
+    for (let y = startYear; y <= endYear; y++) {
+      const isSelected = state.viewYear === y;
+      yearItems.push(`<div class="kir-cal-year-item${isSelected ? ' selected' : ''}" onclick="kirAdminDpSelectYear('${fieldId}', ${y})">${y}</div>`);
+    }
+
+    bodyHtml = `<div class="kir-cal-grid-years">${yearItems.join('')}</div>`;
   }
 
   const timeHtml = state.withTime ? `
@@ -1097,30 +1249,11 @@ function kirAdminDpRender(fieldId) {
       <input type="time" class="glass-input rounded-lg px-2.5 py-1.5 text-sm" value="${String(state.hour).padStart(2,'0')}:${String(state.minute).padStart(2,'0')}" onchange="kirAdminDpTimeChange('${fieldId}', this.value)" />
     </div>` : '';
 
-  const yearOptions = [];
-  const startYear = Math.min(state.viewYear - 30, 1970);
-  const endYear = Math.max(state.viewYear + 30, 2070);
-  for (let y = startYear; y <= endYear; y++) {
-    yearOptions.push(`<option value="${y}"${y === state.viewYear ? ' selected' : ''}>${y}</option>`);
-  }
-
   panel.innerHTML = `
     <div class="kir-cal-header">
-      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', -1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-      <div class="kir-cal-title-selects">
-        <select class="kir-cal-select kir-cal-month-select" onchange="kirAdminDpMonthChange('${fieldId}', this.value)">
-          ${KIR_DP_MONTHS_ID.map((m, idx) => `<option value="${idx}"${idx === state.viewMonth ? ' selected' : ''}>${m}</option>`).join('')}
-        </select>
-        <select class="kir-cal-select kir-cal-year-select" onchange="kirAdminDpYearChange('${fieldId}', this.value)">
-          ${yearOptions.join('')}
-        </select>
-      </div>
-      <button type="button" class="kir-cal-nav-btn" onclick="kirAdminDpNav('${fieldId}', 1)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+      ${headerHtml}
     </div>
-    <div class="kir-cal-grid">
-      ${KIR_DP_WEEKDAYS_ID.map(w => `<div class="kir-cal-weekday">${w}</div>`).join('')}
-      ${cells}
-    </div>
+    ${bodyHtml}
     ${timeHtml}
     <div class="kir-cal-footer">
       <button type="button" class="kir-cal-quick-btn" onclick="kirAdminDpSelectToday('${fieldId}')">Hari ini</button>
@@ -1129,15 +1262,20 @@ function kirAdminDpRender(fieldId) {
 }
 
 function kirAdminDpNav(fieldId, delta) {
-  const state = kirAdminModalConfig.dpState[fieldId];
-  state.viewMonth += delta;
-  if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
-  if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
+  if (state.viewMode === 'months') {
+    state.viewYear += delta > 0 ? 1 : -1;
+  } else {
+    state.viewMonth += delta;
+    while (state.viewMonth < 0) { state.viewMonth += 12; state.viewYear--; }
+    while (state.viewMonth > 11) { state.viewMonth -= 12; state.viewYear++; }
+  }
   kirAdminDpRender(fieldId);
 }
 
 function kirAdminDpApply(fieldId) {
-  const state = kirAdminModalConfig.dpState[fieldId];
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
   const input = document.getElementById(`admin-field-${fieldId}`);
   const display = document.getElementById(`admin-field-${fieldId}-display`);
   if (!state || !input || !display) return;
@@ -1164,7 +1302,8 @@ function kirAdminDpApply(fieldId) {
 }
 
 function kirAdminDpSelect(fieldId, y, m, d) {
-  const state = kirAdminModalConfig.dpState[fieldId];
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
   state.selected = new Date(y, m, d, state.hour, state.minute);
   kirAdminDpApply(fieldId);
   if (!state.withTime) kirAdminDpCloseAll();
@@ -1173,24 +1312,31 @@ function kirAdminDpSelect(fieldId, y, m, d) {
 
 function kirAdminDpSelectToday(fieldId) {
   const now = new Date();
-  const state = kirAdminModalConfig.dpState[fieldId];
-  state.viewYear = now.getFullYear();
-  state.viewMonth = now.getMonth();
-  state.selected = new Date(now.getFullYear(), now.getMonth(), now.getDate(), state.hour, state.minute);
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (state) {
+    state.viewYear = now.getFullYear();
+    state.viewMonth = now.getMonth();
+    state.viewMode = 'days';
+    state.selected = new Date(now.getFullYear(), now.getMonth(), now.getDate(), state.hour, state.minute);
+  }
   kirAdminDpApply(fieldId);
   kirAdminDpCloseAll();
 }
 
 function kirAdminDpClear(fieldId) {
-  const state = kirAdminModalConfig.dpState[fieldId];
-  state.selected = null;
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (state) {
+    state.viewMode = 'days';
+    state.selected = null;
+  }
   kirAdminDpApply(fieldId);
   kirAdminDpCloseAll();
 }
 
 function kirAdminDpTimeChange(fieldId, val) {
   const [hh, mm] = val.split(':').map(Number);
-  const state = kirAdminModalConfig.dpState[fieldId];
+  const state = kirAdminModalConfig && kirAdminModalConfig.dpState ? kirAdminModalConfig.dpState[fieldId] : null;
+  if (!state) return;
   state.hour = hh || 0;
   state.minute = mm || 0;
   if (state.selected) state.selected.setHours(state.hour, state.minute);

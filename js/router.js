@@ -233,6 +233,7 @@
     // first instant it's attached.
     if (typeof kirTranslateElements === 'function') kirTranslateElements(doc);
     if (typeof kirSyncPublicHeaderAuth === 'function') kirSyncPublicHeaderAuth(doc);
+    if (typeof kirApplyBrandAssets === 'function') kirApplyBrandAssets(doc);
 
     // We're committed to leaving the current page now, so give it a
     // chance to cancel any rAF loop and remove any window/document-level
