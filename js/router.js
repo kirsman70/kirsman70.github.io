@@ -596,11 +596,9 @@
       const transition = document.startViewTransition(() => { swapBody(); });
       try { await transition.finished; } catch (e) { /* interrupted by a newer nav; swap already applied */ }
     } else {
-      document.documentElement.classList.add('kir-router-loading');
       swapBody();
     }
 
-    document.documentElement.classList.remove('kir-router-loading');
     window.scrollTo(0, 0);
 
     if (push) history.pushState({ kirRouter: true }, '', url);

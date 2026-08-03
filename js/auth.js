@@ -2076,6 +2076,7 @@ function kirRevealPage() {
 (function applyThemeImmediately() {
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
+  kirSyncThemeChrome(theme);
 
   const reduceMotion = localStorage.getItem(KIR_REDUCE_MOTION_KEY) === 'true';
   document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false');
@@ -2407,9 +2408,23 @@ function kirCurrentTheme() {
   return localStorage.getItem(KIR_THEME_KEY) || 'dark';
 }
 
+function kirSyncThemeChrome(theme = kirCurrentTheme()) {
+  const resolvedTheme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.style.colorScheme = resolvedTheme;
+
+  let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeColorMeta) {
+    themeColorMeta = document.createElement('meta');
+    themeColorMeta.name = 'theme-color';
+    document.head.appendChild(themeColorMeta);
+  }
+  themeColorMeta.setAttribute('content', resolvedTheme === 'light' ? '#f4f4f5' : '#09090b');
+}
+
 function kirSetTheme(theme) {
   localStorage.setItem(KIR_THEME_KEY, theme);
   document.documentElement.setAttribute('data-theme', theme);
+  kirSyncThemeChrome(theme);
   kirApplyBrandAssets();
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
