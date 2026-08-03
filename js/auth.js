@@ -144,11 +144,12 @@ const I18N = {
     page_title_inbox: 'Kotak Masuk',
     page_title_auth: 'Masuk atau Daftar',
     idx_open_dashboard: 'Buka Dasbor', idx_open_dashboard_hero: 'Buka dasbor kamu',
-    greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.', 'Sudah ngopi belum, {name}?'],
-    greeting_afternoon: ['Selamat siang, {name}', 'Masih fokus, {name}?', 'Lanjut nugas, {name}?', 'Jangan lupa minum, {name}.', 'Stay hydrated, {name}!'],
-    greeting_evening: ['Selamat sore, {name}', 'Progres aman, {name}?', 'Hampir kelar, {name}?', 'Waktunya rehat bentar, {name}.', 'Satu push lagi, {name}!'],
-    greeting_night: ['Selamat malam, {name}', 'Lagi dapet zone-nya ya, {name}?', 'Malam-malam gini emang paling pas ngide, {name}!', 'Tetap semangat, {name}!', 'Having a great time tonight, {name}?'],
-    greeting_late_night: ['Jam-jam produktif nih, {name}!', 'Koding / nugas jam segini emang tiada tanding, {name}!', 'Brain in peak condition, {name}?', 'Lagi enak-enaknya fokus ya, {name}?', 'Night mode activated, {name}!'],
+    greeting_morning: ['Selamat pagi, {name}', 'Pagi {name}! Udah melek?', 'Siap ngide hari ini, {name}?', 'Ayo mulai, {name}.', 'Sudah ngopi belum, {name}?', 'Semangat pagi, {name}! Hari baru, ide baru!', 'Mentari terbit, semangat {name} bangkit!', 'Siapkan amunisi ide kamu hari ini, {name}!', 'Sambut hari ini dengan karya terbaikmu, {name}!', 'Pagi yang cerah buat meluncurkan proyek baru, {name}!'],
+    greeting_afternoon: ['Selamat siang, {name}', 'Masih fokus, {name}?', 'Lanjut nugas, {name}?', 'Jangan lupa minum, {name}.', 'Stay hydrated, {name}!', 'Siang {name}! Jangan lupa istirahat makan siang ya.', 'Energi masih full kan, {name}?', 'Tetap tenang dan terus berkarya, {name}!', 'Semangat tengah hari, {name}! Kamu pasti bisa.', 'Braking speed lumayan tinggi siang ini, {name}!'],
+    greeting_evening: ['Selamat sore, {name}', 'Progres aman, {name}?', 'Hampir kelar, {name}?', 'Waktunya rehat bentar, {name}.', 'Satu push lagi, {name}!', 'Sore {name}! Nikmati senja sambil rapikan tugas.', 'Target hari ini udah tercapai belum, {name}?', 'Senja tiba, saatnya review hasil karya hari ini, {name}.', 'Sedikit lagi menuju garis finish hari ini, {name}!', 'Keren banget usaha kamu seharian ini, {name}!'],
+    greeting_night: ['Selamat malam, {name}', 'Lagi dapet zone-nya ya, {name}?', 'Malam-malam gini emang paling pas ngide, {name}!', 'Tetap semangat, {name}!', 'Having a great time tonight, {name}?', 'Malam {name}! Suasana tenang buat fokus maksimal.', 'Ide-ide jenius biasa muncul jam segini nih, {name}!', 'Heningnya malam pendukung kreativitasmu, {name}.', 'Istirahat yang cukup nanti ya, {name}!', 'Lampu meja menyala, karya hebat tercipta, {name}!'],
+    greeting_late_night: ['Jam-jam produktif nih, {name}!', 'Koding / nugas jam segini emang tiada tanding, {name}!', 'Brain in peak condition, {name}?', 'Lagi enak-enaknya fokus ya, {name}?', 'Night mode activated, {name}!', 'Dunia tidur, {name} masih beraksi!', 'Midnight coder / creator mode: ON, {name}!', 'Sunyi malam emang tempat ternyaman buat fokus, {name}.', 'Jangan lupa jaga kesehatan juga ya, {name}!', 'Bintang di langit kalah terang sama semangatmu, {name}!'],
+    greeting_school_commute: ['Topi aman, {name}?', 'Seragam lengkap kan, {name}?', 'Dasi & kaos kaki aman, {name}?', 'Tugas di tas udah masuk, {name}?', 'Siap otw sekolah, {name}?', 'Sepatu & bekal udah, {name}?', 'Jangan telat masuk kelas, {name}!', 'Cek barang di tas dulu, {name}!', 'Helm / ongkos udah siap, {name}?', 'Botol minum udah kebawa, {name}?'],
     activity_today: 'Hari ini pukul', activity_yesterday: 'Kemarin pukul', activity_at: 'pukul',
     deltas_label: 'Deltas', this_week: 'minggu ini', all_time: 'sepanjang waktu', deltas_points: 'deltas',
     deltas_range_week: 'Minggu ini', deltas_range_lifetime: 'Sepanjang waktu',
@@ -428,11 +429,12 @@ const I18N = {
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja (KIR) · kirsman70@gmail.com',
     nav_fitur: 'Features', nav_cabang: 'Branches',
     idx_dashboard: 'Dashboard', idx_open_dashboard: 'Open Dashboard', idx_open_dashboard_hero: 'Open your dashboard',
-    greeting_morning: ['Good morning, {name}', 'Morning {name}! Awake yet?', 'Ready to brainstorm, {name}?', 'Let\'s get to it, {name}.', 'Coffee loaded, {name}?'],
-    greeting_afternoon: ['Good afternoon, {name}', 'Still focused, {name}?', 'Back to work, {name}?', 'Don\'t forget to drink, {name}.', 'Stay hydrated, {name}!'],
-    greeting_evening: ['Good evening, {name}', 'Making progress, {name}?', 'Almost done, {name}?', 'Time for a quick break, {name}.', 'One final push, {name}!'],
-    greeting_night: ['Good evening, {name}', 'In the zone tonight, {name}?', 'Having a great time cooking up ideas, {name}?', 'Prime focus hours, {name}!', 'Night mode activated, {name}!'],
-    greeting_late_night: ['Peak brain performance hours, {name}!', 'Having a great time building, {name}?', 'Midnight brilliance unlocked, {name}!', 'The quiet hours hit different, {name}.', 'Flow state engaged, {name}!'],
+    greeting_morning: ['Good morning, {name}', 'Morning {name}! Awake yet?', 'Ready to brainstorm, {name}?', 'Let\'s get to it, {name}.', 'Coffee loaded, {name}?', 'Rise and shine, {name}! Fresh day, fresh ideas.', 'Great morning to build something amazing, {name}!', 'Ready to tackle today\'s goals, {name}?', 'Morning vibes hit different when you\'re ready, {name}!', 'Fuel up and let\'s create, {name}!'],
+    greeting_afternoon: ['Good afternoon, {name}', 'Still focused, {name}?', 'Back to work, {name}?', 'Don\'t forget to drink, {name}.', 'Stay hydrated, {name}!', 'Afternoon check-in: how\'s the flow, {name}?', 'Powering through the day like a champ, {name}!', 'Midday momentum in full effect, {name}!', 'Take a quick stretch break, {name}!', 'Keep up the incredible energy, {name}!'],
+    greeting_evening: ['Good evening, {name}', 'Making progress, {name}?', 'Almost done, {name}?', 'Time for a quick break, {name}.', 'One final push, {name}!', 'Evening golden hour, {name}! Time to wrap up nicely.', 'Great work done today, {name}!', 'Slowing down or powering through, {name}?', 'Reflecting on today\'s achievements, {name}.', 'Almost at the finish line for today, {name}!'],
+    greeting_night: ['Good evening, {name}', 'In the zone tonight, {name}?', 'Having a great time cooking up ideas, {name}?', 'Prime focus hours, {name}!', 'Night mode activated, {name}!', 'Peaceful evening vibes for deep work, {name}.', 'Brilliant minds shine brightest at night, {name}!', 'Night owl productivity engaged, {name}!', 'Crafting quality stuff tonight, {name}!', 'Remember to get enough rest later, {name}!'],
+    greeting_late_night: ['Peak brain performance hours, {name}!', 'Having a great time building, {name}?', 'Midnight brilliance unlocked, {name}!', 'The quiet hours hit different, {name}.', 'Flow state engaged, {name}!', 'While the world sleeps, {name} creates!', 'Late night focus levels are off the charts, {name}!', 'Unstoppable midnight drive, {name}!', 'Midnight inspiration at maximum capacity, {name}!', 'Legendary late night session, {name}!'],
+    greeting_school_commute: ['Hat & tie ready, {name}?', 'Uniform all set, {name}?', 'Socks & shoes on, {name}?', 'Homework in your bag, {name}?', 'Ready to head to school, {name}?', 'Water bottle packed, {name}?', 'Don\'t be late for class, {name}!', 'Backpack checked, {name}?', 'All prepped for school, {name}?', 'Safe travels to school, {name}!'],
     activity_today: 'Today at', activity_yesterday: 'Yesterday at', activity_at: 'at',
     deltas_label: 'Deltas', this_week: 'this week', all_time: 'all time', deltas_points: 'deltas',
     deltas_range_week: 'This Week', deltas_range_lifetime: 'Lifetime',
@@ -620,25 +622,53 @@ const I18N = {
 
 function kirTimeGreeting(name) {
   const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
-  let hour;
+  let hour, minute, day;
   try {
-    hour = parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }).format(new Date()), 10);
-    if (hour === 24) hour = 0;
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', { 
+      hour: 'numeric', minute: 'numeric', hour12: false, weekday: 'short', timeZone: 'Asia/Jakarta' 
+    }).formatToParts(now);
+    
+    let hourPart = 0, minutePart = 0, dayStr = '';
+    parts.forEach(p => {
+      if (p.type === 'hour') hourPart = parseInt(p.value, 10) % 24;
+      if (p.type === 'minute') minutePart = parseInt(p.value, 10);
+      if (p.type === 'weekday') dayStr = p.value;
+    });
+
+    hour = hourPart;
+    minute = minutePart;
+    const dayMap = { 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 0 };
+    day = dayMap[dayStr] !== undefined ? dayMap[dayStr] : now.getDay();
   } catch (e) {
-    hour = new Date().getHours();
+    const d = new Date();
+    hour = d.getHours();
+    minute = d.getMinutes();
+    day = d.getDay();
   }
   
-  let key;
-  if (hour >= 0 && hour < 4) key = 'greeting_late_night';
-  else if (hour >= 4 && hour < 11) key = 'greeting_morning';
-  else if (hour >= 11 && hour < 15) key = 'greeting_afternoon';
-  else if (hour >= 15 && hour < 19) key = 'greeting_evening';
-  else key = 'greeting_night';
+  const totalMinutes = hour * 60 + minute;
+  const isWeekday = day >= 1 && day <= 5; // Mon-Fri
   
-  const options = I18N[lang][key];
+  let key;
+  if (isWeekday && totalMinutes >= 300 && totalMinutes <= 435) { // 05:00 to 07:15
+    key = 'greeting_school_commute';
+  } else if (hour >= 0 && hour < 4) {
+    key = 'greeting_late_night';
+  } else if (hour >= 4 && hour < 11) {
+    key = 'greeting_morning';
+  } else if (hour >= 11 && hour < 15) {
+    key = 'greeting_afternoon';
+  } else if (hour >= 15 && hour < 19) {
+    key = 'greeting_evening';
+  } else {
+    key = 'greeting_night';
+  }
+  
+  const options = (I18N[lang] && I18N[lang][key]) || I18N['id'][key] || I18N['id']['greeting_morning'];
   let template = options;
   if (Array.isArray(options)) {
-    const seed = new Date().getDate() + hour;
+    const seed = new Date().getDate() + hour + minute;
     template = options[seed % options.length];
   }
   return template.replace('{name}', name);
@@ -1548,7 +1578,9 @@ function kirRenderSidebarNow(activeTab) {
           </div>
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_role">Peran</p>
-            <p id="kir-profile-modal-role" class="text-sm text-zinc-200 mt-0.5">—</p>
+            <div id="kir-profile-modal-role-container" class="mt-0.5">
+              <p id="kir-profile-modal-role" class="text-sm text-zinc-200">—</p>
+            </div>
           </div>
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_delta">Delta</p>
@@ -2307,7 +2339,8 @@ function kirCurrentUserKelas() {
 function kirIsAdmin() {
   const name = kirCurrentUserName();
   const role = kirCurrentUserRole();
-  return name === 'Admin' || role === 'Ketua Ekstrakurikuler';
+  const userId = localStorage.getItem('kir_user_id');
+  return name === 'Admin' || role === 'Ketua Ekstrakurikuler' || userId === 'abfa38c4-960f-4ee0-b989-02a0f1c80c54' || name === 'Sultan Haikal';
 }
 
 function kirCurrentUserCabang() {
@@ -2980,6 +3013,57 @@ function kirApplyBannerFromColor(bannerEl, rgb) {
   }
 }
 
+async function kirChangeUserRole(targetUserId, newRole, isSelf = false) {
+  if (!targetUserId || !newRole) return;
+
+  if (typeof kirIsAdmin === 'function' && !kirIsAdmin()) {
+    if (typeof kirAdminToast === 'function') kirAdminToast('Hanya admin yang dapat mengubah peran', 'error');
+    else alert('Hanya admin yang dapat mengubah peran');
+    return;
+  }
+
+  const selectEl = document.getElementById('kir-profile-modal-role-select');
+  if (selectEl) selectEl.disabled = true;
+
+  try {
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', targetUserId);
+
+    if (error) throw error;
+
+    if (isSelf) {
+      localStorage.setItem(KIR_ROLE_KEY, newRole);
+    }
+
+    if (typeof kirAdminToast === 'function') {
+      kirAdminToast('Peran berhasil diperbarui!', 'success');
+    }
+
+    if (typeof fetchMembersFromDatabase === 'function') {
+      fetchMembersFromDatabase();
+    } else if (typeof MEMBERS !== 'undefined' && Array.isArray(MEMBERS)) {
+      const idx = MEMBERS.findIndex(m => m.id === targetUserId);
+      if (idx !== -1) {
+        MEMBERS[idx].role = newRole;
+        if (typeof renderMembers === 'function') {
+          renderMembers();
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to change user role:', err);
+    if (typeof kirAdminToast === 'function') {
+      kirAdminToast('Gagal mengubah peran: ' + (err.message || err), 'error');
+    } else {
+      alert('Gagal mengubah peran: ' + (err.message || err));
+    }
+  } finally {
+    if (selectEl) selectEl.disabled = false;
+  }
+}
+
 async function kirOpenProfileModal(targetUserId = null) {
   const modal = document.getElementById('kir-profile-modal');
   if (!modal) return;
@@ -3037,8 +3121,44 @@ async function kirOpenProfileModal(targetUserId = null) {
   }
   const cabangEl = document.getElementById('kir-profile-modal-cabang');
   if (cabangEl) cabangEl.textContent = kirCabangLabel(cabang);
+
+
+  const roleContainer = document.getElementById('kir-profile-modal-role-container');
   const roleEl = document.getElementById('kir-profile-modal-role');
-  if (roleEl) {
+  const isAdminUser = typeof kirIsAdmin === 'function' && kirIsAdmin();
+
+  if (isAdminUser && roleContainer) {
+    const rolesList = [
+      { value: 'Ketua Ekstrakurikuler', label: 'Ketua Ekstrakurikuler' },
+      { value: 'Wakil Ketua', label: 'Wakil Ketua' },
+      { value: 'Sekretaris', label: 'Sekretaris' },
+      { value: 'Bendahara', label: 'Bendahara' },
+      { value: 'PJ Robotika', label: 'PJ Robotika' },
+      { value: 'PJ Sains', label: 'PJ Sains' },
+      { value: 'Anggota', label: 'Anggota' }
+    ];
+
+    const currentRoleVal = role || 'Anggota';
+    if (!rolesList.some(r => r.value === currentRoleVal)) {
+      rolesList.unshift({ value: currentRoleVal, label: currentRoleVal });
+    }
+
+    const optionsHtml = rolesList.map(r => 
+      `<option value="${kirEscapeHtml(r.value)}" ${r.value === currentRoleVal ? 'selected' : ''} style="background: #18181b; color: #f4f4f5;">${kirEscapeHtml(r.label)}</option>`
+    ).join('');
+
+    roleContainer.innerHTML = `
+      <select id="kir-profile-modal-role-select" 
+        data-trigger-class="kir-select-pill"
+        onchange="kirChangeUserRole('${actualTargetId}', this.value, ${isSelf})">
+        ${optionsHtml}
+      </select>
+    `;
+
+    if (typeof kirRefreshCustomSelect === 'function') {
+      kirRefreshCustomSelect('kir-profile-modal-role-select');
+    }
+  } else {
     const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
     let displayRole = role || 'Anggota';
     
@@ -3052,7 +3172,11 @@ async function kirOpenProfileModal(targetUserId = null) {
       displayRole = I18N[lang]?.role_anggota || displayRole;
     }
     
-    roleEl.textContent = displayRole;
+    if (roleContainer) {
+      roleContainer.innerHTML = `<p id="kir-profile-modal-role" class="text-sm text-zinc-200">${kirEscapeHtml(displayRole)}</p>`;
+    } else if (roleEl) {
+      roleEl.textContent = displayRole;
+    }
   }
   const streakEl = document.getElementById('kir-profile-modal-streak');
   if (streakEl) streakEl.textContent = streakDays || 0;
@@ -3160,6 +3284,7 @@ async function kirOpenProfileModal(targetUserId = null) {
 }
 
 function kirCloseProfileModal() {
+  if (typeof kirCloseAllCustomSelects === 'function') kirCloseAllCustomSelects();
   kirCancelProfileAboutEdit();
   kirCancelProfileNameEdit();
   kirLocalModalHide(document.getElementById('kir-profile-modal'));
