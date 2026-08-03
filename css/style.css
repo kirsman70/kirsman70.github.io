@@ -279,9 +279,9 @@
     settings. !important is needed since it has to beat both utility
     classes and any inline styles JS sets during an in-flight
     animation (e.g. the leaderboard's FLIP reorder transforms). */
-  html[data-reduce-motion="true"] *,
-  html[data-reduce-motion="true"] *::before,
-  html[data-reduce-motion="true"] *::after {
+  html[data-reduce-motion="true"] body:not(.obt-index-page) *,
+  html[data-reduce-motion="true"] body:not(.obt-index-page) *::before,
+  html[data-reduce-motion="true"] body:not(.obt-index-page) *::after {
     animation-duration: 0.001ms !important;
     animation-delay: -1ms !important;
     animation-iteration-count: 1 !important;
@@ -289,9 +289,9 @@
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
-  html[data-reduce-motion="true"] .reveal { opacity: 1 !important; transform: none !important; }
-  html[data-reduce-motion="true"] #orbit-traveler { display: none !important; }
-  html[data-reduce-motion="true"] .pulse { animation: none !important; }
+  html[data-reduce-motion="true"] body:not(.obt-index-page) .reveal { opacity: 1 !important; transform: none !important; }
+  html[data-reduce-motion="true"] body:not(.obt-index-page) #orbit-traveler { display: none !important; }
+  html[data-reduce-motion="true"] body:not(.obt-index-page) .pulse { animation: none !important; }
 
   /* The universal `*` selector above can't reach these. View-transition
     pseudo-elements render on the document root, not as real descendants
@@ -1132,15 +1132,15 @@
   }
 
   /* Always animate glow blobs regardless of reduced motion settings */
-  html[data-reduce-motion="true"] .glow-blob {
+  html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-blob {
     animation-duration: 16s !important;
     animation-play-state: running !important;
   }
-  html[data-reduce-motion="true"] .glow-blob:nth-child(even) {
+  html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-blob:nth-child(even) {
     animation-duration: 22s !important;
     animation-play-state: running !important;
   }
-  html[data-reduce-motion="true"] .glow-layer {
+  html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-layer {
     animation-duration: 1.6s !important;
     transition-duration: 1.6s !important;
   }
@@ -2301,8 +2301,8 @@
   .reveal-delay-3.in-view { transition-delay: 0.24s; }
 
   @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1; transform: none; transition: none; }
-    #orbit-traveler { display: none !important; }
+    body:not(.obt-index-page) .reveal { opacity: 1; transform: none; transition: none; }
+    body:not(.obt-index-page) #orbit-traveler { display: none !important; }
   }
 
   .orbit-rail-wrap {

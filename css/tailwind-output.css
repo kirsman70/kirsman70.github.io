@@ -2064,7 +2064,7 @@
       --muted-600: #52525b;
       --thumb-bg: #ffffff;
     }
-    html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *::before, html[data-reduce-motion="true"] *::after {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) *, html[data-reduce-motion="true"] body:not(.obt-index-page) *::before, html[data-reduce-motion="true"] body:not(.obt-index-page) *::after {
       animation-duration: 0.001ms !important;
       animation-delay: -1ms !important;
       animation-iteration-count: 1 !important;
@@ -2072,14 +2072,14 @@
       transition-delay: 0ms !important;
       scroll-behavior: auto !important;
     }
-    html[data-reduce-motion="true"] .reveal {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) .reveal {
       opacity: 1 !important;
       transform: none !important;
     }
-    html[data-reduce-motion="true"] #orbit-traveler {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) #orbit-traveler {
       display: none !important;
     }
-    html[data-reduce-motion="true"] .pulse {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) .pulse {
       animation: none !important;
     }
     html[data-reduce-motion="true"]::view-transition-group(*), html[data-reduce-motion="true"]::view-transition-old(*), html[data-reduce-motion="true"]::view-transition-new(*) {
@@ -2586,15 +2586,15 @@
         transform: translateZ(0);
       }
     }
-    html[data-reduce-motion="true"] .glow-blob {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-blob {
       animation-duration: 16s !important;
       animation-play-state: running !important;
     }
-    html[data-reduce-motion="true"] .glow-blob:nth-child(even) {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-blob:nth-child(even) {
       animation-duration: 22s !important;
       animation-play-state: running !important;
     }
-    html[data-reduce-motion="true"] .glow-layer {
+    html[data-reduce-motion="true"] body:not(.obt-index-page) .glow-layer {
       animation-duration: 1.6s !important;
       transition-duration: 1.6s !important;
     }
@@ -4017,12 +4017,12 @@
       transition-delay: 0.24s;
     }
     @media (prefers-reduced-motion: reduce) {
-      .reveal {
+      body:not(.obt-index-page) .reveal {
         opacity: 1;
         transform: none;
         transition: none;
       }
-      #orbit-traveler {
+      body:not(.obt-index-page) #orbit-traveler {
         display: none !important;
       }
     }

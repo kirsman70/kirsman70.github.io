@@ -1191,6 +1191,20 @@
       localStorage.setItem('kir_user_cabang', profile.cabang);
       localStorage.setItem('kir_last_cabang', profile.cabang);
       if (profile.avatar_url) localStorage.setItem('kir_user_avatar', profile.avatar_url);
+
+      if (localStorage.getItem('kir_reduce_motion') === null) {
+        let shouldReduce = false;
+        if (typeof profile.reduce_motion === 'boolean') {
+          shouldReduce = profile.reduce_motion;
+        } else if (typeof kirIsMobileDevice === 'function' && kirIsMobileDevice()) {
+          shouldReduce = true;
+        }
+        localStorage.setItem('kir_reduce_motion', shouldReduce ? 'true' : 'false');
+        document.documentElement.setAttribute('data-reduce-motion', shouldReduce ? 'true' : 'false');
+        if (typeof profile.reduce_motion !== 'boolean' && data?.user) {
+          supabaseClient.from('profiles').update({ reduce_motion: shouldReduce }).eq('id', data.user.id).then();
+        }
+      }
     }
 
     window.location.href = 'dashboard.html';

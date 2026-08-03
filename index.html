@@ -49,15 +49,7 @@
 
   html, body { height: 100%; overscroll-behavior: none; }
 
-  /* Override global reduced motion for index.html: always animate regardless of settings */
-  html[data-reduce-motion="true"] body.obt-body,
-  html[data-reduce-motion="true"] body.obt-body *,
-  html[data-reduce-motion="true"] body.obt-body *::before,
-  html[data-reduce-motion="true"] body.obt-body *::after {
-    animation-duration: unset !important;
-    animation-iteration-count: unset !important;
-    transition-duration: unset !important;
-  }
+
 
   body.obt-body {
     display: flex;
@@ -494,19 +486,7 @@
   }
   @keyframes obt-spin-full { to { transform: rotate(360deg); } }
 
-  /* Re-enable orbit animation even when reduced-motion is checked */
-  html[data-reduce-motion="true"] .obt-moon-orbit {
-    animation-name: obt-spin-full !important;
-    animation-duration: 34s !important;
-    animation-iteration-count: infinite !important;
-    animation-timing-function: linear !important;
-    animation-play-state: running !important;
-    animation-delay: 0s !important;
-  }
-  html[data-reduce-motion="true"] .obt-moon-orbit.obt-moon-2 {
-    animation-duration: 52s !important;
-    animation-direction: reverse !important;
-  }
+
 
   /* ---------------- Ring navigation nodes ---------------- */
   .obt-nodes { position: absolute; inset: 0; z-index: 25; contain: layout style; }
@@ -664,15 +644,7 @@
   }
   @keyframes obt-caret-blink { 50% { opacity: 0; } }
 
-  /* Re-enable caret blink even when reduced-motion is checked */
-  html[data-reduce-motion="true"] .obt-typehead::after {
-    animation-name: obt-caret-blink !important;
-    animation-duration: 0.85s !important;
-    animation-iteration-count: infinite !important;
-    animation-timing-function: step-end !important;
-    animation-play-state: running !important;
-    animation-delay: 0s !important;
-  }
+
 
   /* "Ctrl+A" erase variant — the whole heading gets a selection-style
      highlight for a beat before it's cleared in one shot, standing in
@@ -1152,7 +1124,7 @@
 
 </head>
 
-<body class="obt-body antialiased relative">
+<body class="obt-body obt-index-page antialiased relative">
 
 <div class="obt-stars" id="obt-stars"></div>
 <div class="obt-vignette"></div>

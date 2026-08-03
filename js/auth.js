@@ -2073,12 +2073,25 @@ function kirRevealPage() {
   document.documentElement.classList.add('kir-ready');
 }
 
+function kirIsMobileDevice() {
+  return window.matchMedia('(max-width: 767px)').matches || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 (function applyThemeImmediately() {
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
   kirSyncThemeChrome(theme);
 
-  const reduceMotion = localStorage.getItem(KIR_REDUCE_MOTION_KEY) === 'true';
+  let reduceMotionVal = localStorage.getItem(KIR_REDUCE_MOTION_KEY);
+  if (reduceMotionVal === null) {
+    if (kirIsMobileDevice()) {
+      reduceMotionVal = 'true';
+      localStorage.setItem(KIR_REDUCE_MOTION_KEY, 'true');
+    } else {
+      reduceMotionVal = 'false';
+    }
+  }
+  const reduceMotion = reduceMotionVal === 'true';
   document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false');
 
   const disableBranchColor = localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === 'true';
@@ -2297,9 +2310,21 @@ async function kirRefreshCurrentProfile() {
       const sidebar = document.getElementById('sidebar');
       if (sidebar) sidebar.classList.toggle('sidebar-collapsed', profile.sidebar_collapsed);
     }
-    if (typeof profile.reduce_motion === 'boolean' && localStorage.getItem(KIR_REDUCE_MOTION_KEY) === null) {
-      localStorage.setItem(KIR_REDUCE_MOTION_KEY, profile.reduce_motion ? 'true' : 'false');
-      document.documentElement.setAttribute('data-reduce-motion', profile.reduce_motion ? 'true' : 'false');
+    if (localStorage.getItem(KIR_REDUCE_MOTION_KEY) === null) {
+      let shouldReduce = false;
+      if (typeof profile.reduce_motion === 'boolean') {
+        shouldReduce = profile.reduce_motion;
+      } else if (kirIsMobileDevice()) {
+        shouldReduce = true;
+      }
+      localStorage.setItem(KIR_REDUCE_MOTION_KEY, shouldReduce ? 'true' : 'false');
+      document.documentElement.setAttribute('data-reduce-motion', shouldReduce ? 'true' : 'false');
+      if (userData?.user && typeof profile.reduce_motion !== 'boolean') {
+        supabaseClient.from('profiles').update({ reduce_motion: shouldReduce }).eq('id', userData.user.id).then();
+      }
+    } else if (userData?.user && typeof profile.reduce_motion !== 'boolean') {
+      const currentLocal = localStorage.getItem(KIR_REDUCE_MOTION_KEY) === 'true';
+      supabaseClient.from('profiles').update({ reduce_motion: currentLocal }).eq('id', userData.user.id).then();
     }
     if (typeof profile.disable_branch_color === 'boolean' && localStorage.getItem(KIR_DISABLE_BRANCH_COLOR_KEY) === null) {
       localStorage.setItem(KIR_DISABLE_BRANCH_COLOR_KEY, profile.disable_branch_color ? 'true' : 'false');
