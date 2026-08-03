@@ -123,8 +123,7 @@
   .obt-footer-mini { view-transition-name: kir-public-footer; }
   ::view-transition-group(kir-public-header),
   ::view-transition-group(kir-public-footer) {
-    animation-duration: 0.001ms !important;
-    animation-delay: -1ms !important;
+    animation-duration: 160ms !important;
   }
   .obt-footer-tagline { flex: 1 1 auto; min-width: 0; }
   .obt-footer-meta { flex: 0 0 auto; text-align: right; white-space: nowrap; }
@@ -2297,8 +2296,9 @@ kirOnReady(function () {
       };
     }
 
-    // Set flag when leaving index.html so subpages trigger glow light-up animation
+    // Set flag when leaving index.html so subpages trigger glow light-up animation on hard navigation
     document.addEventListener('click', (e) => {
+      if (!document.getElementById('obt-stage-outer')) return;
       const a = e.target.closest('a[href]');
       if (a && !a.href.endsWith('index.html') && !a.href.endsWith('/')) {
         sessionStorage.setItem('kir_just_left_index', 'true');

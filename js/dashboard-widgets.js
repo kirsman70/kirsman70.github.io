@@ -929,10 +929,8 @@ function renderWidgetGrid() {
   grid.onmouseleave = editMode ? hideAddTile : null;
 
   // Below the 4-column desktop breakpoint, repack instead of just
-  // clamping — see computeCompactLayout() above. Edit mode keeps the
-  // original clamp so dragging/resizing math (which already reasons
-  // in terms of raw dashLayout coordinates) isn't disrupted.
-  const positioned = (cols < 4 && !editMode)
+  // clamping — see computeCompactLayout() above.
+  const positioned = (cols < 4)
     ? computeCompactLayout(dashLayout, cols)
     : dashLayout.map(item => ({
         type: item.type,
@@ -1102,7 +1100,7 @@ function renderProfileWidget(w, h) {
 
   if (w === 1 && h === 1) {
     return `
-      <div class="relative h-full flex items-center justify-center">
+      <div class="relative h-full flex items-center justify-center cursor-pointer" onclick="kirOpenProfileModal()">
         ${profileAvatarHtml('w-10 h-10 text-sm')}
       </div>`;
   }
@@ -1111,7 +1109,7 @@ function renderProfileWidget(w, h) {
     // Vertical card — 1x2 or 2x2
     return `
       <div class="glow-blob w-28 h-28 bg-accent-20 -top-8 -right-8"></div>
-      <div class="relative h-full flex flex-col items-center justify-center text-center gap-2 cursor-pointer" onclick="toggleSettingsModal()">
+      <div class="relative h-full flex flex-col items-center justify-center text-center gap-2 cursor-pointer" onclick="kirOpenProfileModal()">
         ${profileAvatarHtml('w-12 h-12 text-base')}
         <p class="font-display font-semibold text-sm truncate max-w-full">${name}</p>
         ${profileCabangBadge()}
@@ -1123,7 +1121,7 @@ function renderProfileWidget(w, h) {
     // Split layout: identity left, stat grid right
     return `
       <div class="glow-blob w-40 h-40 bg-accent-20 -top-10 -right-10"></div>
-      <div class="relative h-full flex items-center gap-5 cursor-pointer" onclick="toggleSettingsModal()">
+      <div class="relative h-full flex items-center gap-5 cursor-pointer" onclick="kirOpenProfileModal()">
         <div class="flex flex-col items-center text-center gap-2 shrink-0">
           ${profileAvatarHtml('w-14 h-14 text-lg')}
           <p class="font-display font-semibold text-sm truncate max-w-[7rem]">${name}</p>
@@ -1150,7 +1148,7 @@ function renderProfileWidget(w, h) {
   if (w === 3 && h === 1) {
     return `
       <div class="glow-blob w-32 h-32 bg-accent-20 -top-10 -right-10"></div>
-      <div class="relative h-full flex items-center justify-between gap-3 cursor-pointer" onclick="toggleSettingsModal()">
+      <div class="relative h-full flex items-center justify-between gap-3 cursor-pointer" onclick="kirOpenProfileModal()">
         <div class="flex items-center gap-3 min-w-0">
           ${profileAvatarHtml('w-9 h-9 text-sm')}
           <div class="min-w-0">
@@ -1170,7 +1168,7 @@ function renderProfileWidget(w, h) {
     const wide = w >= 4;
     return `
       <div class="glow-blob w-32 h-32 bg-accent-20 -top-10 -right-10"></div>
-      <div class="relative h-full flex items-center justify-between gap-3 cursor-pointer" onclick="toggleSettingsModal()">
+      <div class="relative h-full flex items-center justify-between gap-3 cursor-pointer" onclick="kirOpenProfileModal()">
         <div class="flex items-center gap-3 min-w-0">
           ${profileAvatarHtml('w-9 h-9 text-sm')}
           <div class="min-w-0">
@@ -1194,7 +1192,7 @@ function renderProfileWidget(w, h) {
 
   // Fallback (shouldn't normally hit)
   return `
-    <div class="relative h-full flex flex-col items-center justify-center text-center gap-2">
+    <div class="relative h-full flex flex-col items-center justify-center text-center gap-2 cursor-pointer" onclick="kirOpenProfileModal()">
       ${profileAvatarHtml('w-12 h-12 text-base')}
       <p class="font-display font-semibold text-sm">${name}</p>
       ${profileCabangBadge()}

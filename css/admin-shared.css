@@ -106,7 +106,9 @@
    strip the box so the edit/delete icons look like the X close button:
    just a bare icon with a hover colour change. The wrapper is also
    reset to static so it flows in the flex row rather than floating. */
-.admin-item-actions .admin-icon-btn {
+.admin-item-actions .admin-icon-btn,
+.admin-item-actions .admin-edit-btn,
+.admin-item-actions .admin-delete-btn {
   width: auto;
   height: auto;
   border: none;
@@ -114,25 +116,24 @@
   backdrop-filter: none;
   border-radius: 0.25rem;
   padding: 0.25rem;
-  opacity: 0.6;
+  color: var(--muted-500);
+  opacity: 1;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
-.admin-item-actions .admin-icon-btn:hover { opacity: 1; background: transparent; }
-.admin-item-actions .admin-icon-btn svg { width: 1.1rem; height: 1.1rem; }
+.admin-item-actions .admin-icon-btn:hover,
+.admin-item-actions .admin-edit-btn:hover,
+.admin-item-actions .admin-delete-btn:hover {
+  color: var(--text-color);
+  background: transparent;
+  opacity: 1;
+}
+.admin-item-actions .admin-icon-btn svg { width: 1.25rem; height: 1.25rem; }
 /* The wrapper itself: in the modal header it's a normal flex child, not absolute. */
 [id$="-modal-admin-actions"] .admin-item-actions {
   position: static;
   top: auto;
   right: auto;
   z-index: auto;
-}
-
-.admin-edit-btn:hover {
-  border-color: rgba(var(--accent-rgb), 0.5);
-  color: rgb(var(--accent-light-rgb));
-}
-.admin-delete-btn:hover {
-  border-color: rgba(224, 70, 95, 0.5);
-  color: #ee8fa0;
 }
 
 /* ----------------------------------------------------------

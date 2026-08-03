@@ -321,8 +321,11 @@
     // instead of appearing out of nowhere.
     const oldSidebarRoot = document.getElementById('sidebar-root');
     const preserveSidebar = !!(oldSidebarRoot && doc.getElementById('sidebar-root'));
-    const oldGlowLayer = document.querySelector(':scope > .glow-layer');
-    const preserveGlow = !!(oldGlowLayer && doc.body.querySelector(':scope > .glow-layer'));
+    const oldMobileHeader = document.querySelector('.kir-app-shell > .lg\\:hidden');
+    const newMobileHeader = doc.querySelector('.kir-app-shell > .lg\\:hidden');
+    const preserveMobileHeader = !!(oldMobileHeader && newMobileHeader);
+    const oldGlowLayer = document.querySelector('.glow-layer');
+    const preserveGlow = !!(oldGlowLayer && doc.querySelector('.glow-layer'));
     const oldModalsRoot = document.getElementById('kir-modals-root');
 
     // For the public marketing shell, detect which persistent elements the two
@@ -363,7 +366,7 @@
     }
 
     let bodySwapped = false;
-    const swapBody = async () => {
+    const swapBody = () => {
       if (bodySwapped) return;
       bodySwapped = true;
 
@@ -390,6 +393,10 @@
         if (newSidebarPlaceholder) newSidebarPlaceholder.replaceWith(doc.adoptNode(oldSidebarRoot));
       }
 
+      if (preserveMobileHeader && oldMobileHeader && newMobileHeader) {
+        newMobileHeader.replaceWith(doc.adoptNode(oldMobileHeader));
+      }
+
       // Remove shell nodes from doc so the fragment loop below skips them —
       // they are already live in the real document and stay exactly where they are.
       if (preserveHeader && newHeaderEl && newHeaderEl.parentNode === doc.body) newHeaderEl.remove();
@@ -397,6 +404,24 @@
         if (el.parentNode === doc.body) el.remove();
       });
 
+      /* ==============================================================
+         Glow Blob Layer Continuity & Transition Mechanics
+         --------------------------------------------------------------
+         EXPECTED MECHANICS:
+         1. index.html: Dark 3D orbit cosmos background. Glow layer has default
+            opacity 0 (hidden via CSS rule: `body:has(#obt-stage-outer) .glow-layer`).
+         2. Subpages (catalog, gallery, work-programs, labs, course, auth, etc.):
+            Ambient glowing background blobs with opacity 1 (`.glow-layer`).
+
+         TRANSITION RULES ON NAVIGATION:
+         - Navigating FROM a subpage WITH glow blobs TO index.html:
+           Dim out the glow layer smoothly over the cosmos stage using `.glow-dim-out` (fade 1 -> 0).
+         - Navigating BETWEEN two subpages WITH glow blobs (e.g. catalog <-> gallery <-> work-programs <-> labs):
+           Preserve the live `.glow-layer` DOM element seamlessly across page swaps
+           WITHOUT re-triggering entrance light-up (`.glow-light-up`) or exit dim-out (`.glow-dim-out`).
+         - Navigating FROM index.html TO a subpage WITH glow blobs:
+           Light up the subpage's glow layer smoothly using `.glow-light-up` (fade 0 -> 1).
+         ============================================================== */
       const isLeavingIndex = !!document.getElementById('obt-stage-outer') ||
         sessionStorage.getItem('kir_just_left_index') === 'true';
 
@@ -404,7 +429,7 @@
         sessionStorage.getItem('kir_just_left_glow_page') === 'true';
 
       if (oldGlowLayer && isTargetingIndex) {
-        // Navigating FROM a subpage WITH glow blobs TO index.html: dim out the glow layer
+        // Rule 1: Navigating FROM a subpage WITH glow blobs TO index.html: dim out the glow layer
         oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
         void oldGlowLayer.offsetWidth;
         oldGlowLayer.classList.add('glow-dim-out');
@@ -412,14 +437,14 @@
         if (targetGlowPlaceholder) targetGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
         else if (doc.getElementById('obt-cosmos')) doc.getElementById('obt-cosmos').prepend(doc.adoptNode(oldGlowLayer));
         else doc.body.prepend(doc.adoptNode(oldGlowLayer));
-      } else if (preserveGlow) {
-        // Navigating between two subpages with glow blobs: preserve old glow layer without re-triggering light-up or dim-out
-        if (oldGlowLayer) oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
-        const newGlowPlaceholder = doc.body.querySelector(':scope > .glow-layer');
+      } else if (preserveGlow && !isLeavingIndex && !isTargetingIndex) {
+        // Rule 2: Navigating between two subpages with glow blobs: preserve old glow layer without re-triggering light-up or dim-out
+        oldGlowLayer.classList.remove('glow-light-up', 'glow-dim-out');
+        const newGlowPlaceholder = doc.querySelector('.glow-layer');
         if (newGlowPlaceholder) newGlowPlaceholder.replaceWith(doc.adoptNode(oldGlowLayer));
       } else {
-        // Navigating FROM index.html TO a subpage WITH glow blobs: light up the glow layer
-        const newGlow = doc.body.querySelector(':scope > .glow-layer');
+        // Rule 3: Navigating FROM index.html TO a subpage WITH glow blobs: light up the glow layer
+        const newGlow = doc.querySelector('.glow-layer');
         if (newGlow) {
           newGlow.classList.remove('glow-light-up', 'glow-dim-out');
           if (isLeavingIndex) {
@@ -532,11 +557,7 @@
       const bodyScripts = Array.from(document.body.querySelectorAll('script'));
       for (const node of bodyScripts) {
         if (node.getAttribute('src')) {
-          if (node.hasAttribute('async') || node.hasAttribute('defer')) {
-            loadExternalAsset(node);
-          } else {
-            await loadExternalAsset(node);
-          }
+          loadExternalAsset(node);
         } else {
           runInlineScript(node.textContent);
         }
@@ -551,12 +572,32 @@
     // rule in style.css) is kept as a fallback ONLY for browsers without
     // startViewTransition (e.g. Firefox, older Safari), where there's no
     // crossfade to mask the swap with anyway.
+    // Immediately close any open mobile sidebar & remove its backdrop without transition
+    // so the old-page snapshot captured by startViewTransition is clean (no black 65% backdrop overlay).
+    if (typeof kirCloseMobileSidebar === 'function') {
+      kirCloseMobileSidebar(true);
+    } else {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-mobile-backdrop');
+      if (sidebar) {
+        sidebar.style.transition = 'none';
+        sidebar.classList.remove('kir-sidebar-open');
+      }
+      if (backdrop) {
+        backdrop.style.transition = 'none';
+        backdrop.classList.remove('visible');
+        backdrop.remove();
+      }
+      void document.body.offsetHeight;
+      if (sidebar) sidebar.style.transition = '';
+    }
+
     if (typeof document.startViewTransition === 'function') {
-      const transition = document.startViewTransition(async () => { await swapBody(); });
+      const transition = document.startViewTransition(() => { swapBody(); });
       try { await transition.finished; } catch (e) { /* interrupted by a newer nav; swap already applied */ }
     } else {
       document.documentElement.classList.add('kir-router-loading');
-      await swapBody();
+      swapBody();
     }
 
     document.documentElement.classList.remove('kir-router-loading');
@@ -576,6 +617,9 @@
           sessionStorage.setItem('kir_just_left_index', 'true');
         } else if (!isCurrentIndex && isDestIndex && document.querySelector('.glow-layer')) {
           sessionStorage.setItem('kir_just_left_glow_page', 'true');
+        } else {
+          sessionStorage.removeItem('kir_just_left_index');
+          sessionStorage.removeItem('kir_just_left_glow_page');
         }
       } catch (err) {}
     }

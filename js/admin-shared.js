@@ -213,13 +213,18 @@ function kirAdminDeleteButtonHtml(onClickExpr, extraAttrs = '') {
   </button>`;
 }
 
-function kirAdminActionsHtml({ onEdit, onDelete, show } = {}) {
+function kirAdminActionsHtml({ onEdit, onDelete, show, closeExpr } = {}) {
   const shouldShow = typeof show === 'boolean' ? show : (typeof kirIsAdmin === 'function' && kirIsAdmin());
-  if (!shouldShow) return '';
-  const editBtn = onEdit ? kirAdminEditButtonHtml(onEdit) : '';
-  const deleteBtn = onDelete ? kirAdminDeleteButtonHtml(onDelete) : '';
-  if (!editBtn && !deleteBtn) return '';
-  return `<div class="admin-item-actions">${editBtn}${deleteBtn}</div>`;
+  const editBtn = (shouldShow && onEdit) ? kirAdminEditButtonHtml(onEdit) : '';
+  const deleteBtn = (shouldShow && onDelete) ? kirAdminDeleteButtonHtml(onDelete) : '';
+  const closeBtn = closeExpr
+    ? `<button type="button" onclick="${closeExpr}" class="admin-modal-close-mobile md:hidden text-zinc-500 hover:text-zinc-300 p-1 transition" aria-label="Tutup" title="Tutup">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>`
+    : '';
+
+  if (!editBtn && !deleteBtn && !closeBtn) return '';
+  return `<div class="admin-item-actions flex items-center gap-1">${editBtn}${deleteBtn}${closeBtn}</div>`;
 }
 
 /* ----------------------------------------------------------

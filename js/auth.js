@@ -725,6 +725,9 @@ function __kirGetScrollbarWidth() {
 }
 
 function __kirFreezeSidebar(freeze) {
+  const isDesktop = typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(min-width: 1024px)').matches;
+  if (!isDesktop) return;
   const sidebar = document.getElementById('sidebar');
   const root = document.getElementById('sidebar-root');
   if (!sidebar || !root) return;
@@ -1137,19 +1140,26 @@ function handleSidebarPositionChange(position) {
   kirSetSidebarPosition(position);
 }
 
-function kirCloseMobileSidebar() {
+function kirCloseMobileSidebar(immediate = false) {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-mobile-backdrop');
-  if (!sidebar || sidebar.classList.contains('hidden')) return;
-  const wasOpen = sidebar.classList.contains('kir-sidebar-open');
-  sidebar.classList.remove('kir-sidebar-open');
-  if (backdrop) backdrop.classList.remove('visible');
-  if (wasOpen) __kirModalLock(-1);
-  setTimeout(() => {
-    if (!sidebar.classList.contains('kir-sidebar-open')) {
-      sidebar.classList.add('hidden');
+  if (!sidebar && !backdrop) return;
+  if (immediate) {
+    if (sidebar) {
+      sidebar.style.transition = 'none';
+      sidebar.classList.remove('kir-sidebar-open');
     }
-  }, 220);
+    if (backdrop) {
+      backdrop.style.transition = 'none';
+      backdrop.classList.remove('visible');
+      backdrop.remove();
+    }
+    void document.body.offsetHeight;
+    if (sidebar) sidebar.style.transition = '';
+    return;
+  }
+  if (sidebar) sidebar.classList.remove('kir-sidebar-open');
+  if (backdrop) backdrop.classList.remove('visible');
 }
 
 function kirToggleMobileSidebar() {
@@ -1171,13 +1181,13 @@ function kirToggleMobileSidebar() {
     return;
   }
 
-  sidebar.classList.remove('hidden');
-  __kirModalLock(1);
+  kirPositionNavPill(false);
   void sidebar.offsetWidth;
   sidebar.classList.add('kir-sidebar-open');
-  document.getElementById('sidebar-mobile-backdrop').classList.add('visible');
+  const backdrop = document.getElementById('sidebar-mobile-backdrop');
+  if (backdrop) backdrop.classList.add('visible');
 
-  setTimeout(() => kirPositionNavPill(false), 280);
+  requestAnimationFrame(() => kirPositionNavPill(false));
 }
 
 function kirSidebarCollapsedClass() {
@@ -1519,7 +1529,10 @@ function kirRenderSidebarNow(activeTab) {
       <div class="modal-split-main kir-profile-main flex flex-col overflow-hidden">
         <div class="w-full flex-1 overflow-y-auto custom-scrollbar relative">
           <!-- Banner -->
-          <div id="kir-profile-banner" class="kir-profile-banner">
+          <div id="kir-profile-banner" class="kir-profile-banner relative">
+            <button onclick="kirCloseProfileModal()" class="md:hidden absolute top-3 right-3 z-20 text-zinc-300 hover:text-white p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 transition" aria-label="Tutup" title="Tutup">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
           <!-- Avatar (centered, overlapping banner/card boundary) -->
           <div class="kir-profile-avatar-ring">
@@ -1567,26 +1580,26 @@ function kirRenderSidebarNow(activeTab) {
           </div>
         </div>
         <!-- Stats row (Fixed to bottom) -->
-        <div class="kir-profile-stats-row w-full shrink-0 border-t border-white/5 pt-5 pb-6 mt-auto mb-0 bg-zinc-900/50 backdrop-blur-md relative z-10 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_joined">Bergabung</p>
-            <p id="kir-profile-modal-createdat" class="text-sm text-zinc-200 mt-0.5">—</p>
+        <div class="kir-profile-stats-row w-full shrink-0 border-t border-white/5 mt-auto mb-0 bg-zinc-900/50 backdrop-blur-md relative z-10 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+          <div class="min-w-0 text-center">
+            <p class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-500 truncate" data-i18n="profile_joined">Bergabung</p>
+            <p id="kir-profile-modal-createdat" class="text-xs sm:text-sm text-zinc-200 mt-0.5 truncate">—</p>
           </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_branch">Cabang</p>
-            <p id="kir-profile-modal-cabang" class="text-sm text-zinc-200 mt-0.5">—</p>
+          <div class="min-w-0 text-center">
+            <p class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-500 truncate" data-i18n="profile_branch">Cabang</p>
+            <p id="kir-profile-modal-cabang" class="text-xs sm:text-sm text-zinc-200 mt-0.5 truncate">—</p>
           </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_role">Peran</p>
-            <div id="kir-profile-modal-role-container" class="mt-0.5">
-              <p id="kir-profile-modal-role" class="text-sm text-zinc-200">—</p>
+          <div class="min-w-0 text-center">
+            <p class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-500 truncate" data-i18n="profile_role">Peran</p>
+            <div id="kir-profile-modal-role-container" class="mt-0.5 min-w-0">
+              <p id="kir-profile-modal-role" class="text-xs sm:text-sm text-zinc-200 truncate">—</p>
             </div>
           </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500" data-i18n="profile_delta">Delta</p>
-            <div class="flex items-center justify-center gap-1 mt-0.5">
-              <svg class="w-3.5 h-3.5 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
-              <p id="kir-profile-modal-deltas" class="text-sm font-semibold font-display text-zinc-200">—</p>
+          <div class="min-w-0 text-center">
+            <p class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-500 truncate" data-i18n="profile_delta">Delta</p>
+            <div class="flex items-center justify-center gap-1 mt-0.5 min-w-0">
+              <svg class="w-3.5 h-3.5 text-accent-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5l8.5 15h-17z" /></svg>
+              <p id="kir-profile-modal-deltas" class="text-xs sm:text-sm font-semibold font-display text-zinc-200 truncate">—</p>
             </div>
           </div>
         </div>
@@ -1732,22 +1745,22 @@ function kirPositionNavPill(animate) {
     return;
   }
   
-  const containerRect = navScroll.getBoundingClientRect();
-  
   if (!animate) {
     pill.style.transition = 'none';
   }
 
-  const activeRect = active.getBoundingClientRect();
-  pill.style.top = (activeRect.top - containerRect.top + navScroll.scrollTop) + 'px';
-  pill.style.left = (activeRect.left - containerRect.left + navScroll.scrollLeft) + 'px';
-  pill.style.width = activeRect.width + 'px';
-  pill.style.height = activeRect.height + 'px';
+  pill.style.top = active.offsetTop + 'px';
+  pill.style.left = active.offsetLeft + 'px';
+  pill.style.width = active.offsetWidth + 'px';
+  pill.style.height = active.offsetHeight + 'px';
   pill.style.opacity = '1';
 
   if (!animate) {
-    void pill.offsetHeight;
-    pill.style.transition = '';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        pill.style.transition = '';
+      });
+    });
   }
 }
 
@@ -2759,7 +2772,7 @@ async function kirRenderCommentSection(containerId, scope, itemId, closeCallback
   }
 
   const closeBtnHtml = closeFn
-    ? `<button onclick="${closeFn}" class="text-zinc-500 hover:text-zinc-300 p-1 -mr-1 transition" aria-label="Tutup">
+    ? `<button onclick="${closeFn}" class="kir-modal-close-desktop hidden md:block text-zinc-500 hover:text-zinc-300 p-1 -mr-1 transition" aria-label="Tutup" title="Tutup">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>`
     : '';
