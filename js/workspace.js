@@ -1812,6 +1812,15 @@
     r.currentIndex = i;
     r.completion = r.completionByVoyageId.get(r.voyages[i].id) || null;
     renderCourseVoyageModal();
+
+    // Scroll back to top for both regular modal and Flag column layouts
+    const cvmModal = document.getElementById('cvm-modal');
+    if (cvmModal) {
+      const card = cvmModal.querySelector('.modal-card');
+      if (card) card.scrollTop = 0;
+      const qCol = cvmModal.querySelector('.cvm-question-col');
+      if (qCol) qCol.scrollTop = 0;
+    }
   }
 
   function selectCourseVoyageMcOption(i) {
