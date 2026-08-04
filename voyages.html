@@ -1117,6 +1117,9 @@
           <span class="voyage-option-dot"></span>
           <span class="kir-markdown">${kirRenderVoyageMarkdown(v.options[origIdx])}</span>
         </div>`).join('');
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([document.getElementById('vm-mc-options')]);
+      }
     }
     if (v.type === 'dropdown') {
       const order = kirShuffledOptionOrder(v.id, v.options.length);
@@ -2442,9 +2445,26 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
     if (isProtectedTarget(e.target)) e.preventDefault();
   });
 
-  window.addEventListener('blur', () => {
-    if (currentVoyageId && document.getElementById('voyage-modal').classList.contains('modal-open')) {
-      telemetryData.tab_switch_count++;
+  let lastVoyageTabSwitchTime = 0;
+  function handleVoyageTabSwitchDetection() {
+    const modal = document.getElementById('voyage-modal');
+    if (!currentVoyageId || !modal || !modal.classList.contains('modal-open')) return;
+
+    const now = Date.now();
+    if (now - lastVoyageTabSwitchTime < 1200) return;
+    lastVoyageTabSwitchTime = now;
+
+    telemetryData.tab_switch_count++;
+    const count = telemetryData.tab_switch_count;
+    if (typeof kirAdminToast === 'function') {
+      kirAdminToast(`Peringatan #${count}: Terdeteksi beralih tab / Alt-Tab!`, 'error');
+    }
+  }
+
+  window.addEventListener('blur', handleVoyageTabSwitchDetection);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      handleVoyageTabSwitchDetection();
     }
   });
 </script>

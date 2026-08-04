@@ -63,7 +63,7 @@
     :not([aria-disabled="true"]) below. The :not() guards never fire for
     plain non-form elements, so they're a no-op there and only matter for
     real disableable controls. */
-  [onclick]:not(:disabled):not([aria-disabled="true"]),
+  [onclick]:not(:disabled):not([aria-disabled="true"]):not(.modal-overlay):not(.cmm-viewer-stage),
   [role="button"]:not(:disabled):not([aria-disabled="true"]),
   button:not(:disabled),
   a[href],
@@ -75,14 +75,45 @@
     cursor: pointer;
   }
 
-  /* Reset cursor for non-interactive elements inside modals */
+  /* Reset cursor for non-interactive elements inside modals & material viewer */
+  .modal-overlay,
+  .cmm-viewer,
+  .cmm-viewer-card,
+  .cmm-viewer-stage,
+  .cmm-viewer-page,
+  .cmm-viewer-page-inner {
+    cursor: default;
+  }
   .modal-card > div:not([onclick]):not([role="button"]):not(button):not(a):not(select):not(label):not(input),
   .modal-card p:not([onclick]):not([role="button"]),
   .modal-card h1:not([onclick]):not([role="button"]),
   .modal-card h2:not([onclick]):not([role="button"]),
   .modal-card h3:not([onclick]):not([role="button"]),
-  .modal-card span:not([onclick]):not([role="button"]):not(button):not(a) {
-    cursor: default;
+  .modal-card span:not([onclick]):not([role="button"]):not(button):not(a),
+  .cmm-viewer-page p,
+  .cmm-viewer-page span,
+  .cmm-viewer-page div,
+  .cmm-viewer-page h1,
+  .cmm-viewer-page h2,
+  .cmm-viewer-page h3,
+  .cmm-viewer-page h4,
+  .cmm-viewer-page h5,
+  .cmm-viewer-page h6,
+  .cmm-viewer-page li,
+  .cmm-viewer-page blockquote,
+  .cmm-viewer-page code,
+  .cmm-viewer-page pre,
+  .cmm-viewer-page td,
+  .cmm-viewer-page th {
+    cursor: auto;
+  }
+  .cmm-viewer-page button,
+  .cmm-viewer-page a[href],
+  .cmm-viewer-page [role="button"],
+  .cmm-viewer-page select,
+  .cmm-viewer-page label[for],
+  .cmm-viewer-page input {
+    cursor: pointer;
   }
 
 
@@ -2552,10 +2583,23 @@
   }
 
   .voyage-option {
-    display: flex; align-items: center; gap: 0.65rem;
+    display: flex; align-items: flex-start; gap: 0.65rem;
     border: 1px solid var(--glass-border); background: var(--glass-input-bg);
     border-radius: 0.7rem; padding: 0.7rem 0.9rem; cursor: pointer;
     font-size: 0.85rem; transition: all 0.15s ease;
+  }
+  .voyage-option .kir-markdown {
+    flex: 1;
+    line-height: 1.6;
+  }
+  .voyage-option .kir-markdown mjx-container {
+    display: inline-block;
+    margin: 0.25rem 0;
+  }
+  .voyage-option .kir-markdown mjx-container[jax="CHTML"][display="true"] {
+    display: block;
+    margin: 0.5rem 0;
+    overflow-x: auto;
   }
   .voyage-option:hover { background: rgba(128,128,128,0.1); }
   .voyage-option.selected {
@@ -3511,23 +3555,77 @@
   .kir-markdown h3 { font-size: 1.05em; }
   .kir-markdown h4 { font-size: 1em; }
   .kir-markdown a { color: rgb(var(--accent-rgb)); text-decoration: underline; text-underline-offset: 2px; }
+  /* Discord Dark Theme Code Blocks & Syntax Colors */
   .kir-markdown code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace;
     font-size: 0.88em;
-    background: rgba(128, 128, 128, 0.14);
-    border: 1px solid var(--glass-border);
-    border-radius: 0.3rem;
-    padding: 0.1em 0.35em;
+    background: #2b2d31;
+    color: #dbdee1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    padding: 0.15em 0.4em;
   }
   .kir-markdown pre {
-    background: rgba(128, 128, 128, 0.1);
-    border: 1px solid var(--glass-border);
-    border-radius: 0.6rem;
-    padding: 0.75em 0.9em;
-    margin: 0.6em 0;
-    overflow-x: auto;
+    background: #1e1f22 !important;
+    border: 1px solid #2b2d31 !important;
+    border-radius: 8px !important;
+    padding: 1.1rem 1.2rem !important;
+    margin: 0.9em 0 !important;
+    position: relative !important;
+    overflow-x: auto !important;
+    font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace !important;
+    font-size: 0.9em !important;
+    line-height: 1.55 !important;
+    color: #dbdee1 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
   }
-  .kir-markdown pre code { background: none; border: none; padding: 0; }
+  .code-lang-badge {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #949ba4;
+    user-select: none;
+    pointer-events: none;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .kir-markdown pre code {
+    background: transparent !important;
+    color: #dbdee1 !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 1em !important;
+  }
+
+  /* Discord Theme Token Colors */
+  .hljs-keyword, .hljs-meta, .hljs-selector-tag, .hljs-keyword-discord {
+    color: #f47067 !important; /* Discord Pink/Red Keyword */
+    font-weight: 600 !important;
+  }
+  .hljs-built_in, .hljs-type, .hljs-symbol, .hljs-type-discord {
+    color: #79c0ff !important; /* Discord Light Blue Type */
+    font-weight: 500 !important;
+  }
+  .hljs-title, .hljs-title.function_, .hljs-function, .hljs-fn-discord {
+    color: #d2a8ff !important; /* Discord Soft Purple Function */
+    font-weight: 600 !important;
+  }
+  .hljs-string, .hljs-char, .hljs-string-discord {
+    color: #a5d6ff !important; /* Discord Light Sky Blue String */
+  }
+  .hljs-number, .hljs-literal, .hljs-number-discord {
+    color: #79c0ff !important; /* Discord Number Cyan */
+  }
+  .hljs-comment, .hljs-quote, .hljs-comment-discord {
+    color: #8b949e !important; /* Discord Comment Muted Gray */
+    font-style: italic !important;
+  }
+  .hljs-operator, .hljs-punctuation, .hljs-op-discord {
+    color: #c9d1d9 !important;
+  }
   .kir-markdown blockquote {
     margin: 0.6em 0;
     padding: 0.3em 0.9em;
@@ -3543,7 +3641,9 @@
   /* Line-clamped previews (voyage card question snippet): markdown
     can add block tags, so make sure nested elements stay inline
     for the clamp to actually clamp instead of just clipping the
-    first block and leaving the rest visible.
+    first block and leaving the rest visible. Table-like content
+    such as rendered matrices needs to keep its table semantics,
+    so those elements are left alone.
 
     MathJax's own output (mjx-container and everything inside it) is
     excluded via :not() rather than overridden afterwards. MathJax
@@ -3556,7 +3656,7 @@
     from our selector means our rule never applies to them at all, so
     MathJax's real stylesheet cascades normally, uncontested. */
   .kir-markdown-clamp,
-  .kir-markdown-clamp *:not(mjx-container, mjx-container *) { display: inline; }
+  .kir-markdown-clamp *:not(mjx-container, mjx-container *, table, thead, tbody, tfoot, tr, th, td, caption, colgroup, col) { display: inline; }
 
   /* Create a cutout halo effect around diagram text to prevent line overlap. */
   .kir-diagram text {

@@ -82,7 +82,16 @@
 
   function kirRenderCourseMarkdown(raw) {
     if (raw === null || raw === undefined) return '';
-    const text = kirMathtextBreaksToNewlines(String(raw));
+    let text = kirMathtextBreaksToNewlines(String(raw));
+    
+    // Auto-wrap LaTeX environments (like \begin{bmatrix}...\end{bmatrix}) with $$ delimiters
+    // so MathJax processes them as display math. Also converts $...$ to $$...$$ for matrices.
+    text = text.replace(/\$?\\begin\{([a-z]*)\}[\s\S]*?\\end\{\1\}\$?/gi, (match) => {
+      // Always wrap with $$...$$ for block display, removing any existing $ delimiters
+      let content = match.replace(/^\$|\$$/g, ''); // Remove leading/trailing single $
+      return `$$${content}$$`;
+    });
+    
     if (!window.marked) return kirEscapeHtml(text);
 
     const mathBlocks = [];
@@ -97,7 +106,13 @@
     let html = marked.parse(protectedText);
     html = html.replace(/\u0000MATH(\d+)\u0000/g, (_, i) => mathBlocks[Number(i)]);
 
-    return window.DOMPurify ? DOMPurify.sanitize(html) : html;
+    if (window.DOMPurify) {
+      return DOMPurify.sanitize(html, {
+        ADD_TAGS: ['mjx-container', 'mjx-assistive-mml', 'mjx-math', 'mjx-mspace', 'mjx-mn', 'mjx-mo', 'mjx-mtext', 'mjx-mi', 'mjx-c'],
+        ADD_ATTR: ['display', 'style', 'width', 'height', 'xmlns', 'data-mml-node']
+      });
+    }
+    return html;
   }
 
   // Re-typesets MathJax within a given element (or the whole document
@@ -108,6 +123,76 @@
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise(el ? [el] : undefined);
     }
+  }
+
+  function kirFallbackSyntaxHighlight(codeBlock) {
+    if (!codeBlock || codeBlock.dataset.highlighted) return;
+    let code = codeBlock.textContent;
+
+    const tokens = [];
+    const stash = (text, cls) => {
+      tokens.push({ text, cls });
+      return `\u0000TOK${tokens.length - 1}\u0000`;
+    };
+
+    // 1. Comments
+    code = code.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, (m) => stash(m, 'hljs-comment-discord'));
+
+    // 2. Strings
+    code = code.replace(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, (m) => stash(m, 'hljs-string-discord'));
+
+    // Escaped HTML
+    code = kirEscapeHtml(code);
+
+    // 3. Keywords & Preprocessor Directives
+    const keywords = [
+      '#include', '#define', '#ifndef', '#endif', 'int', 'double', 'float', 'char', 'bool', 'void',
+      'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'const',
+      'struct', 'class', 'public', 'private', 'using', 'namespace', 'function', 'let', 'var',
+      'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'JOIN', 'def', 'import', 'from'
+    ];
+    const kwRegex = new RegExp(`\\b(${keywords.map(k => k.replace('#', '\\#')).join('|')})\\b`, 'g');
+    code = code.replace(kwRegex, '<span class="hljs-keyword-discord">$1</span>');
+
+    // 4. Built-in Types & Special Constants
+    const builtins = ['std', 'cout', 'cin', 'endl', 'string', 'vector', 'Serial', 'pinMode', 'digitalWrite', 'delay', 'HIGH', 'LOW', 'OUTPUT', 'INPUT', 'true', 'false', 'NULL'];
+    const builtinRegex = new RegExp(`\\b(${builtins.join('|')})\\b`, 'g');
+    code = code.replace(builtinRegex, '<span class="hljs-type-discord">$1</span>');
+
+    // 5. Function Calls
+    code = code.replace(/\b([a-zA-Z_]\w*)(?=\s*\()/g, '<span class="hljs-fn-discord">$1</span>');
+
+    // 6. Numbers
+    code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="hljs-number-discord">$1</span>');
+
+    // Unstash strings and comments
+    code = code.replace(/\u0000TOK(\d+)\u0000/g, (_, i) => {
+      const t = tokens[Number(i)];
+      return `<span class="${t.cls}">${kirEscapeHtml(t.text)}</span>`;
+    });
+
+    codeBlock.innerHTML = code;
+    codeBlock.dataset.highlighted = 'true';
+  }
+
+  function kirHighlightCourseCode(container) {
+    if (!container) return;
+    container.querySelectorAll('pre code').forEach((codeBlock) => {
+      const pre = codeBlock.parentElement;
+      if (pre && !pre.querySelector('.code-lang-badge')) {
+        const match = codeBlock.className.match(/language-([a-zA-Z0-9_+-]+)/);
+        const lang = match ? match[1].toLowerCase() : 'code';
+        const badge = document.createElement('div');
+        badge.className = 'code-lang-badge';
+        badge.textContent = (lang === 'cpp' || lang === 'c++') ? 'C++' : lang.toUpperCase();
+        pre.insertBefore(badge, codeBlock);
+      }
+      if (window.hljs) {
+        window.hljs.highlightElement(codeBlock);
+      } else {
+        kirFallbackSyntaxHighlight(codeBlock);
+      }
+    });
   }
 
   /* ----------------------------------------------------------
@@ -1301,6 +1386,7 @@
       requestAnimationFrame(() => {
         sizeCourseCanvas();
         drawCourseConnectors();
+        centerCanvas();
       });
     });
   }
@@ -1544,13 +1630,63 @@
     courseTelemetryData = { paste_count: 0, tab_switch_count: 0, untrusted_input_count: 0, time_spent_ms: 0 };
     kirRenderCourseEssayMathEditor();
     renderCourseVoyageModal();
+
+    hideCourseWarningBanner();
+    if (node.type === 'flag') {
+      requestCourseFullscreen();
+      showCourseWarningBanner('Mode Layar Penuh diaktifkan untuk pengerjaan Flag. Perpindahan tab (Alt-Tab) terdeteksi & dicatat.');
+    }
+
     kirLocalModalShow(document.getElementById('cvm-modal'));
   }
 
+  function requestCourseFullscreen() {
+    const vp = document.getElementById('chart-viewport') || document.documentElement;
+    if (!document.fullscreenElement) {
+      (vp.requestFullscreen || vp.webkitRequestFullscreen)?.call(vp).catch((err) => {
+        console.warn('Could not enter fullscreen:', err);
+      });
+    }
+  }
+
+  function showCourseWarningBanner(msg, showFullscreenAction = false) {
+    const banner = document.getElementById('cvm-warning-banner');
+    const textEl = document.getElementById('cvm-warning-text');
+    const actionBtn = document.getElementById('cvm-warning-action');
+    if (!banner || !textEl) return;
+
+    textEl.textContent = msg;
+    if (actionBtn) {
+      actionBtn.classList.toggle('hidden', !showFullscreenAction);
+    }
+    banner.classList.remove('hidden');
+  }
+
+  function hideCourseWarningBanner() {
+    const banner = document.getElementById('cvm-warning-banner');
+    if (banner) banner.classList.add('hidden');
+  }
+
   function closeCourseVoyageModal() {
+    hideCourseWarningBanner();
     kirLocalModalHide(document.getElementById('cvm-modal'));
     COURSE_VOYAGE_RUNNER = null;
     courseVoyageOpenedAt = null;
+    requestAnimationFrame(() => centerCanvas());
+  }
+
+  function isCourseQuestionAnswered(r, index) {
+    if (!r || index < 0 || index >= r.voyages.length) return false;
+    const v = r.voyages[index];
+    if (!v) return false;
+    if (v.type === 'programming') return true;
+    if (v.type === 'essay') {
+      const ans = r.answers[index];
+      if (ans && typeof ans === 'string' && ans.trim().length > 0) return true;
+      return courseVoyageIsDone(r.completionByVoyageId.get(v.id), 'essay');
+    }
+    const a = r.answers[index];
+    return a !== null && a !== undefined && a !== '';
   }
 
   function renderCourseVoyageModal() {
@@ -1565,27 +1701,20 @@
     document.getElementById('cvm-progress').textContent = `${r.currentIndex + 1} / ${r.voyages.length}`;
     document.getElementById('cvm-question').innerHTML = kirRenderCourseMarkdown(v.question);
 
-    // Subject/difficulty/type badge row used to render here — moved out
-    // of the modal entirely. Difficulty now shows as a rating pill on the
-    // node's card footer instead (see courseCardFooterHtml), and subject/
-    // type aren't shown anywhere in the runner anymore.
-
     ['mc', 'dropdown', 'essay', 'programming'].forEach(t => {
       document.getElementById(`cvm-${t}-wrap`).classList.toggle('hidden', v.type !== t);
     });
     document.getElementById('cvm-feedback').classList.add('hidden');
-    // cvm-submit-btn's existence/visibility/label/disabled-state is now
-    // fully owned by renderCourseVoyageFooter() below, since the button
-    // itself is only ever rendered into the DOM on the last question.
 
     if (v.type === 'mc') {
       const order = kirShuffledOptionOrder(v.id, v.options.length);
       const wrap = document.getElementById('cvm-mc-options');
-      wrap.innerHTML = order.map((origIdx, pos) => `
-        <button type="button" class="voyage-option w-full text-left flex items-center gap-3" data-orig-idx="${origIdx}" onclick="selectCourseVoyageMcOption(${origIdx})">
+      wrap.innerHTML = order.map((origIdx) => `
+        <button type="button" class="voyage-option w-full text-left flex items-center gap-3 ${r.selectedMcIndex === origIdx ? 'selected' : ''}" data-orig-idx="${origIdx}" onclick="selectCourseVoyageMcOption(${origIdx})">
           <span class="voyage-option-dot"></span>
           <span class="kir-markdown">${kirRenderCourseMarkdown(v.options[origIdx])}</span>
         </button>`).join('');
+      kirTypesetCourseMath(wrap);
     } else if (v.type === 'dropdown') {
       const order = kirShuffledOptionOrder(v.id, v.options.length);
       const select = document.getElementById('cvm-dropdown-select');
@@ -1595,37 +1724,41 @@
       select.onchange = () => {
         r.answers[r.currentIndex] = select.value === '' ? null : parseInt(select.value, 10);
         renderCourseVoyageNavGrid();
+        renderCourseVoyageFooter();
       };
       if (typeof kirRefreshCustomSelect === 'function') kirRefreshCustomSelect('cvm-dropdown-select');
     } else if (v.type === 'essay') {
-      // kirRichEditorSetValue re-parses the raw stored value straight
-      // into rendered chips on the surface, same as voyages.html.
-      kirRichEditorSetValue('cvm-essay-textarea', (r.completion && r.completion.essay_answer) ? r.completion.essay_answer : '');
-      // Lock the answer in only once a submission has actually scored a
-      // perfect 100, same rule voyages.html uses — otherwise leave it
-      // editable so the score can still be improved with another attempt.
+      const savedEssay = (r.answers[r.currentIndex] !== undefined && r.answers[r.currentIndex] !== null)
+        ? r.answers[r.currentIndex]
+        : ((r.completion && r.completion.essay_answer) ? r.completion.essay_answer : '');
+      kirRichEditorSetValue('cvm-essay-textarea', savedEssay);
       kirRichEditorSetDisabled('cvm-essay-textarea', !!(r.completion && r.completion.essay_score === 100));
+
+      const essayInput = document.getElementById('cvm-essay-textarea');
+      if (essayInput) {
+        essayInput.oninput = () => {
+          r.answers[r.currentIndex] = essayInput.value;
+          renderCourseVoyageNavGrid();
+          renderCourseVoyageFooter();
+        };
+      }
     } else if (v.type === 'programming') {
       document.getElementById('cvm-programming-link').href = `voyages.html?voyage=${encodeURIComponent(v.id)}`;
     }
 
     renderCourseVoyageNavGrid();
     renderCourseVoyageFooter();
+    kirHighlightCourseCode(document.getElementById('cvm-modal'));
     kirRenderCourseDiagrams(document.getElementById('cvm-modal'));
     kirTypesetCourseMath(document.getElementById('cvm-modal'));
   }
 
-  // Question-number navigator. Was a static single cell when a voyage
-  // was always exactly one question; now one cell per voyage in the
-  // group, clickable to jump directly to that question, with the
-  // active one highlighted and answered-but-not-active ones marked so
-  // progress through the set is visible at a glance.
   function renderCourseVoyageNavGrid() {
     const r = COURSE_VOYAGE_RUNNER;
     const grid = document.querySelector('.cvm-nav-grid');
     grid.innerHTML = r.voyages.map((_, i) => {
       const isActive = i === r.currentIndex;
-      const isAnswered = r.answers[i] !== null && r.answers[i] !== undefined && r.answers[i] !== '';
+      const isAnswered = isCourseQuestionAnswered(r, i);
       const cls = isActive
         ? 'cvm-nav-cell cvm-nav-cell-active bg-accent-gradient text-white'
         : isAnswered
@@ -1635,31 +1768,44 @@
     }).join('');
   }
 
-  // "Sebelumnya"/"Selanjutnya" walk currentIndex back and forth; the
-  // submit button only appears on the last question in the group, since
-  // submission sends the whole answers[] array at once (see
-  // submitCourseVoyageAnswer) rather than per-question.
   function renderCourseVoyageFooter() {
     const r = COURSE_VOYAGE_RUNNER;
     const isFirst = r.currentIndex === 0;
     const isLast = r.currentIndex === r.voyages.length - 1;
     const v = r.voyages[r.currentIndex];
+    const currentAnswered = isCourseQuestionAnswered(r, r.currentIndex);
+    const allAnswered = r.voyages.every((_, idx) => isCourseQuestionAnswered(r, idx));
 
     const footer = document.querySelector('.cvm-footer');
     const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
     footer.innerHTML = `
       <button type="button" class="min-w-[7rem] px-4 py-2.5 rounded-lg font-semibold text-sm text-center bg-white/5 hover:bg-white/10 transition disabled:opacity-40 disabled:cursor-not-allowed" ${isFirst ? 'disabled' : ''} onclick="courseVoyageGoToIndex(${r.currentIndex - 1})">${kirEscapeHtml(I18N[lang].voyages_prev || 'Sebelumnya')}</button>
       ${isLast
-        ? (v.type === 'programming' ? '' : `<button id="cvm-submit-btn" onclick="submitCourseVoyageAnswer()" class="min-w-[9.5rem] px-5 py-2.5 rounded-lg font-semibold text-sm text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">${kirEscapeHtml(I18N[lang].voyages_submit || 'Kirim Jawaban')}</button>`)
-        : `<button type="button" class="min-w-[7rem] px-4 py-2.5 rounded-lg font-semibold text-sm text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition" onclick="courseVoyageGoToIndex(${r.currentIndex + 1})">${kirEscapeHtml(I18N[lang].voyages_next || 'Selanjutnya')}</button>`
+        ? (v.type === 'programming' ? '' : `<button id="cvm-submit-btn" onclick="submitCourseVoyageAnswer()" class="min-w-[9.5rem] px-5 py-2.5 rounded-lg font-semibold text-sm text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition disabled:opacity-40 disabled:cursor-not-allowed" ${!allAnswered ? 'disabled' : ''}>${kirEscapeHtml(I18N[lang].voyages_submit || 'Kirim Jawaban')}</button>`)
+        : `<button type="button" class="min-w-[7rem] px-4 py-2.5 rounded-lg font-semibold text-sm text-white text-center bg-accent-gradient hover:brightness-110 shadow-glow-sm transition disabled:opacity-40 disabled:cursor-not-allowed" ${!currentAnswered ? 'disabled' : ''} onclick="courseVoyageGoToIndex(${r.currentIndex + 1})">${kirEscapeHtml(I18N[lang].voyages_next || 'Selanjutnya')}</button>`
       }`;
   }
 
-  // Shared jump target for both nav-grid cells and the prev/next
-  // buttons — just moves the cursor and re-renders.
   function courseVoyageGoToIndex(i) {
     const r = COURSE_VOYAGE_RUNNER;
     if (!r || i < 0 || i >= r.voyages.length) return;
+
+    // Block advancing forward if current or any intermediate question is unanswered
+    if (i > r.currentIndex) {
+      for (let k = r.currentIndex; k < i; k++) {
+        if (!isCourseQuestionAnswered(r, k)) {
+          const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
+          const feedback = document.getElementById('cvm-feedback');
+          if (feedback) {
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-amber-400 border border-amber-500/20';
+            feedback.textContent = I18N[lang].course_feedback_incomplete || 'Jawab soal ini terlebih dahulu sebelum melanjutkannya.';
+          }
+          return;
+        }
+      }
+    }
+
     r.currentIndex = i;
     r.completion = r.completionByVoyageId.get(r.voyages[i].id) || null;
     renderCourseVoyageModal();
@@ -1672,34 +1818,24 @@
     document.querySelectorAll('#cvm-mc-options .voyage-option').forEach(el => {
       el.classList.toggle('selected', parseInt(el.dataset.origIdx, 10) === i);
     });
-    renderCourseVoyageNavGrid(); // reflect the newly-answered state in the palette
+    renderCourseVoyageNavGrid();
+    renderCourseVoyageFooter();
   }
 
   async function submitCourseVoyageAnswer() {
     const r = COURSE_VOYAGE_RUNNER;
     if (!r) return;
 
-    // Submission only fires from the last question (see renderCourseVoyageFooter),
-    // but guard here too in case of a stray call, and make sure every
-    // question in the group actually has an answer before sending anything.
-    // Essay questions don't live in r.answers (they're submitted individually,
-    // as soon as the member hits "Kirim Jawaban" on that question — see the
-    // essay branch below), so those are considered answered once a
-    // voyage_completions row exists for them instead. Programming questions
-    // are graded entirely on voyages.html and never block this modal's submit.
-    const emptyIndex = r.voyages.findIndex((voyage, i) => {
-      if (voyage.type === 'essay') return !courseVoyageIsDone(r.completionByVoyageId.get(voyage.id), 'essay');
-      if (voyage.type === 'programming') return false;
-      const a = r.answers[i];
-      return a === null || a === undefined || a === '';
-    });
+    const emptyIndex = r.voyages.findIndex((_, i) => !isCourseQuestionAnswered(r, i));
     if (emptyIndex !== -1) {
       const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
       courseVoyageGoToIndex(emptyIndex);
       const feedback = document.getElementById('cvm-feedback');
-      feedback.classList.remove('hidden');
-      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400';
-      feedback.textContent = I18N[lang].course_feedback_incomplete || 'Jawab semua soal dulu sebelum mengirim.';
+      if (feedback) {
+        feedback.classList.remove('hidden');
+        feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-amber-400 border border-amber-500/20';
+        feedback.textContent = I18N[lang].course_feedback_incomplete || 'Jawab semua soal terlebih dahulu sebelum mengirim.';
+      }
       return;
     }
 
@@ -1792,50 +1928,29 @@
       return;
     }
 
-    // The RPC returns one row per submitted answer, each carrying its own
-    // voyage_id — match results back to voyages.html by id rather than
-    // trusting row order, since PostgREST doesn't guarantee a set-returning
-    // function's output order is preserved end-to-end.
     const results = Array.isArray(data) ? data : [data];
     const resultByVoyageId = new Map(results.filter(Boolean).map(res => [res.voyage_id, res]));
-    const allCorrect = payload.every(({ voyage_id }) => !!resultByVoyageId.get(voyage_id)?.is_correct);
+    const correctCount = payload.filter(({ voyage_id }) => !!resultByVoyageId.get(voyage_id)?.is_correct).length;
+    const totalCount = payload.length;
     const totalReward = payload.reduce((sum, { voyage_id }) => sum + (resultByVoyageId.get(voyage_id)?.reward || 0), 0);
 
-    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
     feedback.classList.remove('hidden');
-    if (allCorrect) {
-      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200';
-      feedback.textContent = `${I18N[lang].voyages_correct || 'Benar!'}${totalReward > 0 ? ` +${totalReward} deltas` : ''}`;
-      courseVoyageFinishAfterSubmit();
-    } else {
-      // At least one question in the set was wrong — leave the whole group
-      // open for another attempt rather than partially advancing, and jump
-      // to the first wrong one so it's obvious what to fix.
-      const firstWrong = payload.find(({ voyage_id }) => !resultByVoyageId.get(voyage_id)?.is_correct);
-      feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-white/5 text-zinc-400';
-      feedback.textContent = I18N[lang].course_feedback_incorrect || 'Ada jawaban yang belum tepat, coba lagi.';
-      submitBtn.disabled = false;
-      if (firstWrong) {
-        const wrongIndex = r.voyages.findIndex(voyage => voyage.id === firstWrong.voyage_id);
-        if (wrongIndex !== -1) courseVoyageGoToIndex(wrongIndex);
-      }
-    }
+    feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200 border border-accent-20';
+    feedback.textContent = `Skor: ${correctCount}/${totalCount} benar${totalReward > 0 ? ` (+${totalReward} deltas)` : ''}`;
+    
+    courseVoyageFinishAfterSubmit();
   }
 
-  // A correct/submitted answer is the only voyage on this node, so the
-  // node itself is done — close the modal and advance it after a short
-  // beat so the feedback message is actually readable first.
+  // A submitted answer completes the node — close the modal and advance after
+  // a short beat so the score feedback message is readable first.
   function courseVoyageFinishAfterSubmit() {
-    // check_voyage_answer(s)/grade-essay already updated deltas_total
-    // server-side by this point (see courseSyncDeltasHeader's comment) —
-    // fire-and-forget so it doesn't hold up the modal's close/advance beat.
     courseSyncDeltasHeader();
 
     const nodeId = COURSE_VOYAGE_RUNNER ? COURSE_VOYAGE_RUNNER.nodeId : null;
     setTimeout(() => {
       closeCourseVoyageModal();
       if (nodeId) courseFinishNodeById(nodeId);
-    }, 700);
+    }, 1800);
   }
 
   // Shared completion path: required main-chain nodes advance the course
@@ -1988,6 +2103,7 @@
     const nativeVideo = document.getElementById('cmm-video-native');
     if (nativeVideo) nativeVideo.pause();
     COURSE_MATERIAL_RUNNER = null;
+    requestAnimationFrame(() => centerCanvas());
   }
 
   // YouTube/Vimeo links need converting to their /embed form to work inside
@@ -2065,8 +2181,10 @@
     finishBtn.setAttribute('aria-label', finishLabel);
 
     if (m.content_type === 'text' && m.text_content) {
-      document.getElementById('cmm-text-body').innerHTML = kirRenderCourseMarkdown(m.text_content);
+      const textBody = document.getElementById('cmm-text-body');
+      textBody.innerHTML = kirRenderCourseMarkdown(m.text_content);
       document.getElementById('cmm-text-wrap').classList.remove('hidden');
+      kirHighlightCourseCode(textBody);
     } else if (m.content_type === 'document' && m.document_url) {
       document.getElementById('cmm-document-frame').src = m.document_url;
       document.getElementById('cmm-document-wrap').classList.remove('hidden');
@@ -2303,7 +2421,7 @@
      its stats/progress footer — everything else shares a common
      width. Layout math below reads widths from here rather than a
      single constant so spacing stays correct either way. */
-  const COURSE_NODE_WIDTHS = { course: 300, module: 250, material: 240, voyage_group: 270, flag: 240, default: 240 };
+  const COURSE_NODE_WIDTHS = { course: 300, module: 250, material: 240, voyage_group: 270, voyage: 270, flag: 270, default: 240 };
   function courseNodeWidth(node) {
     return COURSE_NODE_WIDTHS[node.type] || COURSE_NODE_WIDTHS.default;
   }
@@ -2641,17 +2759,9 @@
       : isCompleted
         ? `<span class="course-node-status-icon" style="background:rgba(148,163,184,0.14); color:rgba(203,213,225,0.85);" title="Selesai">${COURSE_ICON_CHECK}</span>`
         : '';
-    // Locked nodes get a full opaque-blur overlay instead of their
-    // real header/thumb/body/footer — title, description, duration,
-    // team info, all of it stays hidden until the node unlocks. The
-    // real content still renders underneath (so layout/measurement —
-    // sizeCourseCanvas, drawCourseConnectors — sees a normal card), the
-    // overlay just visually replaces it.
-    // A node that just unlocked (this render only) still gets the
-    // overlay markup, but with a one-shot fade-out animation class —
-    // the real unlocked content is already sitting underneath (see
-    // above), so this purely animates the censor melting away instead
-    // of it just vanishing between one render and the next.
+    // Locked nodes get a full solid opaque overlay hiding their
+    // title, description, duration, and content until unlocked —
+    // using 0 blur for maximum rendering performance on large graphs.
     const justUnlocked = !isLocked && COURSE_ANIM_UNLOCK_IDS.has(node.id);
     const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
     const lockOverlay = isLocked
@@ -3082,14 +3192,35 @@
     applyTransform();
   }
 
-  function centerCanvas() {
+  function centerCanvas(targetNodeId = null) {
     const viewport = document.getElementById('chart-viewport');
     const canvas = document.getElementById('chart-canvas');
+    if (!viewport || !canvas) return;
     scale = 1;
     const vw = viewport.clientWidth, vh = viewport.clientHeight;
     const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
-    panX = Math.max(16, (vw - cw) / 2);
-    panY = Math.max(16, (vh - ch) / 2);
+
+    const nodeId = targetNodeId || COURSE_CURRENT_NODE_ID;
+    let targetEl = null;
+    if (nodeId && typeof CSS !== 'undefined' && CSS.escape) {
+      targetEl = document.querySelector(`#course-graph .course-node[data-node-id="${CSS.escape(nodeId)}"]`);
+    } else if (nodeId) {
+      targetEl = document.querySelector(`#course-graph .course-node[data-node-id="${nodeId}"]`);
+    }
+
+    if (!targetEl) {
+      targetEl = document.querySelector('#course-graph .course-node.is-current, #course-graph .course-node.course-card-current');
+    }
+
+    if (targetEl) {
+      const nodeCenterX = targetEl.offsetLeft + targetEl.offsetWidth / 2;
+      const nodeCenterY = targetEl.offsetTop + targetEl.offsetHeight / 2;
+      panX = (vw / 2) - nodeCenterX * scale;
+      panY = (vh / 2) - nodeCenterY * scale;
+    } else {
+      panX = Math.max(16, (vw - cw) / 2);
+      panY = Math.max(16, (vh - ch) / 2);
+    }
     applyTransform();
   }
 
@@ -3145,8 +3276,18 @@
     document.getElementById('fullscreen-btn').title = isFullscreen ? 'Keluar layar penuh' : 'Layar penuh';
     if (isFullscreen) {
       kirMoveModalsIntoFullscreen(fsEl);
+      if (COURSE_VOYAGE_RUNNER && COURSE_VOYAGE_RUNNER.nodeType === 'flag') {
+        if (courseTelemetryData && courseTelemetryData.tab_switch_count > 0) {
+          showCourseWarningBanner(`Peringatan: Terdeteksi ${courseTelemetryData.tab_switch_count} kali perpindahan tab / Alt-Tab!`, false);
+        } else {
+          hideCourseWarningBanner();
+        }
+      }
     } else {
       kirRestoreModalsFromFullscreen();
+      if (COURSE_VOYAGE_RUNNER && COURSE_VOYAGE_RUNNER.nodeType === 'flag' && !COURSE_VOYAGE_RUNNER.isDone) {
+        showCourseWarningBanner('Mode Layar Penuh Diperlukan! Harap tetap dalam mode layar penuh saat mengerjakan Flag.', true);
+      }
     }
     // Viewport size just changed drastically; re-fit the canvas the
     // same way a window resize does.
@@ -3191,6 +3332,12 @@
   }
 
   function chartPointerUp() {
+    if (isDragging && !didDrag) {
+      const inspector = document.getElementById('course-inspector');
+      if (inspector && inspector.classList.contains('open')) {
+        courseCloseInspector();
+      }
+    }
     isDragging = false;
     document.getElementById('chart-viewport').classList.remove('dragging');
   }
@@ -3200,6 +3347,17 @@
     viewport.addEventListener('mousedown', chartPointerDown);
     window.addEventListener('mousemove', chartPointerMove);
     window.addEventListener('mouseup', chartPointerUp);
+
+    // Close inspector when clicking anywhere outside of it (workspace container, controls, background)
+    document.addEventListener('click', (e) => {
+      const inspector = document.getElementById('course-inspector');
+      if (!inspector || !inspector.classList.contains('open')) return;
+      if (e.target.closest('#course-inspector') || e.target.closest('.course-node') || e.target.closest('.modal-overlay')) {
+        return;
+      }
+      if (didDrag) return;
+      courseCloseInspector();
+    });
 
     // Use passive: true for touchstart to allow browser optimizations
     viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
@@ -3317,8 +3475,30 @@
     if (courseIsProtectedTarget(e.target)) e.preventDefault();
   });
 
-  window.addEventListener('blur', () => {
-    if (COURSE_VOYAGE_RUNNER && document.getElementById('cvm-modal').classList.contains('modal-open')) {
-      courseTelemetryData.tab_switch_count++;
+  let lastTabSwitchTime = 0;
+  function handleTabSwitchDetection() {
+    const modal = document.getElementById('cvm-modal');
+    if (!COURSE_VOYAGE_RUNNER || !modal || !modal.classList.contains('modal-open')) return;
+
+    const now = Date.now();
+    if (now - lastTabSwitchTime < 1200) return; // Debounce duplicate focus/visibility triggers
+    lastTabSwitchTime = now;
+
+    courseTelemetryData.tab_switch_count++;
+    const count = courseTelemetryData.tab_switch_count;
+    const isFlag = COURSE_VOYAGE_RUNNER.nodeType === 'flag';
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+    const msg = isFlag
+      ? `PERINGATAN FLAG #${count}: Terdeteksi beralih tab / Alt-Tab! Aktivitas ini dicatat.`
+      : `Peringatan #${count}: Terdeteksi beralih tab / Alt-Tab.`;
+
+    showCourseWarningBanner(msg, isFlag && !isFs);
+  }
+
+  window.addEventListener('blur', handleTabSwitchDetection);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      handleTabSwitchDetection();
     }
   });

@@ -611,7 +611,16 @@ function kirMathtextEscapeBreaksForEditor(raw) {
 
 function kirRenderMarkdownWithMath(raw) {
   if (raw === null || raw === undefined) return '';
-  const text = kirMathtextBreaksToNewlines(String(raw));
+  let text = kirMathtextBreaksToNewlines(String(raw));
+  
+  // Auto-wrap LaTeX environments (like \begin{bmatrix}...\end{bmatrix}) with $$ delimiters
+  // so MathJax processes them as display math. Also converts $...$ to $$...$$ for matrices.
+  text = text.replace(/\$?\\begin\{([a-z]*)\}[\s\S]*?\\end\{\1\}\$?/gi, (match) => {
+    // Always wrap with $$...$$ for block display, removing any existing $ delimiters
+    let content = match.replace(/^\$|\$$/g, ''); // Remove leading/trailing single $
+    return `$$${content}$$`;
+  });
+  
   if (!window.marked) return kirEscapeHtml(text);
 
   // Math delimiters ($...$ and $$...$$) are protected from marked
@@ -631,7 +640,13 @@ function kirRenderMarkdownWithMath(raw) {
   let html = marked.parse(protectedText);
   html = html.replace(/\u0000MATH(\d+)\u0000/g, (_, i) => mathBlocks[Number(i)]);
 
-  return window.DOMPurify ? DOMPurify.sanitize(html) : html;
+  if (window.DOMPurify) {
+    return DOMPurify.sanitize(html, {
+      ADD_TAGS: ['mjx-container', 'mjx-assistive-mml', 'mjx-math', 'mjx-mspace', 'mjx-mn', 'mjx-mo', 'mjx-mtext', 'mjx-mi', 'mjx-c'],
+      ADD_ATTR: ['display', 'style', 'width', 'height', 'xmlns', 'data-mml-node']
+    });
+  }
+  return html;
 }
 
 /* ----------------------------------------------------------

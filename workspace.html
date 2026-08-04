@@ -87,6 +87,7 @@
      half (plus the essay editor above), kept local. -->
 <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 </head>
 
@@ -284,6 +285,17 @@
          becomes a locked title bar / scrollable question / pinned
          action bar for a flag node — see the #cvm-modal.cvm-flag
          rules up top, toggled on/off by courseOpenVoyageRunner(). -->
+    <!-- Warning banner for forced fullscreen and tab-switch / alt-tab alerts during Flag exams -->
+    <div id="cvm-warning-banner" class="hidden mb-4 p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3 font-medium animate-pulse">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span id="cvm-warning-text"></span>
+      </div>
+      <button id="cvm-warning-action" type="button" onclick="requestCourseFullscreen()" class="hidden shrink-0 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[11px] font-semibold transition-colors">
+        Masuk Layar Penuh
+      </button>
+    </div>
+
     <div class="cvm-header">
       <div class="flex items-start justify-between gap-4 mb-5">
         <h2 id="cvm-title" class="font-display text-lg font-semibold kir-markdown"></h2>

@@ -329,9 +329,7 @@
     width: 15rem;
   }
   .course-node-inner {
-    background: rgba(24, 24, 27, 0.4);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: #18181b;
     border: 1px solid var(--glass-border);
     border-radius: 1rem;
     cursor: pointer;
@@ -339,15 +337,8 @@
     box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
     transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
-  /* Reduce blur on mobile for better performance */
-  @media (max-width: 768px) {
-    .course-node-inner {
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-  }
   [data-theme="light"] .course-node-inner {
-    background: rgba(255, 255, 255, 0.65);
+    background: #ffffff;
   }
   .course-node-inner:hover {
     border-color: rgba(255, 255, 255, 0.2);
@@ -665,6 +656,14 @@
     border-color: var(--glass-border);
     box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 26px -14px rgba(0,0,0,0.65);
   }
+  /* Hide inner card elements when locked so browser skips rendering hidden text/images */
+  .course-node.is-locked .course-node-header,
+  .course-node.is-locked .course-node-thumb,
+  .course-node.is-locked .course-node-body,
+  .course-node.is-locked .course-node-footer {
+    opacity: 0;
+    pointer-events: none;
+  }
   .course-node-lock-overlay {
     position: absolute;
     inset: 0;
@@ -674,38 +673,42 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    background: rgba(6, 6, 8, 0.82);
-    backdrop-filter: blur(7px);
-    -webkit-backdrop-filter: blur(7px);
+    gap: 0.45rem;
+    background: #121317;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
-  /* Reduce blur on mobile for better performance */
-  @media (max-width: 768px) {
-    .course-node-lock-overlay {
-      backdrop-filter: blur(3px);
-      -webkit-backdrop-filter: blur(3px);
-    }
+  [data-theme="light"] .course-node-lock-overlay {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
   }
-  [data-theme="light"] .course-node-lock-overlay { background: rgba(20, 20, 24, 0.72); }
   /* One-shot: plays once on the render where a node transitions out
      of locked, then the element is gone by the next render (a fresh
      card without this class). forwards keeps it invisible/inert at
      the end instead of snapping back to opaque after the keyframe. */
   .course-node-lock-overlay.course-lock-fading {
-    animation: courseLockFade 0.7s ease forwards;
+    animation: courseLockFade 0.5s ease forwards;
     pointer-events: none;
   }
   @keyframes courseLockFade {
-    0% { opacity: 1; filter: blur(0); }
-    100% { opacity: 0; filter: blur(3px); }
+    0% { opacity: 1; }
+    100% { opacity: 0; }
   }
-  .course-node-lock-overlay svg { width: 1.15rem; height: 1.15rem; opacity: 0.55; color: #e5e7eb; }
+  .course-node-lock-overlay svg { width: 1.25rem; height: 1.25rem; opacity: 0.6; color: #94a3b8; }
   .course-node-lock-label {
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(226, 232, 240, 0.7);
+    color: rgba(226, 232, 240, 0.75);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  [data-theme="light"] .course-node-lock-label {
+    color: #475569;
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
   }
 
   /* ---------- Inspector panel (NOT a modal — graph stays visible/interactive) ----------
@@ -713,8 +716,8 @@
      space as the node cards — so once positioned beside a node it
      stays locked to it: panning/zooming moves it exactly like a node,
      including going offscreen. See coursePositionInspector() for how
-     the side (left/right) is chosen. Styled like a node card
-     (.course-node-inner) so it reads as an extension of the node. */
+     the side (left/right) is chosen. Opaque solid card without glass blur
+     so text inside is crisp and readable. */
   #course-inspector {
     position: absolute;
     width: 280px;
@@ -723,25 +726,37 @@
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    background: rgba(24, 24, 27, 0.4);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+    background: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 1rem;
-    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.6);
+    box-shadow: 0 20px 35px -10px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);
     overflow: hidden;
     display: flex;
     transition: opacity 0.16s ease, transform 0.2s ease, visibility 0.16s ease;
   }
-  /* Reduce blur on mobile for better performance */
-  @media (max-width: 768px) {
-    #course-inspector {
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-  }
   [data-theme="light"] #course-inspector {
-    background: rgba(255, 255, 255, 0.65);
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 20px 35px -10px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+    color: #0f172a;
+  }
+  [data-theme="light"] #course-inspector h2,
+  [data-theme="light"] #course-inspector .text-zinc-100 {
+    color: #0f172a !important;
+  }
+  [data-theme="light"] #course-inspector .text-zinc-400 {
+    color: #475569 !important;
+  }
+  [data-theme="light"] #course-inspector .text-zinc-500 {
+    color: #64748b !important;
+  }
+  [data-theme="light"] #course-inspector .chart-ctrl-btn {
+    color: #475569;
+    border-color: #cbd5e1;
+  }
+  [data-theme="light"] #course-inspector .chart-ctrl-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
   }
   #course-inspector.is-beside-right { transform: translateX(-10px); }
   #course-inspector.is-beside-left { transform: translateX(10px); }

@@ -17,6 +17,9 @@
 <link rel="stylesheet" href="css/tailwind-output.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/admin-shared.css">
+<script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 </head>
 
@@ -436,57 +439,136 @@
     return COURSE_SNAPSHOT_SHAPE[type] || COURSE_SNAPSHOT_SHAPE.default;
   }
 
-  const COURSE_SNAPSHOT_UNIT_X = 30;
-  const COURSE_SNAPSHOT_UNIT_Y = 34;
+  const COURSE_SNAPSHOT_GAP_X = 14;
+  const COURSE_SNAPSHOT_ROW_GAP = 22;
+  const COURSE_SNAPSHOT_BRANCH_GAP_X = 12;
+  const COURSE_SNAPSHOT_BRANCH_GAP_Y = 30;
 
-  // Simplified version of computeCourseLayout() in workspace.html:
-  // same idea (longest-path depth per main-chain node, branch nodes
-  // hang off their anchor instead of getting a row of their own),
-  // just without the sibling-grouping niceties — plenty for a
-  // thumbnail nobody's meant to read node-by-node.
   function courseSnapshotLayout(nodes, edges) {
+    const byId = {};
+    nodes.forEach(n => { byId[n.id] = n; });
+
     const mainEdges = edges.filter(e => !e.branch);
     const branchEdges = edges.filter(e => e.branch);
     const branchNodeIds = new Set(branchEdges.map(e => e.to));
 
+    // 1. Assign depths (longest path from root) over main edges
     const depths = {};
     nodes.forEach(n => { if (!branchNodeIds.has(n.id)) depths[n.id] = 0; });
+
     let changed = true, iterations = 0;
     while (changed && iterations < nodes.length) {
       changed = false;
       mainEdges.forEach(e => {
-        if (depths[e.to] === undefined || depths[e.from] === undefined) return;
-        if (depths[e.to] < depths[e.from] + 1) { depths[e.to] = depths[e.from] + 1; changed = true; }
+        if (!byId[e.from] || !byId[e.to]) return;
+        if (depths[e.to] === undefined) return;
+        if (depths[e.to] < depths[e.from] + 1) {
+          depths[e.to] = depths[e.from] + 1;
+          changed = true;
+        }
       });
       iterations++;
     }
 
+    // 2. Group nodes into layers
     const layers = [];
     Object.keys(depths).forEach(id => {
       const d = depths[id];
       (layers[d] = layers[d] || []).push(id);
     });
 
+    // 2b. Compute row Y coordinates per depth
+    const rowY = [0];
+    for (let d = 1; d < layers.length; d++) {
+      const prevLayer = layers[d - 1] || [];
+      const prevMaxH = prevLayer.reduce((max, id) => {
+        const shape = courseSnapshotShape(byId[id] ? byId[id].type : 'default');
+        return Math.max(max, shape.h);
+      }, 0);
+      rowY[d] = rowY[d - 1] + prevMaxH + COURSE_SNAPSHOT_ROW_GAP;
+    }
+
+    // 3. Position main-tree nodes layer by layer, grouping siblings by parent
     const positions = {};
     layers.forEach((layer, d) => {
-      layer.forEach((id, i) => { positions[id] = { x: i - (layer.length - 1) / 2, y: d }; });
+      if (d === 0) {
+        const totalW = layer.reduce((sum, id) => sum + courseSnapshotShape(byId[id] ? byId[id].type : 'default').w, 0) + (layer.length - 1) * COURSE_SNAPSHOT_GAP_X;
+        let cursor = -totalW / 2;
+        layer.forEach(id => {
+          const w = courseSnapshotShape(byId[id] ? byId[id].type : 'default').w;
+          positions[id] = { x: cursor + w / 2, y: rowY[d] };
+          cursor += w + COURSE_SNAPSHOT_GAP_X;
+        });
+        return;
+      }
+
+      // Group this row's nodes by parent
+      const groups = {};
+      const groupOrder = [];
+      layer.forEach(id => {
+        const parentEdge = mainEdges.find(e => e.to === id);
+        const parentId = parentEdge ? parentEdge.from : '__root__';
+        if (!groups[parentId]) { groups[parentId] = []; groupOrder.push(parentId); }
+        groups[parentId].push(id);
+      });
+
+      // Position sibling groups left-to-right relative to parent's X while preventing overlaps
+      let lastRight = -Infinity;
+      groupOrder
+        .sort((a, b) => (positions[a] ? positions[a].x : 0) - (positions[b] ? positions[b].x : 0))
+        .forEach(parentId => {
+          const group = groups[parentId];
+          const totalW = group.reduce((sum, id) => sum + courseSnapshotShape(byId[id] ? byId[id].type : 'default').w, 0) + (group.length - 1) * COURSE_SNAPSHOT_GAP_X;
+          const parentX = positions[parentId] ? positions[parentId].x : 0;
+          let cursor = Math.max(parentX - totalW / 2, lastRight + COURSE_SNAPSHOT_GAP_X);
+          group.forEach(id => {
+            const w = courseSnapshotShape(byId[id] ? byId[id].type : 'default').w;
+            positions[id] = { x: cursor + w / 2, y: rowY[d] };
+            cursor += w + COURSE_SNAPSHOT_GAP_X;
+          });
+          lastRight = cursor - COURSE_SNAPSHOT_GAP_X;
+        });
     });
 
-    // Branch nodes hang just off their anchor, to whichever side the
-    // edge says — averaged if more than one branch converges into it.
-    const branchAnchors = {};
+    // 4. Position branch nodes to the side of their anchor
+    const branchTargets = {};
     branchEdges.forEach(e => {
-      const anchor = positions[e.from];
-      if (!anchor) return;
-      (branchAnchors[e.to] = branchAnchors[e.to] || []).push({ anchor, side: e.branch });
+      const t = (branchTargets[e.to] = branchTargets[e.to] || { sources: [], side: e.branch });
+      t.sources.push(e.from);
     });
-    Object.keys(branchAnchors).forEach(id => {
-      const list = branchAnchors[id];
-      const avgX = list.reduce((sum, a) => sum + a.anchor.x, 0) / list.length;
-      const maxY = Math.max(...list.map(a => a.anchor.y));
-      const side = list[0].side === 'left' ? -1 : 1;
-      positions[id] = { x: avgX + side * 0.85, y: maxY + 0.6 };
-    });
+    const siblingKey = (sources, side) => side + '|' + [...sources].sort().join(',');
+
+    const pending = new Set(Object.keys(branchTargets));
+    let progress = true;
+    while (pending.size && progress) {
+      progress = false;
+      const readyGroups = {};
+      pending.forEach(id => {
+        const t = branchTargets[id];
+        if (t.sources.every(s => positions[s])) {
+          const key = siblingKey(t.sources, t.side);
+          (readyGroups[key] = readyGroups[key] || []).push(id);
+        }
+      });
+
+      Object.values(readyGroups).forEach(ids => {
+        const t = branchTargets[ids[0]];
+        const srcPositions = t.sources.map(s => positions[s]);
+        const anchorX = srcPositions.reduce((sum, p) => sum + p.x, 0) / srcPositions.length;
+        const anchorY = srcPositions.reduce((sum, p) => sum + p.y, 0) / srcPositions.length;
+        const anchorHalfW = Math.max(...t.sources.map(s => courseSnapshotShape(byId[s] ? byId[s].type : 'default').w)) / 2;
+        const mid = (ids.length - 1) / 2;
+        ids.forEach((id, idx) => {
+          const w = courseSnapshotShape(byId[id] ? byId[id].type : 'default').w;
+          const x = t.side === 'right'
+            ? anchorX + anchorHalfW + COURSE_SNAPSHOT_BRANCH_GAP_X + w / 2
+            : anchorX - anchorHalfW - COURSE_SNAPSHOT_BRANCH_GAP_X - w / 2;
+          positions[id] = { x, y: anchorY + (idx - mid) * COURSE_SNAPSHOT_BRANCH_GAP_Y };
+          pending.delete(id);
+          progress = true;
+        });
+      });
+    }
 
     return positions;
   }
@@ -603,7 +685,7 @@
       const p = positions[n.id];
       if (!p) return;
       const shape = courseSnapshotShape(n.type);
-      const px = p.x * COURSE_SNAPSHOT_UNIT_X, py = p.y * COURSE_SNAPSHOT_UNIT_Y;
+      const px = p.x, py = p.y;
       minX = Math.min(minX, px - shape.w / 2); maxX = Math.max(maxX, px + shape.w / 2);
       minY = Math.min(minY, py - shape.h / 2); maxY = Math.max(maxY, py + shape.h / 2);
       nodeBoxes[n.id] = { cx: px, cy: py, halfW: shape.w / 2, halfH: shape.h / 2 };
@@ -643,7 +725,7 @@
       const p = positions[n.id];
       if (!p) return;
       const shape = courseSnapshotShape(n.type);
-      const cx = p.x * COURSE_SNAPSHOT_UNIT_X, cy = p.y * COURSE_SNAPSHOT_UNIT_Y;
+      const cx = p.x, cy = p.y;
       const color = courseSnapshotNodeColor(n, sameTypeList(n));
       nodesSvg += courseSnapshotNodeMarkup(n.type, cx, cy, shape, color, defsArr);
     });
