@@ -2724,6 +2724,7 @@
   // is null), e.g. a freshly-created node with nothing attached — in
   // that case the divider is skipped too, so soal-count doesn't end up
   // with a dangling separator in front of it.
+  
   function courseVoyageNodeMetaHtml(node) {
     const soalCount = (node.voyageIds || []).length;
     const doneCount = COURSE_COMPLETED_IDS.has(node.id) ? soalCount : 0;
