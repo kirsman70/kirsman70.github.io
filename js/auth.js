@@ -1889,6 +1889,9 @@ function kirInitSidebarShortcuts() {
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    
+    // Disable sidebar navigation shortcuts if any modal (voyage, material, settings, etc.) is open
+    if (document.querySelector('.modal-overlay:not(.hidden)')) return;
 
     const key = e.key;
     if (/^[0-9]$/.test(key)) {
