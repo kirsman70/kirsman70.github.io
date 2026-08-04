@@ -5585,6 +5585,12 @@
       text-decoration: underline;
       text-underline-offset: 2px;
     }
+    .kir-markdown mjx-container[display="true"] {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 0.25em;
+    }
     .kir-markdown code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.88em;

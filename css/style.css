@@ -3557,6 +3557,15 @@
   .kir-markdown h3 { font-size: 1.05em; }
   .kir-markdown h4 { font-size: 1em; }
   .kir-markdown a { color: rgb(var(--accent-rgb)); text-decoration: underline; text-underline-offset: 2px; }
+  
+  /* Horizontal scroll for long math equations (e.g. large matrices in materials) */
+  .kir-markdown mjx-container[display="true"] {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25em; /* Prevents horizontal scrollbar from clipping descenders */
+  }
+
   /* Discord Dark Theme Code Blocks & Syntax Colors */
   .kir-markdown code {
     font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace;
