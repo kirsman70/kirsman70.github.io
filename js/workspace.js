@@ -1956,6 +1956,49 @@
     }, 1800);
   }
 
+  // Keyboard shortcuts for Course MCQ Runner
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const modal = document.getElementById('cvm-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    // Bail out if the user is typing in a text field
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+
+    const r = COURSE_VOYAGE_RUNNER;
+    if (!r) return;
+    const v = r.voyages[r.currentIndex];
+    if (!v) return;
+
+    // Press 1 to 0 to select an option (1 -> option 1, 0 -> option 10)
+    if (v.type === 'mc' && /^[0-9]$/.test(e.key)) {
+      const num = parseInt(e.key, 10);
+      const pos = num === 0 ? 9 : num - 1;
+      const opts = document.querySelectorAll('#cvm-mc-options .voyage-option');
+      if (pos >= 0 && pos < opts.length) {
+        e.preventDefault();
+        const origIdx = parseInt(opts[pos].dataset.origIdx, 10);
+        selectCourseVoyageMcOption(origIdx);
+      }
+    } else if (e.key === 'Enter') {
+      // Press Enter to go to the next question or submit if an option is selected
+      if (isCourseQuestionAnswered(r, r.currentIndex)) {
+        if (active && active.tagName === 'BUTTON') return; // Allow native button clicks
+        e.preventDefault();
+        const isLast = r.currentIndex === r.voyages.length - 1;
+        if (isLast) {
+          const submitBtn = document.getElementById('cvm-submit-btn');
+          if (submitBtn && !submitBtn.disabled) {
+            submitCourseVoyageAnswer();
+          }
+        } else {
+          courseVoyageGoToIndex(r.currentIndex + 1);
+        }
+      }
+    }
+  });
+
   // Shared completion path: required main-chain nodes advance the course
   // cursor, optional branch nodes just toggle themselves. Used directly by
   // both the voyage and material modals once their content is actually
@@ -2724,7 +2767,7 @@
   // is null), e.g. a freshly-created node with nothing attached — in
   // that case the divider is skipped too, so soal-count doesn't end up
   // with a dangling separator in front of it.
-  
+
   function courseVoyageNodeMetaHtml(node) {
     const soalCount = (node.voyageIds || []).length;
     const doneCount = COURSE_COMPLETED_IDS.has(node.id) ? soalCount : 0;

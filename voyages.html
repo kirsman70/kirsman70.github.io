@@ -2467,6 +2467,42 @@ CONTOH beberapa soal sekaligus (array), termasuk satu soal Programming:
       handleVoyageTabSwitchDetection();
     }
   });
+
+  // Keyboard shortcuts for Voyage MCQ Runner
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const modal = document.getElementById('voyage-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    // Bail out if the user is typing in a text field
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+
+    const v = VOYAGES.find(x => x.id === currentVoyageId);
+    if (!v) return;
+
+    // Press 1 to 0 to select an option (1 -> option 1, 0 -> option 10)
+    if (v.type === 'mc' && /^[0-9]$/.test(e.key)) {
+      const num = parseInt(e.key, 10);
+      const pos = num === 0 ? 9 : num - 1;
+      const opts = document.querySelectorAll('#vm-mc-options .voyage-option');
+      if (pos >= 0 && pos < opts.length) {
+        e.preventDefault();
+        const origIdx = parseInt(opts[pos].dataset.origIdx, 10);
+        selectMcOption(origIdx);
+      }
+    } else if (e.key === 'Enter') {
+      // Press Enter to submit if an option is selected
+      if (v.type === 'mc' && selectedMcIndex !== null) {
+        if (active && active.tagName === 'BUTTON') return; // Allow native button clicks
+        e.preventDefault();
+        const submitBtn = document.getElementById('vm-submit-btn');
+        if (submitBtn && !submitBtn.disabled) {
+          submitVoyageAnswer();
+        }
+      }
+    }
+  });
 </script>
 <script>
   // Search bar UX: the "×" clear button, plus letting someone start
