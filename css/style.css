@@ -2598,8 +2598,10 @@
   }
   .voyage-option .kir-markdown mjx-container[jax="CHTML"][display="true"] {
     display: block;
+    text-align: left !important;
     margin: 0.5rem 0;
     overflow-x: auto;
+    overflow-y: hidden;
   }
   .voyage-option:hover { background: rgba(128,128,128,0.1); }
   .voyage-option.selected {

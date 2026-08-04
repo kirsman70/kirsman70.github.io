@@ -84,14 +84,6 @@
     if (raw === null || raw === undefined) return '';
     let text = kirMathtextBreaksToNewlines(String(raw));
     
-    // Auto-wrap LaTeX environments (like \begin{bmatrix}...\end{bmatrix}) with $$ delimiters
-    // so MathJax processes them as display math. Also converts $...$ to $$...$$ for matrices.
-    text = text.replace(/\$?\\begin\{([a-z]*)\}[\s\S]*?\\end\{\1\}\$?/gi, (match) => {
-      // Always wrap with $$...$$ for block display, removing any existing $ delimiters
-      let content = match.replace(/^\$|\$$/g, ''); // Remove leading/trailing single $
-      return `$$${content}$$`;
-    });
-    
     if (!window.marked) return kirEscapeHtml(text);
 
     const mathBlocks = [];
@@ -99,9 +91,19 @@
       mathBlocks.push(m);
       return `\u0000MATH${mathBlocks.length - 1}\u0000`;
     };
-    const protectedText = text
+    
+    let protectedText = text
       .replace(/\$\$[\s\S]+?\$\$/g, stash)
-      .replace(/\$[^\$\n]+?\$/g, stash);
+      .replace(/\\\[[\s\S]+?\\\]/g, stash)
+      .replace(/\\\([\s\S]+?\\\)/g, stash)
+      .replace(/\$[^$]+?\$/g, stash);
+
+    // Auto-wrap bare LaTeX environments (like \begin{bmatrix}...\end{bmatrix})
+    // that weren't inside $ or $$ with $$ delimiters so MathJax processes them.
+    protectedText = protectedText.replace(/\\begin\{([a-z*]+)\}[\s\S]*?\\end\{\1\}/gi, (match) => {
+      mathBlocks.push(`$$${match}$$`);
+      return `\u0000MATH${mathBlocks.length - 1}\u0000`;
+    });
 
     let html = marked.parse(protectedText);
     html = html.replace(/\u0000MATH(\d+)\u0000/g, (_, i) => mathBlocks[Number(i)]);
@@ -981,7 +983,8 @@
     }
 
     nodes.forEach(n => {
-      const voyageIds = n.voyage_id ? [n.voyage_id] : (n.voyage_ids || []);
+      // Filter out invalid or deleted voyage IDs so the node only counts questions that actually exist
+      const voyageIds = (n.voyage_id ? [n.voyage_id] : (n.voyage_ids || [])).filter(id => difficultyByVoyageId.has(id));
       const difficulties = voyageIds.map(id => difficultyByVoyageId.get(id)).filter(d => typeof d === 'number');
       // Average across the group's questions, rounded to 1 decimal so it
       // reads like a single rating (e.g. "4.3") instead of a jarring long
@@ -2722,13 +2725,13 @@
   // that case the divider is skipped too, so soal-count doesn't end up
   // with a dangling separator in front of it.
   function courseVoyageNodeMetaHtml(node) {
-    const lang = localStorage.getItem(KIR_LANG_KEY) || 'id';
     const soalCount = (node.voyageIds || []).length;
+    const doneCount = COURSE_COMPLETED_IDS.has(node.id) ? soalCount : 0;
     let ratingMeta = '';
     if (node.avgDifficulty !== null && node.avgDifficulty !== undefined) {
       ratingMeta = `<span class="course-node-meta">${COURSE_DIFF_STAR_SVG}${node.avgDifficulty}</span><span class="course-node-meta-sep"></span>`;
     }
-    const soalMeta = `<span class="course-node-meta">${COURSE_ICON_QUESTION} ${soalCount} ${kirEscapeHtml(I18N[lang].course_questions_count || 'Soal')}</span>`;
+    const soalMeta = `<span class="course-node-meta">${COURSE_ICON_QUESTION} ${doneCount}/${soalCount}</span>`;
     return `<div class="course-node-meta-group">${ratingMeta}${soalMeta}</div>`;
   }
 

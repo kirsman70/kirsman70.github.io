@@ -613,29 +613,30 @@ function kirRenderMarkdownWithMath(raw) {
   if (raw === null || raw === undefined) return '';
   let text = kirMathtextBreaksToNewlines(String(raw));
   
-  // Auto-wrap LaTeX environments (like \begin{bmatrix}...\end{bmatrix}) with $$ delimiters
-  // so MathJax processes them as display math. Also converts $...$ to $$...$$ for matrices.
-  text = text.replace(/\$?\\begin\{([a-z]*)\}[\s\S]*?\\end\{\1\}\$?/gi, (match) => {
-    // Always wrap with $$...$$ for block display, removing any existing $ delimiters
-    let content = match.replace(/^\$|\$$/g, ''); // Remove leading/trailing single $
-    return `$$${content}$$`;
-  });
-  
   if (!window.marked) return kirEscapeHtml(text);
 
-  // Math delimiters ($...$ and $$...$$) are protected from marked
-  // first, since Markdown's rules for underscores/asterisks would
-  // otherwise mangle LaTeX like "$x_1$" or "$a*b$". The raw math
-  // text is swapped back in after marked runs, then MathJax picks
-  // it up on the typesetPromise() call that follows.
+  // Math delimiters are protected from marked first, since Markdown's
+  // rules for underscores/asterisks would otherwise mangle LaTeX.
+  // We stash explicit delimiters first, then auto-wrap any remaining
+  // bare \begin...\end environments in $$ so MathJax processes them.
   const mathBlocks = [];
   const stash = (m) => {
     mathBlocks.push(m);
     return `\u0000MATH${mathBlocks.length - 1}\u0000`;
   };
+  
   let protectedText = text
     .replace(/\$\$[\s\S]+?\$\$/g, stash)
-    .replace(/\$[^\$\n]+?\$/g, stash);
+    .replace(/\\\[[\s\S]+?\\\]/g, stash)
+    .replace(/\\\([\s\S]+?\\\)/g, stash)
+    .replace(/\$[^$]+?\$/g, stash);
+
+  // Auto-wrap bare LaTeX environments (like \begin{bmatrix}...\end{bmatrix})
+  // that weren't inside $ or $$ with $$ delimiters so MathJax processes them.
+  protectedText = protectedText.replace(/\\begin\{([a-z*]+)\}[\s\S]*?\\end\{\1\}/gi, (match) => {
+    mathBlocks.push(`$$${match}$$`);
+    return `\u0000MATH${mathBlocks.length - 1}\u0000`;
+  });
 
   let html = marked.parse(protectedText);
   html = html.replace(/\u0000MATH(\d+)\u0000/g, (_, i) => mathBlocks[Number(i)]);
