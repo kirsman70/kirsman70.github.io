@@ -157,7 +157,6 @@
 .admin-quick-wrap {
   position: relative;
   height: 100%;
-  touch-action: pan-y;
 }
 .admin-quick-card {
   width: 100%;
@@ -167,28 +166,54 @@
   will-change: transform;
   transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-
 .admin-quick-underlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: inherit;
+  border-radius: 0 0.75rem 0.75rem 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-left: 1.5rem;
+  justify-content: flex-end;
+  padding-right: 1.5rem;
   background-color: rgba(var(--accent-rgb), 0.15);
   color: #ffffff;
-  overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  transition: background-color 0.22s ease, opacity 0.18s ease;
+  will-change: clip-path, opacity;
+  transform: translateZ(0);
+  /* Removed background-color transition entirely */
+  transition: opacity 0.18s ease; 
+}
+
+/* Pseudo-element for Edit state (Accent color) */
+.admin-quick-underlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: rgba(var(--accent-rgb), 0.92);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.22s ease;
+  pointer-events: none;
+}
+
+/* Pseudo-element for Delete state (Red color) */
+.admin-quick-underlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: rgba(239, 68, 68, 0.94);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.22s ease;
+  pointer-events: none;
 }
 
 .admin-quick-underlay-content {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
   transform: scale(0.6);
   opacity: 0.3;
   will-change: transform, opacity;
@@ -201,43 +226,21 @@
   flex-shrink: 0;
 }
 
-.admin-quick-underlay-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+/* Activate states via pseudo-element GPU opacity instead of repainting background-color */
+.admin-quick-underlay.mode-edit::before,
+.admin-quick-underlay.mode-delete-pending::before,
+.admin-quick-underlay.mode-delete::before {
+  opacity: 1;
 }
 
-.admin-quick-underlay.mode-edit {
-  background-color: rgba(var(--accent-rgb), 0.92);
+.admin-quick-underlay.mode-delete-pending::after {
+  opacity: 1;
+  transition: opacity 1s linear; /* Hardware-accelerated 1s visual timer */
 }
 
-.admin-quick-underlay.mode-delete {
-  background-color: rgba(239, 68, 68, 0.94);
-}
-@media (min-width: 1024px) {
-  .admin-quick-wrap:hover .admin-quick-card,
-  .admin-quick-wrap:focus-within .admin-quick-card {
-    /* !important guards against the Tailwind CDN's injected
-       utility stylesheet (e.g. w-full) landing later in the
-       cascade and winning on equal specificity. */
-    width: calc(100% - 3.1rem) !important;
-  }
-  
-  .admin-quick-underlay {
-    display: none !important;
-  }
-}
-
-@media (max-width: 1023.98px) {
-  .admin-quick-wrap {
-    -webkit-touch-callout: none;
-    user-select: none;
-  }
-  
-  .admin-quick-actions {
-    display: none !important;
-  }
+.admin-quick-underlay.mode-delete::after {
+  opacity: 1;
+  transition: none; /* Snap to solid red instantly when timer finishes */
 }
 
 .admin-quick-actions {
@@ -253,29 +256,37 @@
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-@media (min-width: 1024px) {
-  .admin-quick-wrap:hover .admin-quick-actions,
-  .admin-quick-wrap:focus-within .admin-quick-actions {
-    transform: translate(0, -50%);
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
 .admin-quick-actions .admin-icon-btn {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 999px;
   box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.45);
 }
-.admin-quick-actions .admin-icon-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
-/* Stagger the two buttons in slightly so the stack doesn't pop
-   in as one flat block. */
+.admin-quick-actions .admin-icon-btn svg { width: 1rem; height: 1rem; }
 .admin-quick-actions .admin-icon-btn:nth-child(1) { transition-delay: 0s; }
 .admin-quick-actions .admin-icon-btn:nth-child(2) { transition-delay: 0.03s; }
+
+@media (min-width: 1024px) and (hover: hover) {
+  body:not(.kir-scroll-locked) .admin-quick-wrap:hover .admin-quick-card,
+  body:not(.kir-scroll-locked) .admin-quick-wrap:has(.admin-quick-actions:focus-within) .admin-quick-card {
+    width: calc(100% - 3.1rem) !important;
+  }
+  body:not(.kir-scroll-locked) .admin-quick-wrap:hover .admin-quick-actions,
+  body:not(.kir-scroll-locked) .admin-quick-wrap:has(.admin-quick-actions:focus-within) .admin-quick-actions {
+    transform: translate(0, -50%);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .admin-quick-underlay { display: none !important; }
+}
+@media (max-width: 1023.98px), (hover: none) {
+  .admin-quick-wrap {
+    touch-action: pan-y;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  .admin-quick-actions { display: none !important; }
+}
 
 /* ----------------------------------------------------------
    Shared create/edit modal

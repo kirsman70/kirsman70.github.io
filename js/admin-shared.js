@@ -254,7 +254,6 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
     <div class="admin-quick-underlay" aria-hidden="true">
       <div class="admin-quick-underlay-content">
         <svg class="admin-quick-underlay-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" /></svg>
-        <span class="admin-quick-underlay-label">Edit</span>
       </div>
     </div>
     <div class="admin-quick-card">${cardHtml}</div>
@@ -269,34 +268,55 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
   const ICON_DELETE = '<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />';
 
   function calculateRubberband(delta, limit) {
-    if (delta <= limit) return delta;
-    const over = delta - limit;
-    return limit + (over * 0.28);
+    const absDelta = Math.abs(delta);
+    if (absDelta <= limit) return delta;
+    const over = absDelta - limit;
+    const dampened = limit + (over * 0.25);
+    return delta < 0 ? -dampened : dampened;
   }
 
   document.addEventListener('touchstart', (e) => {
-    if (window.innerWidth >= 1024) return;
+    if (window.innerWidth >= 1024 && window.matchMedia('(hover: hover)').matches) return;
     const wrap = e.target.closest('.admin-quick-wrap');
     if (!wrap) return;
     const card = wrap.querySelector('.admin-quick-card');
     const underlay = wrap.querySelector('.admin-quick-underlay');
     if (!card || !underlay) return;
+    
+    if (touchState) return;
+
+    const w = wrap.offsetWidth;
+    const h = wrap.offsetHeight;
 
     touchState = {
       wrap,
       card,
       underlay,
+      width: w,
+      height: h,
       iconEl: underlay.querySelector('.admin-quick-underlay-icon'),
-      labelEl: underlay.querySelector('.admin-quick-underlay-label'),
       contentEl: underlay.querySelector('.admin-quick-underlay-content'),
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
       currentX: 0,
       activeMode: null,
-      isHorizontal: null
+      isHorizontal: null,
+      holdTimer: null
     };
 
+    // Reset DOM state from any previous cancelled swipes
+    underlay.className = 'admin-quick-underlay';
+    touchState.iconEl.innerHTML = ICON_EDIT;
+
+    // Pre-initialize clip path so transitions coordinate correctly if interrupted
+    const startL = w - 12;
+    const startPath = `path('M ${w} 0 L ${w} ${h} L ${startL} ${h} A 12 12 0 0 0 ${startL + 12} ${h - 12} L ${startL + 12} 12 A 12 12 0 0 0 ${startL} 0 Z')`;
+    underlay.style.clipPath = startPath;
+    underlay.style.webkitClipPath = startPath;
+
     card.style.transition = 'none';
+    underlay.style.transition = 'none';
+    if (touchState.contentEl) touchState.contentEl.style.transition = 'none';
   }, { passive: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -305,50 +325,90 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
     const dy = e.touches[0].clientY - touchState.startY;
 
     if (touchState.isHorizontal === null) {
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
         touchState.isHorizontal = true;
-      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
         touchState.isHorizontal = false;
       }
     }
 
-    if (!touchState.isHorizontal || dx < 0) return;
+    // Only allow Right-to-Left swipe
+    if (!touchState.isHorizontal || dx > 0) return;
 
     if (e.cancelable) e.preventDefault();
 
     const editTrigger = 75;
-    const deleteTrigger = 175;
+    const deleteTrigger = 160;
+
     const translation = calculateRubberband(dx, deleteTrigger);
     touchState.currentX = translation;
+    const absTx = Math.abs(translation);
 
     touchState.card.style.transform = `translate3d(${translation}px, 0, 0)`;
 
-    const progress = Math.min(1, dx / editTrigger);
+    // Calculate Reverse Round Path
+    const w = touchState.width;
+    const h = touchState.height;
+    const r = 12; // Matches 0.75rem rounded corners
+    const L = w - absTx - r;
+    const revPath = `path('M ${w} 0 L ${w} ${h} L ${L} ${h} A ${r} ${r} 0 0 0 ${L + r} ${h - r} L ${L + r} ${r} A ${r} ${r} 0 0 0 ${L} 0 Z')`;
+
+    touchState.underlay.style.clipPath = revPath;
+    touchState.underlay.style.webkitClipPath = revPath;
+
+    const progress = Math.min(1, absTx / editTrigger);
     touchState.underlay.style.opacity = String(Math.min(1, progress * 1.2));
 
-    if (dx >= deleteTrigger) {
-      if (touchState.activeMode !== 'delete') {
-        touchState.activeMode = 'delete';
-        touchState.underlay.className = 'admin-quick-underlay mode-delete';
+    if (absTx >= deleteTrigger) {
+      if (touchState.activeMode !== 'delete' && touchState.activeMode !== 'delete-pending') {
+        touchState.activeMode = 'delete-pending';
+        touchState.underlay.className = 'admin-quick-underlay mode-delete-pending';
         touchState.iconEl.innerHTML = ICON_DELETE;
-        touchState.labelEl.textContent = 'Hapus';
+        
+        touchState.holdTimer = setTimeout(() => {
+          if (!touchState) return;
+          touchState.activeMode = 'delete';
+          touchState.underlay.className = 'admin-quick-underlay mode-delete';
+          if (navigator.vibrate) navigator.vibrate(40);
+          
+          // Pop effect to confirm the lock
+          if (touchState.contentEl) {
+            touchState.contentEl.style.transitionProperty = 'transform';
+            touchState.contentEl.style.transitionDuration = '0.3s';
+            touchState.contentEl.style.transform = 'scale(1.35)';
+            
+            // Turn transition back off after the pop so dragging remains fluid
+            setTimeout(() => {
+              if (touchState && touchState.contentEl) touchState.contentEl.style.transitionProperty = 'none';
+            }, 300);
+          }
+        }, 1000);
       }
-      const overScale = 1.15 + Math.min(0.25, (dx - deleteTrigger) / 300);
-      touchState.contentEl.style.transform = `scale(${overScale})`;
+      
+      if (touchState.activeMode === 'delete') {
+        const overScale = 1.3 + Math.min(0.25, (absTx - deleteTrigger) / 300);
+        touchState.contentEl.style.transform = `scale(${overScale})`;
+      } else {
+        touchState.contentEl.style.transform = `scale(1.15)`;
+      }
       touchState.contentEl.style.opacity = '1';
-    } else if (dx >= editTrigger) {
+    } else if (absTx >= editTrigger) {
       if (touchState.activeMode !== 'edit') {
+        if (touchState.holdTimer) { clearTimeout(touchState.holdTimer); touchState.holdTimer = null; }
         touchState.activeMode = 'edit';
         touchState.underlay.className = 'admin-quick-underlay mode-edit';
         touchState.iconEl.innerHTML = ICON_EDIT;
-        touchState.labelEl.textContent = 'Edit';
       }
-      const editScale = 0.95 + ((dx - editTrigger) / (deleteTrigger - editTrigger)) * 0.2;
+      const editScale = 0.95 + ((absTx - editTrigger) / (deleteTrigger - editTrigger)) * 0.2;
       touchState.contentEl.style.transform = `scale(${editScale})`;
       touchState.contentEl.style.opacity = '1';
     } else {
-      touchState.activeMode = null;
-      touchState.underlay.className = 'admin-quick-underlay';
+      if (touchState.activeMode !== null) {
+        if (touchState.holdTimer) { clearTimeout(touchState.holdTimer); touchState.holdTimer = null; }
+        touchState.activeMode = null;
+        touchState.underlay.className = 'admin-quick-underlay';
+        touchState.iconEl.innerHTML = ICON_EDIT;
+      }
       touchState.contentEl.style.transform = `scale(${0.6 + progress * 0.35})`;
       touchState.contentEl.style.opacity = String(progress * 0.9);
     }
@@ -356,18 +416,28 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
 
   document.addEventListener('touchend', () => {
     if (!touchState) return;
-    const { card, wrap, activeMode, isHorizontal } = touchState;
+    if (touchState.holdTimer) clearTimeout(touchState.holdTimer);
+    const { card, underlay, wrap, activeMode, isHorizontal, width, height } = touchState;
 
     if (isHorizontal) {
       card.style.transition = 'transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      underlay.style.transition = 'clip-path 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), -webkit-clip-path 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.32s ease';
+      if (touchState.contentEl) touchState.contentEl.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease';
+      
       card.style.transform = 'translate3d(0, 0, 0)';
+      
+      const resetL = width - 12;
+      const resetPath = `path('M ${width} 0 L ${width} ${height} L ${resetL} ${height} A 12 12 0 0 0 ${resetL + 12} ${height - 12} L ${resetL + 12} 12 A 12 12 0 0 0 ${resetL} 0 Z')`;
+      underlay.style.clipPath = resetPath;
+      underlay.style.webkitClipPath = resetPath;
+      underlay.style.opacity = '0';
 
-      if (activeMode === 'edit') {
+      if (activeMode === 'edit' || activeMode === 'delete-pending') {
         const btn = wrap.querySelector('[data-quick="edit"]');
-        if (btn) btn.click();
+        if (btn) setTimeout(() => btn.click(), 50);
       } else if (activeMode === 'delete') {
         const btn = wrap.querySelector('[data-quick="delete"]');
-        if (btn) btn.click();
+        if (btn) setTimeout(() => btn.click(), 50);
       }
     }
 
