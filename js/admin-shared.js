@@ -618,10 +618,18 @@ function kirRenderMarkdownWithMath(raw) {
   // Math delimiters are protected from marked first, since Markdown's
   // rules for underscores/asterisks would otherwise mangle LaTeX.
   // We stash explicit delimiters first, then auto-wrap any remaining
-  // bare \begin...\end environments in $$ so MathJax processes them.
+  // bare \begin...\end environments in $ so MathJax processes them inline.
   const mathBlocks = [];
   const stash = (m) => {
-    mathBlocks.push(m);
+    let cleaned = m;
+    // Replace newlines with spaces for inline math so MathJax's default regex doesn't ignore it
+    if ((cleaned.startsWith('$') && !cleaned.startsWith('$$')) || cleaned.startsWith('\\(')) {
+      cleaned = cleaned.replace(/\n/g, ' ');
+    }
+    // Fix "eq" or "\eq" rendering as literal letters instead of "="
+    cleaned = cleaned.replace(/\\eq\b/g, '=').replace(/\beq\b/g, '=');
+    
+    mathBlocks.push(cleaned);
     return `\u0000MATH${mathBlocks.length - 1}\u0000`;
   };
   
@@ -631,10 +639,10 @@ function kirRenderMarkdownWithMath(raw) {
     .replace(/\\\([\s\S]+?\\\)/g, stash)
     .replace(/\$[^$]+?\$/g, stash);
 
-  // Auto-wrap bare LaTeX environments (like \begin{bmatrix}...\end{bmatrix})
-  // that weren't inside $ or $$ with $$ delimiters so MathJax processes them.
+  // Auto-wrap bare LaTeX environments with $ (inline math) so they can render side-by-side
   protectedText = protectedText.replace(/\\begin\{([a-z*]+)\}[\s\S]*?\\end\{\1\}/gi, (match) => {
-    mathBlocks.push(`$$${match}$$`);
+    let cleaned = match.replace(/\n/g, ' ').replace(/\\eq\b/g, '=').replace(/\beq\b/g, '=');
+    mathBlocks.push(`$${cleaned}$`);
     return `\u0000MATH${mathBlocks.length - 1}\u0000`;
   });
 

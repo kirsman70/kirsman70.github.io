@@ -88,7 +88,12 @@
 
     const mathBlocks = [];
     const stash = (m) => {
-      mathBlocks.push(m);
+      let cleaned = m;
+      if ((cleaned.startsWith('$') && !cleaned.startsWith('$$')) || cleaned.startsWith('\\(')) {
+        cleaned = cleaned.replace(/\n/g, ' ');
+      }
+      cleaned = cleaned.replace(/\\eq\b/g, '=').replace(/\beq\b/g, '=');
+      mathBlocks.push(cleaned);
       return `\u0000MATH${mathBlocks.length - 1}\u0000`;
     };
     
@@ -98,10 +103,9 @@
       .replace(/\\\([\s\S]+?\\\)/g, stash)
       .replace(/\$[^$]+?\$/g, stash);
 
-    // Auto-wrap bare LaTeX environments (like \begin{bmatrix}...\end{bmatrix})
-    // that weren't inside $ or $$ with $$ delimiters so MathJax processes them.
     protectedText = protectedText.replace(/\\begin\{([a-z*]+)\}[\s\S]*?\\end\{\1\}/gi, (match) => {
-      mathBlocks.push(`$$${match}$$`);
+      let cleaned = match.replace(/\n/g, ' ').replace(/\\eq\b/g, '=').replace(/\beq\b/g, '=');
+      mathBlocks.push(`$${cleaned}$`);
       return `\u0000MATH${mathBlocks.length - 1}\u0000`;
     });
 
@@ -2663,10 +2667,30 @@
         const mid = (ids.length - 1) / 2;
         ids.forEach((id, idx) => {
           const w = courseNodeWidth(byId[id]);
-          const x = t.side === 'right'
+          const h = COURSE_NODE_EST_HEIGHT[byId[id] ? byId[id].type : 'default'] || COURSE_NODE_EST_HEIGHT.default;
+          let x = t.side === 'right'
             ? anchorX + anchorHalfW + COURSE_BRANCH_GAP_X + w / 2
             : anchorX - anchorHalfW - COURSE_BRANCH_GAP_X - w / 2;
-          positions[id] = { x, y: anchorY + (idx - mid) * COURSE_BRANCH_GAP_Y };
+          let y = anchorY + (idx - mid) * COURSE_BRANCH_GAP_Y;
+
+          let overlap = true;
+          while (overlap) {
+            overlap = false;
+            for (const existingId of Object.keys(positions)) {
+              const ep = positions[existingId];
+              const ew = courseNodeWidth(byId[existingId]);
+              const eh = COURSE_NODE_EST_HEIGHT[byId[existingId] ? byId[existingId].type : 'default'] || COURSE_NODE_EST_HEIGHT.default;
+              const pad = 24;
+
+              if (Math.abs(x - ep.x) < (w + ew) / 2 + pad && Math.abs(y - ep.y) < (h + eh) / 2 + pad) {
+                overlap = true;
+                y += COURSE_BRANCH_GAP_Y;
+                break;
+              }
+            }
+          }
+
+          positions[id] = { x, y };
           pending.delete(id);
           progress = true;
         });
@@ -2934,7 +2958,7 @@
       const anchorInfo = (branchInfoById[e.from] = branchInfoById[e.from] || {});
       anchorInfo[e.branch] = true; // anchor gets a port facing its branch stack
       const nodeInfo = (branchInfoById[e.to] = branchInfoById[e.to] || {});
-      nodeInfo.branchSide = e.branch === 'right' ? 'left' : 'right'; // branch node's port faces back toward the anchor
+      nodeInfo.branchSide = e.branch === 'right' ? 'left' : (e.branch === 'left' ? 'right' : 'top'); // branch node's port faces back toward the anchor
     });
 
     // Per-node counts of direct children by type, for the course
@@ -3056,6 +3080,7 @@
         // Unity-style S-curve: control points pulled straight down/up
         // from each endpoint by a fraction of the vertical gap.
         bend = Math.max(40, (endY - startY) * 0.55);
+        if (edge.branch) isBranch = true;
       }
 
       const fromColor = nodesById[edge.from] ? courseNodeColor(nodesById[edge.from]) : courseTypeConfig().color;
