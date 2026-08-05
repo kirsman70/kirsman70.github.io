@@ -215,13 +215,31 @@
 .admin-quick-underlay.mode-delete {
   background-color: rgba(239, 68, 68, 0.94);
 }
-.admin-quick-wrap:hover .admin-quick-card,
-.admin-quick-wrap:focus-within .admin-quick-card {
-  /* !important guards against the Tailwind CDN's injected
-     utility stylesheet (e.g. w-full) landing later in the
-     cascade and winning on equal specificity. */
-  width: calc(100% - 3.1rem) !important;
+@media (min-width: 1024px) {
+  .admin-quick-wrap:hover .admin-quick-card,
+  .admin-quick-wrap:focus-within .admin-quick-card {
+    /* !important guards against the Tailwind CDN's injected
+       utility stylesheet (e.g. w-full) landing later in the
+       cascade and winning on equal specificity. */
+    width: calc(100% - 3.1rem) !important;
+  }
+  
+  .admin-quick-underlay {
+    display: none !important;
+  }
 }
+
+@media (max-width: 1023.98px) {
+  .admin-quick-wrap {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  
+  .admin-quick-actions {
+    display: none !important;
+  }
+}
+
 .admin-quick-actions {
   position: absolute;
   top: 50%;
@@ -235,11 +253,14 @@
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.admin-quick-wrap:hover .admin-quick-actions,
-.admin-quick-wrap:focus-within .admin-quick-actions {
-  transform: translate(0, -50%);
-  opacity: 1;
-  pointer-events: auto;
+
+@media (min-width: 1024px) {
+  .admin-quick-wrap:hover .admin-quick-actions,
+  .admin-quick-wrap:focus-within .admin-quick-actions {
+    transform: translate(0, -50%);
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .admin-quick-actions .admin-icon-btn {
   width: 2.35rem;
