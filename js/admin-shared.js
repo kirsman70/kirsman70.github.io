@@ -563,7 +563,7 @@ function kirAdminTooltipHide() {
    reused as a plain lookup table for snippet titles/labels when
    rendering the toolbar HTML below.
    ---------------------------------------------------------- */
-const KIR_MATH_SNIPPETS = [
+var KIR_MATH_SNIPPETS = [
   { label: 'x²', title: 'Pangkat (superscript)', tex: '^{‹a›}' },
   { label: 'x₂', title: 'Bawah (subscript)', tex: '_{‹a›}' },
   { label: 'a/b', title: 'Pecahan', tex: '\\frac{‹a›}{‹b›}' },

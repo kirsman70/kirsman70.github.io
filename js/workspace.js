@@ -53,7 +53,7 @@
   // a literal letter in raw text. Kept identical to admin-shared.js's
   // copy so a formula a member inserts here looks the same as one an
   // admin inserts in a voyage's "Teks Soal" field.
-  const KIR_MATH_SNIPPETS = [
+  var KIR_MATH_SNIPPETS = [
     { label: 'x²', title: 'Pangkat (superscript)', tex: '^{‹a›}' },
     { label: 'x₂', title: 'Bawah (subscript)', tex: '_{‹a›}' },
     { label: 'a/b', title: 'Pecahan', tex: '\\frac{‹a›}{‹b›}' },
@@ -2671,6 +2671,9 @@
     });
     const siblingKey = (sources, side) => side + '|' + [...sources].sort().join(',');
 
+    const shiftedAnchorY = new Map();
+    const vertBranches = new Map();
+
     const pending = new Set(Object.keys(branchTargets));
     let progress = true;
     while (pending.size && progress) {
@@ -2694,36 +2697,80 @@
         const anchorX = srcPositions.reduce((sum, p) => sum + p.x, 0) / srcPositions.length;
         const anchorY = srcPositions.reduce((sum, p) => sum + p.y, 0) / srcPositions.length;
         const anchorHalfW = Math.max(...t.sources.map(s => courseNodeWidth(byId[s]))) / 2;
+        
+        const maxW = Math.max(...ids.map(id => courseNodeWidth(byId[id])));
+        const maxH = Math.max(...ids.map(id => COURSE_NODE_EST_HEIGHT[byId[id] ? byId[id].type : 'default'] || COURSE_NODE_EST_HEIGHT.default));
         const mid = (ids.length - 1) / 2;
-        ids.forEach((id, idx) => {
-          const w = courseNodeWidth(byId[id]);
-          const h = COURSE_NODE_EST_HEIGHT[byId[id] ? byId[id].type : 'default'] || COURSE_NODE_EST_HEIGHT.default;
-          let x = t.side === 'right'
-            ? anchorX + anchorHalfW + COURSE_BRANCH_GAP_X + w / 2
-            : anchorX - anchorHalfW - COURSE_BRANCH_GAP_X - w / 2;
-          let y = anchorY + (idx - mid) * COURSE_BRANCH_GAP_Y;
 
-          let overlap = true;
-          while (overlap) {
-            overlap = false;
-            for (const existingId of Object.keys(positions)) {
-              const ep = positions[existingId];
-              const ew = courseNodeWidth(byId[existingId]);
-              const eh = COURSE_NODE_EST_HEIGHT[byId[existingId] ? byId[existingId].type : 'default'] || COURSE_NODE_EST_HEIGHT.default;
-              const pad = 24;
-
-              if (Math.abs(x - ep.x) < (w + ew) / 2 + pad && Math.abs(y - ep.y) < (h + eh) / 2 + pad) {
-                overlap = true;
-                y += COURSE_BRANCH_GAP_Y;
-                break;
-              }
-            }
+        const checkGroupOverlap = (baseX) => {
+          for (let idx = 0; idx < ids.length; idx++) {
+             let testY = anchorY + (idx - mid) * COURSE_BRANCH_GAP_Y;
+             for (const existingId of Object.keys(positions)) {
+               const ep = positions[existingId];
+               const ew = courseNodeWidth(byId[existingId]);
+               const eh = COURSE_NODE_EST_HEIGHT[byId[existingId] ? byId[existingId].type : 'default'] || COURSE_NODE_EST_HEIGHT.default;
+               const pad = 24;
+               if (Math.abs(baseX - ep.x) < (maxW + ew) / 2 + pad && Math.abs(testY - ep.y) < (maxH + eh) / 2 + pad) {
+                 return true;
+               }
+             }
           }
+          return false;
+        };
 
-          positions[id] = { x, y };
-          pending.delete(id);
-          progress = true;
-        });
+        let placement = 'side';
+        let baseX = t.side === 'right'
+            ? anchorX + anchorHalfW + COURSE_BRANCH_GAP_X + maxW / 2
+            : anchorX - anchorHalfW - COURSE_BRANCH_GAP_X - maxW / 2;
+
+        if (checkGroupOverlap(baseX)) {
+            const oppX = t.side === 'right'
+              ? anchorX - anchorHalfW - COURSE_BRANCH_GAP_X - maxW / 2
+              : anchorX + anchorHalfW + COURSE_BRANCH_GAP_X + maxW / 2;
+            if (!checkGroupOverlap(oppX)) {
+                baseX = oppX;
+            } else {
+                placement = 'vertical';
+            }
+        }
+
+        if (placement === 'side') {
+           ids.forEach((id, idx) => {
+             positions[id] = { x: baseX, y: anchorY + (idx - mid) * COURSE_BRANCH_GAP_Y };
+             pending.delete(id);
+             progress = true;
+           });
+        } else {
+           const prevMaxH = Math.max(...t.sources.map(s => COURSE_NODE_EST_HEIGHT[byId[s] ? byId[s].type : 'default'] || COURSE_NODE_EST_HEIGHT.default));
+           const shiftY = maxH + COURSE_ROW_GAP;
+           const totalShift = ids.length * shiftY;
+
+           const anchorYKey = Math.round(anchorY);
+           const currentApplied = shiftedAnchorY.get(anchorYKey) || 0;
+
+           if (totalShift > currentApplied) {
+               const diff = totalShift - currentApplied;
+               shiftedAnchorY.set(anchorYKey, totalShift);
+               
+               for (const pid of Object.keys(positions)) {
+                   if (vertBranches.get(anchorYKey)?.has(pid)) continue;
+                   if (positions[pid].y >= anchorY + prevMaxH + COURSE_ROW_GAP - 10) {
+                       positions[pid].y += diff;
+                   }
+               }
+           }
+
+           if (!vertBranches.has(anchorYKey)) vertBranches.set(anchorYKey, new Set());
+           
+           let currentY = anchorY + prevMaxH + COURSE_ROW_GAP;
+           ids.forEach((id) => {
+               vertBranches.get(anchorYKey).add(id);
+               positions[id] = { x: anchorX, y: currentY };
+               currentY += shiftY;
+               pending.delete(id);
+               progress = true;
+           });
+        }
       });
     }
     // Any branch node whose source(s) never got positioned (e.g. an
@@ -2908,7 +2955,7 @@
       return `
         <div class="course-node course-card-module${stateClass}" data-node-id="${kirEscapeHtml(node.id)}" style="left:${pos.x - w / 2}px; top:${pos.y}px; width:${w}px; --course-current-glow:${color}55;" onclick="courseSelectNode('${kirEscapeHtml(node.id)}')">
           <div class="course-node-inner overflow-hidden" style="border-color:${color}55;">
-            ${hasParent ? `<div class="course-port course-port-in" style="background:${color};"></div>` : ''}
+            ${(hasParent || branchInfo.isStacked) ? `<div class="course-port course-port-in" style="background:${color};"></div>` : ''}
             ${sidePorts}
             <div class="course-module-chip">
               <span class="course-module-number" style="color:${color}; background:${color}26; border-color:${color}4d;">${kirEscapeHtml(chapterNum)}</span>
@@ -2918,7 +2965,7 @@
               </div>
               ${statusBadge}
             </div>
-            ${hasChildren ? `<div class="course-port course-port-out" style="background:${color};"></div>` : ''}
+            ${(hasChildren || branchInfo.hasStackedChild) ? `<div class="course-port course-port-out" style="background:${color};"></div>` : ''}
             ${lockOverlay}
           </div>
         </div>`;
@@ -2949,7 +2996,7 @@
     return `
       <div class="course-node course-card-${kirEscapeHtml(node.type)}${stateClass}" data-node-id="${kirEscapeHtml(node.id)}" style="left:${pos.x - w / 2}px; top:${pos.y}px; width:${w}px; --course-current-glow:${color}55;" onclick="courseSelectNode('${kirEscapeHtml(node.id)}')">
         <div class="course-node-inner overflow-hidden">
-          ${hasParent ? `<div class="course-port course-port-in" style="background:${color};"></div>` : ''}
+          ${(hasParent || branchInfo.isStacked) ? `<div class="course-port course-port-in" style="background:${color};"></div>` : ''}
           ${sidePorts}
           <div class="course-node-header">
             ${headerIcon}
@@ -2968,7 +3015,7 @@
             <div class="course-node-desc text-zinc-500 text-[11px] mt-1.5 leading-snug line-clamp-2 kir-markdown kir-markdown-clamp">${kirRenderCourseMarkdown(node.description || '')}</div>
           </div>
           ${courseCardFooterHtml(node, color, childCounts)}
-          ${hasChildren ? `<div class="course-port course-port-out" style="background:${color};"></div>` : ''}
+          ${(hasChildren || branchInfo.hasStackedChild) ? `<div class="course-port course-port-out" style="background:${color};"></div>` : ''}
           ${lockOverlay}
         </div>
       </div>`;
@@ -2992,10 +3039,15 @@
     // ports above.
     const branchInfoById = {};
     branchEdges.forEach(e => {
+      const isStacked = positions[e.from] && positions[e.to] && Math.abs(positions[e.from].x - positions[e.to].x) < 20;
+      
       const anchorInfo = (branchInfoById[e.from] = branchInfoById[e.from] || {});
-      anchorInfo[e.branch] = true; // anchor gets a port facing its branch stack
+      if (!isStacked) anchorInfo[e.branch] = true;
+      else anchorInfo.hasStackedChild = true;
+
       const nodeInfo = (branchInfoById[e.to] = branchInfoById[e.to] || {});
-      nodeInfo.branchSide = e.branch === 'right' ? 'left' : (e.branch === 'left' ? 'right' : 'top'); // branch node's port faces back toward the anchor
+      if (!isStacked) nodeInfo.branchSide = e.branch === 'right' ? 'left' : (e.branch === 'left' ? 'right' : 'top');
+      else nodeInfo.isStacked = true;
     });
 
     // Per-node counts of direct children by type, for the course
@@ -3101,12 +3153,14 @@
       const toCenterY = c.centerY + (toOffsets.t - toOffsets.b) / 2;
 
       let startX, startY, endX, endY, bend, isBranch = false;
-      if (edge.branch === 'right') {
+      const isStacked = edge.branch && Math.abs(fromCenterX - toCenterX) < 20;
+
+      if (edge.branch === 'right' && !isStacked) {
         isBranch = true;
         startX = p.right - fromOffsets.r; startY = fromCenterY;
         endX = c.left + toOffsets.l; endY = toCenterY;
         bend = Math.max(24, (endX - startX) * 0.5);
-      } else if (edge.branch === 'left') {
+      } else if (edge.branch === 'left' && !isStacked) {
         isBranch = true;
         startX = p.left + fromOffsets.l; startY = fromCenterY;
         endX = c.right - toOffsets.r; endY = toCenterY;

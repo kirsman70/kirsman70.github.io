@@ -3355,33 +3355,51 @@ function kirRefreshProfileAboutView(text, isSelf = true) {
   if (!textEl || !emptyEl) return;
   const val = (text || '').trim();
   if (val) {
-    if (typeof kirRenderMarkdownWithMath === 'function' && window.marked && window.DOMPurify) {
-      textEl.innerHTML = kirRenderMarkdownWithMath(val);
-    } else {
-      textEl.textContent = val;
-      
-      if (!_kirMarkdownDependenciesLoading) {
-        _kirMarkdownDependenciesLoading = true;
-        const loadJs = (src) => new Promise(r => {
-          if (document.querySelector(`script[src="${src}"]`)) return r();
-          const s = document.createElement('script');
-          s.src = src;
-          s.onload = r;
-          document.head.appendChild(s);
-        });
+    const renderFn = window.kirRenderMarkdownWithMath || window.kirRenderCourseMarkdown;
+      if (typeof renderFn === 'function' && window.marked && window.DOMPurify) {
+        textEl.innerHTML = renderFn(val);
+      } else {
+        textEl.textContent = val;
         
-        Promise.all([
-          loadJs('https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js'),
-          loadJs('https://cdn.jsdelivr.net/npm/marked/marked.min.js'),
-          loadJs('js/admin-shared.js')
-        ]).then(() => {
-          if (typeof kirRenderMarkdownWithMath === 'function' && window.marked) {
-            marked.setOptions({ gfm: true, breaks: true });
-            textEl.innerHTML = kirRenderMarkdownWithMath(val);
+        if (!_kirMarkdownDependenciesLoading) {
+          _kirMarkdownDependenciesLoading = true;
+          const loadJs = (src, globalVar) => new Promise(r => {
+            if (globalVar && window[globalVar]) return r();
+            if (document.querySelector(`script[src="${src}"]`)) {
+              if (!globalVar) return r();
+              let attempts = 0;
+              const check = setInterval(() => {
+                if (window[globalVar] || ++attempts > 100) {
+                  clearInterval(check);
+                  r();
+                }
+              }, 50);
+              return;
+            }
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = r;
+            document.head.appendChild(s);
+          });
+          
+          const scripts = [
+            loadJs('https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js', 'DOMPurify'),
+            loadJs('https://cdn.jsdelivr.net/npm/marked/marked.min.js', 'marked')
+          ];
+          
+          if (typeof kirRenderCourseMarkdown !== 'function') {
+            scripts.push(loadJs('js/admin-shared.js', 'kirRenderMarkdownWithMath'));
           }
-        }).catch(err => console.error("Failed to load markdown", err));
+          
+          Promise.all(scripts).then(() => {
+            const fn = window.kirRenderMarkdownWithMath || window.kirRenderCourseMarkdown;
+            if (typeof fn === 'function' && window.marked) {
+              marked.setOptions({ gfm: true, breaks: true });
+              textEl.innerHTML = fn(val);
+            }
+          }).catch(err => console.error("Failed to load markdown", err));
+        }
       }
-    }
     if (viewEl) viewEl.classList.remove('hidden');
     textEl.classList.remove('hidden');
     emptyEl.classList.add('hidden');

@@ -538,6 +538,9 @@
     });
     const siblingKey = (sources, side) => side + '|' + [...sources].sort().join(',');
 
+    const shiftedAnchorY = new Map();
+    const vertBranches = new Map();
+
     const pending = new Set(Object.keys(branchTargets));
     let progress = true;
     while (pending.size && progress) {
@@ -557,16 +560,79 @@
         const anchorX = srcPositions.reduce((sum, p) => sum + p.x, 0) / srcPositions.length;
         const anchorY = srcPositions.reduce((sum, p) => sum + p.y, 0) / srcPositions.length;
         const anchorHalfW = Math.max(...t.sources.map(s => courseSnapshotShape(byId[s] ? byId[s].type : 'default').w)) / 2;
+        
+        const maxW = Math.max(...ids.map(id => courseSnapshotShape(byId[id] ? byId[id].type : 'default').w));
+        const maxH = Math.max(...ids.map(id => courseSnapshotShape(byId[id] ? byId[id].type : 'default').h));
         const mid = (ids.length - 1) / 2;
-        ids.forEach((id, idx) => {
-          const w = courseSnapshotShape(byId[id] ? byId[id].type : 'default').w;
-          const x = t.side === 'right'
-            ? anchorX + anchorHalfW + COURSE_SNAPSHOT_BRANCH_GAP_X + w / 2
-            : anchorX - anchorHalfW - COURSE_SNAPSHOT_BRANCH_GAP_X - w / 2;
-          positions[id] = { x, y: anchorY + (idx - mid) * COURSE_SNAPSHOT_BRANCH_GAP_Y };
-          pending.delete(id);
-          progress = true;
-        });
+
+        const checkGroupOverlap = (baseX) => {
+          for (let idx = 0; idx < ids.length; idx++) {
+             let testY = anchorY + (idx - mid) * COURSE_SNAPSHOT_BRANCH_GAP_Y;
+             for (const existingId of Object.keys(positions)) {
+               const ep = positions[existingId];
+               const eshape = courseSnapshotShape(byId[existingId] ? byId[existingId].type : 'default');
+               const pad = 4;
+               if (Math.abs(baseX - ep.x) < (maxW + eshape.w) / 2 + pad && Math.abs(testY - ep.y) < (maxH + eshape.h) / 2 + pad) {
+                 return true;
+               }
+             }
+          }
+          return false;
+        };
+
+        let placement = 'side';
+        let baseX = t.side === 'right'
+            ? anchorX + anchorHalfW + COURSE_SNAPSHOT_BRANCH_GAP_X + maxW / 2
+            : anchorX - anchorHalfW - COURSE_SNAPSHOT_BRANCH_GAP_X - maxW / 2;
+
+        if (checkGroupOverlap(baseX)) {
+            const oppX = t.side === 'right'
+              ? anchorX - anchorHalfW - COURSE_SNAPSHOT_BRANCH_GAP_X - maxW / 2
+              : anchorX + anchorHalfW + COURSE_SNAPSHOT_BRANCH_GAP_X + maxW / 2;
+            if (!checkGroupOverlap(oppX)) {
+                baseX = oppX;
+            } else {
+                placement = 'vertical';
+            }
+        }
+
+        if (placement === 'side') {
+           ids.forEach((id, idx) => {
+             positions[id] = { x: baseX, y: anchorY + (idx - mid) * COURSE_SNAPSHOT_BRANCH_GAP_Y };
+             pending.delete(id);
+             progress = true;
+           });
+        } else {
+           const prevMaxH = Math.max(...t.sources.map(s => courseSnapshotShape(byId[s] ? byId[s].type : 'default').h));
+           const shiftY = maxH + COURSE_SNAPSHOT_ROW_GAP;
+           const totalShift = ids.length * shiftY;
+
+           const anchorYKey = Math.round(anchorY);
+           const currentApplied = shiftedAnchorY.get(anchorYKey) || 0;
+
+           if (totalShift > currentApplied) {
+               const diff = totalShift - currentApplied;
+               shiftedAnchorY.set(anchorYKey, totalShift);
+               
+               for (const pid of Object.keys(positions)) {
+                   if (vertBranches.get(anchorYKey)?.has(pid)) continue;
+                   if (positions[pid].y >= anchorY + prevMaxH + COURSE_SNAPSHOT_ROW_GAP - 5) {
+                       positions[pid].y += diff;
+                   }
+               }
+           }
+
+           if (!vertBranches.has(anchorYKey)) vertBranches.set(anchorYKey, new Set());
+           
+           let currentY = anchorY + prevMaxH + COURSE_SNAPSHOT_ROW_GAP;
+           ids.forEach((id) => {
+               vertBranches.get(anchorYKey).add(id);
+               positions[id] = { x: anchorX, y: currentY };
+               currentY += shiftY;
+               pending.delete(id);
+               progress = true;
+           });
+        }
       });
     }
 
