@@ -1092,6 +1092,13 @@ async function confirmAvatarCrop() {
     __kirCachedBannerColor = null;
     const bannerEl = document.getElementById('kir-profile-banner');
     if (bannerEl && !document.getElementById('kir-profile-modal')?.classList.contains('hidden')) {
+      const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
+      if (modalAvatar) {
+        modalAvatar.style.backgroundImage = `url("${avatarUrl}")`;
+        modalAvatar.style.backgroundSize = 'cover';
+        modalAvatar.style.backgroundPosition = 'center';
+        modalAvatar.textContent = '';
+      }
       kirExtractDominantColor(avatarUrl).then(rgb => {
         __kirCachedBannerColor = rgb;
         __kirCachedBannerAvatarSrc = avatarUrl;
@@ -3019,8 +3026,6 @@ function kirRenderUserChrome(root = document) {
     }
   };
   root.querySelectorAll('[data-kir="avatar"]').forEach(el => applyAvatar(el, avatar));
-  const modalAvatar = root.querySelector('[data-kir="profile-modal-avatar"]');
-  if (modalAvatar) applyAvatar(modalAvatar, avatar);
 }
 
 let __kirCachedBannerColor = null;
@@ -3492,8 +3497,16 @@ function kirSaveProfileName() {
     kirSetUserNickname(null);
   }
   
+  const displayName = kirCurrentUserNickname() || kirCurrentUserName();
   const nameEl = document.getElementById('kir-profile-modal-name');
-  if (nameEl) nameEl.textContent = kirCurrentUserNickname() || kirCurrentUserName();
+  if (nameEl) nameEl.textContent = displayName;
+  
+  if (!kirCurrentUserAvatar()) {
+    const modalAvatar = document.querySelector('[data-kir="profile-modal-avatar"]');
+    if (modalAvatar) modalAvatar.textContent = displayName.charAt(0).toUpperCase();
+  }
+  
+  kirRenderUserChrome();
   kirCancelProfileNameEdit();
 }
 
