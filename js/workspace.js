@@ -1356,8 +1356,26 @@
   // see fetchCourseData(explicitCourseId), which also touches that
   // enrollment's updated_at so it stays "most recent" afterward.
   async function pickEnrollmentFromPicker(courseId) {
-    closeCoursePickerModal();
+    const btn = document.querySelector(`button[onclick="pickEnrollmentFromPicker('${courseId}')"]`);
+    let originalHtml = '';
+    
+    if (btn) {
+      originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.innerHTML = `<span>Memuat...</span>`;
+    }
+
     await fetchCourseData(courseId);
+
+    closeCoursePickerModal();
+
+    // Restore the button state in case the modal is opened again later
+    if (btn) {
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
   }
 
   /* ---------- Temporary "finish this" progress control ----------
@@ -1616,6 +1634,18 @@
       return;
     }
 
+    // Show modal instantly with a loading state
+    document.getElementById('cvm-modal').classList.toggle('cvm-flag', node.type === 'flag');
+    document.getElementById('cvm-title').innerHTML = kirRenderCourseMarkdown(node.title || 'Memuat...');
+    document.getElementById('cvm-progress').textContent = '...';
+    document.getElementById('cvm-question').innerHTML = '<p class="text-zinc-500 animate-pulse">Memuat soal...</p>';
+    ['mc', 'dropdown', 'essay', 'programming'].forEach(t => {
+      document.getElementById(`cvm-${t}-wrap`).classList.add('hidden');
+    });
+    document.querySelector('.cvm-nav-grid').innerHTML = '';
+    document.querySelector('.cvm-footer').innerHTML = '';
+    kirLocalModalShow(document.getElementById('cvm-modal'));
+
     const { data: userData } = await supabaseClient.auth.getUser();
     if (!userData || !userData.user) return;
 
@@ -1665,8 +1695,6 @@
       requestCourseFullscreen();
       showCourseWarningBanner('Mode Layar Penuh diaktifkan untuk pengerjaan Flag. Perpindahan tab (Alt-Tab) terdeteksi & dicatat.');
     }
-
-    kirLocalModalShow(document.getElementById('cvm-modal'));
   }
 
   function requestCourseFullscreen() {
@@ -2116,13 +2144,28 @@
       return;
     }
 
+    // Show modal immediately with loading state
+    document.getElementById('cmm-title').innerHTML = kirRenderCourseMarkdown(node.title || 'Memuat...');
+    document.getElementById('cmm-desc').innerHTML = '';
+    ['text', 'document', 'video', 'empty'].forEach(t => {
+      document.getElementById(`cmm-${t}-wrap`).classList.add('hidden');
+    });
+    document.getElementById('cmm-type-pill').classList.add('hidden');
+    document.getElementById('cmm-duration-badge').classList.add('hidden');
+    document.getElementById('cmm-info-btn').classList.add('hidden');
+    kirLocalModalShow(document.getElementById('cmm-modal'));
+
     const { data: material, error } = await supabaseClient
       .from('materials').select('*').eq('id', node.materialId).limit(1).maybeSingle();
-    if (error || !material) { console.error('Error fetching material:', error); return; }
+    
+    if (error || !material) { 
+      console.error('Error fetching material:', error); 
+      closeCourseMaterialModal();
+      return; 
+    }
 
     COURSE_MATERIAL_RUNNER = { nodeId, material };
     renderCourseMaterialModal();
-    kirLocalModalShow(document.getElementById('cmm-modal'));
   }
 
   // Body-level info tooltip for the material viewer's "i" button

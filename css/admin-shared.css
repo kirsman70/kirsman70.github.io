@@ -157,11 +157,63 @@
 .admin-quick-wrap {
   position: relative;
   height: 100%;
+  touch-action: pan-y;
 }
 .admin-quick-card {
   width: 100%;
   height: 100%;
-  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.admin-quick-underlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 1.5rem;
+  background-color: rgba(var(--accent-rgb), 0.15);
+  color: #ffffff;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: background-color 0.22s ease, opacity 0.18s ease;
+}
+
+.admin-quick-underlay-content {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  transform: scale(0.6);
+  opacity: 0.3;
+  will-change: transform, opacity;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+}
+
+.admin-quick-underlay-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+}
+
+.admin-quick-underlay-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-quick-underlay.mode-edit {
+  background-color: rgba(var(--accent-rgb), 0.92);
+}
+
+.admin-quick-underlay.mode-delete {
+  background-color: rgba(239, 68, 68, 0.94);
 }
 .admin-quick-wrap:hover .admin-quick-card,
 .admin-quick-wrap:focus-within .admin-quick-card {

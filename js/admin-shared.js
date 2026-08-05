@@ -251,10 +251,129 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
   const deleteBtn = onDelete ? kirAdminDeleteButtonHtml(onDelete, 'data-quick="delete"') : '';
   if (!editBtn && !deleteBtn) return cardHtml;
   return `<div class="admin-quick-wrap">
+    <div class="admin-quick-underlay" aria-hidden="true">
+      <div class="admin-quick-underlay-content">
+        <svg class="admin-quick-underlay-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" /></svg>
+        <span class="admin-quick-underlay-label">Edit</span>
+      </div>
+    </div>
     <div class="admin-quick-card">${cardHtml}</div>
     <div class="admin-quick-actions">${editBtn}${deleteBtn}</div>
   </div>`;
 }
+
+(function kirInitSwipeToReveal() {
+  let touchState = null;
+
+  const ICON_EDIT = '<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" />';
+  const ICON_DELETE = '<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />';
+
+  function calculateRubberband(delta, limit) {
+    if (delta <= limit) return delta;
+    const over = delta - limit;
+    return limit + (over * 0.28);
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    if (window.innerWidth >= 1024) return;
+    const wrap = e.target.closest('.admin-quick-wrap');
+    if (!wrap) return;
+    const card = wrap.querySelector('.admin-quick-card');
+    const underlay = wrap.querySelector('.admin-quick-underlay');
+    if (!card || !underlay) return;
+
+    touchState = {
+      wrap,
+      card,
+      underlay,
+      iconEl: underlay.querySelector('.admin-quick-underlay-icon'),
+      labelEl: underlay.querySelector('.admin-quick-underlay-label'),
+      contentEl: underlay.querySelector('.admin-quick-underlay-content'),
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      currentX: 0,
+      activeMode: null,
+      isHorizontal: null
+    };
+
+    card.style.transition = 'none';
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!touchState) return;
+    const dx = e.touches[0].clientX - touchState.startX;
+    const dy = e.touches[0].clientY - touchState.startY;
+
+    if (touchState.isHorizontal === null) {
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+        touchState.isHorizontal = true;
+      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+        touchState.isHorizontal = false;
+      }
+    }
+
+    if (!touchState.isHorizontal || dx < 0) return;
+
+    if (e.cancelable) e.preventDefault();
+
+    const editTrigger = 75;
+    const deleteTrigger = 175;
+    const translation = calculateRubberband(dx, deleteTrigger);
+    touchState.currentX = translation;
+
+    touchState.card.style.transform = `translate3d(${translation}px, 0, 0)`;
+
+    const progress = Math.min(1, dx / editTrigger);
+    touchState.underlay.style.opacity = String(Math.min(1, progress * 1.2));
+
+    if (dx >= deleteTrigger) {
+      if (touchState.activeMode !== 'delete') {
+        touchState.activeMode = 'delete';
+        touchState.underlay.className = 'admin-quick-underlay mode-delete';
+        touchState.iconEl.innerHTML = ICON_DELETE;
+        touchState.labelEl.textContent = 'Hapus';
+      }
+      const overScale = 1.15 + Math.min(0.25, (dx - deleteTrigger) / 300);
+      touchState.contentEl.style.transform = `scale(${overScale})`;
+      touchState.contentEl.style.opacity = '1';
+    } else if (dx >= editTrigger) {
+      if (touchState.activeMode !== 'edit') {
+        touchState.activeMode = 'edit';
+        touchState.underlay.className = 'admin-quick-underlay mode-edit';
+        touchState.iconEl.innerHTML = ICON_EDIT;
+        touchState.labelEl.textContent = 'Edit';
+      }
+      const editScale = 0.95 + ((dx - editTrigger) / (deleteTrigger - editTrigger)) * 0.2;
+      touchState.contentEl.style.transform = `scale(${editScale})`;
+      touchState.contentEl.style.opacity = '1';
+    } else {
+      touchState.activeMode = null;
+      touchState.underlay.className = 'admin-quick-underlay';
+      touchState.contentEl.style.transform = `scale(${0.6 + progress * 0.35})`;
+      touchState.contentEl.style.opacity = String(progress * 0.9);
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    if (!touchState) return;
+    const { card, wrap, activeMode, isHorizontal } = touchState;
+
+    if (isHorizontal) {
+      card.style.transition = 'transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      card.style.transform = 'translate3d(0, 0, 0)';
+
+      if (activeMode === 'edit') {
+        const btn = wrap.querySelector('[data-quick="edit"]');
+        if (btn) btn.click();
+      } else if (activeMode === 'delete') {
+        const btn = wrap.querySelector('[data-quick="delete"]');
+        if (btn) btn.click();
+      }
+    }
+
+    touchState = null;
+  });
+})();
 
 /* ----------------------------------------------------------
    Shared create/edit modal
