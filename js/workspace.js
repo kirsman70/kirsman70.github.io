@@ -979,11 +979,33 @@
       nodes.flatMap(n => n.voyage_id ? [n.voyage_id] : (n.voyage_ids || []))
     ));
     let difficultyByVoyageId = new Map();
+    let typeByVoyageId = new Map();
+    window.COURSE_VOYAGE_DONE_SET = new Set();
+
     if (allVoyageIds.length) {
-      const { data: voyageDifficulties, error: errDiff } = await supabaseClient
-        .from('voyages').select('id, difficulty').in('id', allVoyageIds);
-      if (errDiff) console.error('Error fetching voyage difficulties:', errDiff);
-      else difficultyByVoyageId = new Map(voyageDifficulties.map(v => [v.id, v.difficulty]));
+      const { data: voyageInfo, error: errInfo } = await supabaseClient
+        .from('voyages').select('id, difficulty, type').in('id', allVoyageIds);
+      if (errInfo) console.error('Error fetching voyage info:', errInfo);
+      else {
+        difficultyByVoyageId = new Map(voyageInfo.map(v => [v.id, v.difficulty]));
+        typeByVoyageId = new Map(voyageInfo.map(v => [v.id, v.type]));
+      }
+
+      if (uid) {
+        const { data: comps } = await supabaseClient
+          .from('voyage_completions')
+          .select('voyage_id, deltas_earned')
+          .eq('user_id', uid)
+          .in('voyage_id', allVoyageIds);
+        if (comps) {
+          comps.forEach(c => {
+            const type = typeByVoyageId.get(c.voyage_id);
+            if (type === 'essay' || type === 'programming' || (c.deltas_earned || 0) > 0) {
+              window.COURSE_VOYAGE_DONE_SET.add(c.voyage_id);
+            }
+          });
+        }
+      }
     }
 
     nodes.forEach(n => {
@@ -1887,6 +1909,7 @@
           submitBtn.disabled = false;
           return;
         }
+        if (window.COURSE_VOYAGE_DONE_SET) window.COURSE_VOYAGE_DONE_SET.add(v.id);
         feedback.className = 'text-sm font-medium rounded-lg px-4 py-3 mb-4 bg-accent-10 text-accent-200';
         feedback.textContent = 'Jawaban terkirim untuk ditinjau.';
         courseVoyageFinishAfterSubmit();
@@ -1898,6 +1921,7 @@
           body: { voyage_id: v.id, submission: text, lang: 'id', telemetry: courseKirTelemetrySnapshot() }
         });
         if (error) throw error;
+        if (window.COURSE_VOYAGE_DONE_SET) window.COURSE_VOYAGE_DONE_SET.add(v.id);
         feedback.classList.remove('hidden');
         feedback.className = 'text-sm rounded-lg px-4 py-3 mb-4 ' + (data.is_correct ? 'bg-accent-10 text-accent-200' : 'bg-white/5 text-zinc-300');
         feedback.textContent = `Skor: ${data.score}/100${data.reward ? ` (+${data.reward} deltas)` : ''}`;
@@ -1946,7 +1970,13 @@
 
     const results = Array.isArray(data) ? data : [data];
     const resultByVoyageId = new Map(results.filter(Boolean).map(res => [res.voyage_id, res]));
-    const correctCount = payload.filter(({ voyage_id }) => !!resultByVoyageId.get(voyage_id)?.is_correct).length;
+    const correctCount = payload.filter(({ voyage_id }) => {
+      const isCorrect = !!resultByVoyageId.get(voyage_id)?.is_correct;
+      if (isCorrect && window.COURSE_VOYAGE_DONE_SET) {
+        window.COURSE_VOYAGE_DONE_SET.add(voyage_id);
+      }
+      return isCorrect;
+    }).length;
     const totalCount = payload.length;
     const totalReward = payload.reduce((sum, { voyage_id }) => sum + (resultByVoyageId.get(voyage_id)?.reward || 0), 0);
 
@@ -2802,8 +2832,15 @@
   // with a dangling separator in front of it.
 
   function courseVoyageNodeMetaHtml(node) {
-    const soalCount = (node.voyageIds || []).length;
-    const doneCount = COURSE_COMPLETED_IDS.has(node.id) ? soalCount : 0;
+    const voyageIds = node.voyageIds || [];
+    const soalCount = voyageIds.length;
+    let doneCount = 0;
+    if (window.COURSE_VOYAGE_DONE_SET) {
+      doneCount = voyageIds.filter(id => window.COURSE_VOYAGE_DONE_SET.has(id)).length;
+    } else {
+      doneCount = COURSE_COMPLETED_IDS.has(node.id) ? soalCount : 0;
+    }
+
     let ratingMeta = '';
     if (node.avgDifficulty !== null && node.avgDifficulty !== undefined) {
       ratingMeta = `<span class="course-node-meta">${COURSE_DIFF_STAR_SVG}${node.avgDifficulty}</span><span class="course-node-meta-sep"></span>`;
