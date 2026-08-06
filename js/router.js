@@ -366,7 +366,7 @@
     }
 
     let bodySwapped = false;
-    const swapBody = () => {
+    const swapBody = async () => {
       if (bodySwapped) return;
       bodySwapped = true;
 
@@ -557,7 +557,12 @@
       const bodyScripts = Array.from(document.body.querySelectorAll('script'));
       for (const node of bodyScripts) {
         if (node.getAttribute('src')) {
-          loadExternalAsset(node);
+          const isNonBlocking = node.hasAttribute('async') || node.hasAttribute('defer');
+          if (isNonBlocking) {
+            loadExternalAsset(node);
+          } else {
+            await loadExternalAsset(node);
+          }
         } else {
           runInlineScript(node.textContent);
         }
@@ -593,10 +598,10 @@
     }
 
     if (typeof document.startViewTransition === 'function') {
-      const transition = document.startViewTransition(() => { swapBody(); });
+      const transition = document.startViewTransition(() => swapBody());
       try { await transition.finished; } catch (e) { /* interrupted by a newer nav; swap already applied */ }
     } else {
-      swapBody();
+      await swapBody();
     }
 
     window.scrollTo(0, 0);

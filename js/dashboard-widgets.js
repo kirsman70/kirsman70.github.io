@@ -51,22 +51,8 @@ const TASK_STATUS_CLS = {
 let DASH_EVENTS_PREVIEW = [];
 let DASH_EVENTS_TOTAL = 0;
 
-async function fetchDashboardWidgetsData(retries = 10) {
-  if (!window.supabaseClient) {
-    if (retries > 0) {
-      setTimeout(() => fetchDashboardWidgetsData(retries - 1), 200);
-    }
-    return;
-  }
-
-  if (window.__kirProfileReady) {
-    try {
-      await window.__kirProfileReady;
-    } catch (e) {
-      console.error('Profile ready error in widgets fetch:', e);
-    }
-  }
-
+async function fetchDashboardWidgetsData() {
+  if (!window.supabaseClient) return;
   const types = new Set(dashLayout.map(w => w.type));
 
   if (types.has('tasks')) {

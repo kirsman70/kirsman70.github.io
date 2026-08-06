@@ -217,7 +217,7 @@
   function buildCard(m) {
     const i18nKey = getRoleI18n(m.role);
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
-    const clickAttr = m.id ? `onclick="if(!didDrag) kirOpenProfileModal('${m.id}')"` : '';
+    const clickAttr = m.id ? `onclick="if(!window.didDrag) kirOpenProfileModal('${m.id}')"` : '';
     const cursorClass = m.id ? 'cursor-pointer hover:border-white/20 hover:scale-[1.03] transition-all duration-200' : '';
     const youAttr = m.isYou ? ' id="org-card-you"' : '';
     return `
@@ -341,7 +341,7 @@
   /* ---------- Pan & zoom ---------- */
   let panX = 0, panY = 0, scale = 1;
   let isDragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
-  let didDrag = false;
+  window.didDrag = false;
   let rafId = null;
   let pendingTransform = false;
 
@@ -411,7 +411,7 @@
   function chartPointerDown(e) {
     if (e.target.closest('.chart-ctrl-btn')) return;
     isDragging = true;
-    didDrag = false;
+    window.didDrag = false;
     const p = pointFromEvent(e);
     dragStartX = p.clientX;
     dragStartY = p.clientY;
@@ -425,7 +425,7 @@
     const p = pointFromEvent(e);
     const dx = p.clientX - dragStartX;
     const dy = p.clientY - dragStartY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) window.didDrag = true;
     panX = panStartX + dx;
     panY = panStartY + dy;
     applyTransform();
