@@ -326,21 +326,33 @@ function kirAdminWrapQuickActions(cardHtml, { onEdit, onDelete, show } = {}) {
 
     if (touchState.isHorizontal === null) {
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+        // Abort tracking entirely if the initial gesture is a left-to-right swipe.
+        // This allows native browser gestures (like swipe-to-go-back) to work normally.
+        if (dx > 0) {
+          touchState.card.style.transition = '';
+          touchState.underlay.style.transition = '';
+          if (touchState.contentEl) touchState.contentEl.style.transition = '';
+          touchState = null;
+          return;
+        }
         touchState.isHorizontal = true;
       } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
         touchState.isHorizontal = false;
       }
     }
 
-    // Only allow Right-to-Left swipe
-    if (!touchState.isHorizontal || dx > 0) return;
+    // Only allow Right-to-Left swipe, but process drag-backs to origin
+    if (!touchState.isHorizontal) return;
 
     if (e.cancelable) e.preventDefault();
+
+    // Clamp to prevent dragging left-to-right past origin
+    const boundedDx = Math.min(0, dx);
 
     const editTrigger = 75;
     const deleteTrigger = 160;
 
-    const translation = calculateRubberband(dx, deleteTrigger);
+    const translation = calculateRubberband(boundedDx, deleteTrigger);
     touchState.currentX = translation;
     const absTx = Math.abs(translation);
 

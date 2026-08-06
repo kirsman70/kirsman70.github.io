@@ -494,12 +494,10 @@
       taskbar's own list, never the page behind it. */
     overscroll-behavior: contain;
     /* Expand the padding box and offset with negative margin so the
-       nav pill's horizontal box-shadow has room to bleed without 
-       being clipped by overflow-x: hidden. */
-    margin-left: -1.25rem;
-    margin-right: -1.25rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+       nav pill's box-shadow has room to bleed without being clipped 
+       by the scrollport boundaries or overflow: hidden. */
+    margin: -1.25rem;
+    padding: 1.25rem;
   }
   .sidebar-nav-scroll::-webkit-scrollbar {
     display: none;
@@ -859,15 +857,10 @@
       min-width: 0;
       overflow-x: auto;
       overflow-y: hidden;
-      /* Swap the bleed room to the vertical axis for the horizontal taskbar */
-      margin-left: 0;
-      margin-right: 0;
-      padding-left: 0;
-      padding-right: 0;
-      margin-top: -1.25rem;
-      margin-bottom: -1.25rem;
-      padding-top: 1.25rem;
-      padding-bottom: 1.25rem;
+      /* Expand the padding box on all sides to prevent glow clipping 
+         at scroll boundaries or container edges. */
+      margin: -1.25rem;
+      padding: 1.25rem;
     }
     /* Fade runs along whichever axis actually scrolls here, horizontal,
       not vertical. This is the same start or end logic as the vertical bar, just

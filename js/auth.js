@@ -132,7 +132,7 @@ const I18N = {
     idx_faq_q3: 'Bagaimana cara bergabung?', idx_faq_a3: 'Klik tombol Daftar, isi formulir pendaftaran, lalu pilih cabang yang kamu minati. Pengurus akan meninjau pendaftaranmu sebelum akun diaktifkan.',
     idx_faq_q4: 'Apa saja kegiatan KIR?', idx_faq_a4: 'Latihan rutin diadakan setiap hari Kamis untuk kedua cabang. Robotik biasanya utak-atik C++ dan mengembangkan berbagai proyek, sementara Sains lebih banyak diskusi dan eksperimen.',
     idx_faq_q5: 'Apakah KIR punya Tutoring?', idx_faq_a5: 'Ada! Tutoring adalah salah satu program andalan kami, di mana kakak kelas mengajar adik kelas materi MIPA. Orbit juga akan segera dipakai untuk program ini, lengkap dengan kelas dan kursus di dalamnya.',
-    idx_gallery_heading: 'Dokumentasi', idx_gallery_sub: 'Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.', idx_gallery_cta: 'Buka Galeri',
+    idx_gallery_heading: 'Galeri', idx_gallery_sub: 'Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.', idx_gallery_cta: 'Buka Galeri',
     idx_scroll_hint: 'Gulir untuk melihat',
     idx_footer: 'KIR menetapkan pusat gravitasi. Seluruh ekstrakurikuler akan mengorbit ruang ini.',
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja · kirsman70@gmail.com',
@@ -157,7 +157,7 @@ const I18N = {
     streak_label: 'streak', streak_days: 'streak',
     galeri: 'Galeri', program_kerja: 'Program Kerja',
     nav_beranda: 'Beranda', nav_galeri: 'Galeri', nav_proker: 'Program Kerja', nav_katalog: 'Katalog', nav_labs: 'Labs',
-    gallery_title: 'Galeri', gallery_desc: 'Dokumentasi kegiatan ekstrakurikuler, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
+    gallery_title: 'Galeri', gallery_desc: 'Galeri kegiatan ekstrakurikuler, disusun jadi folder seperti berkas di komputer kamu. Klik folder untuk membuka, atau tombol ".." untuk kembali.',
     gallery_up: '.. Kembali', gallery_empty: 'Folder ini belum berisi file. Foto akan segera diunggah.',
     gallery_items_one: 'item', gallery_items_other: 'item',
     proker_eyebrow: 'Tahun Ajaran 2025/2026',
@@ -167,7 +167,7 @@ const I18N = {
     proker_cta_btn: 'Daftar Sekarang',
     wip_badge: 'Segera Hadir',
     gallery_wip_eyebrow: 'Galeri Foto', gallery_wip_title: 'Halaman ini sedang disiapkan',
-    gallery_wip_desc: 'Kami sedang mengumpulkan dokumentasi kegiatan Robotik dan Sains untuk ditampilkan di sini. Nantikan galeri fotonya, ya!',
+    gallery_wip_desc: 'Kami sedang mengumpulkan foto kegiatan Robotik dan Sains untuk ditampilkan di sini. Nantikan galeri fotonya, ya!',
     proker_wip_eyebrow: 'Tahun Ajaran 2025/2026', proker_wip_title: 'Halaman ini sedang disiapkan',
     proker_wip_desc: 'Rincian program kerja cabang Robotik dan Sains untuk tahun ajaran ini sedang kami susun. Kembali lagi sebentar lagi, ya!',
     katalog_wip_eyebrow: 'Karya KIR', katalog_wip_title: 'Halaman ini sedang disiapkan',
@@ -423,7 +423,7 @@ const I18N = {
     idx_faq_q3: 'How do I join?', idx_faq_a3: 'Click the Register button, fill in the registration form, then choose the branch you\u2019re interested in. An organizer will review your registration before your account is activated.',
     idx_faq_q4: 'What does KIR usually do?', idx_faq_a4: 'Regular sessions run every Thursday for both branches. Robotics usually means messing around with C++ and building various projects, while Science is mostly discussion and experiments.',
     idx_faq_q5: 'Does KIR have Tutoring?', idx_faq_a5: 'We do! Tutoring is one of our proud programs, where senior students teach STEM subjects to younger members. Orbit will soon be used for this too, complete with courses and classes built in.',
-    idx_gallery_heading: 'Documentation', idx_gallery_sub: 'Archive of extracurricular activity photos and event recordings in directory format.', idx_gallery_cta: 'Open Gallery',
+    idx_gallery_heading: 'Gallery', idx_gallery_sub: 'Archive of extracurricular activity photos and event recordings in directory format.', idx_gallery_cta: 'Open Gallery',
     idx_scroll_hint: 'Scroll to view',
     idx_footer: 'KIR sets the gravity. Every extracurricular will orbit this core.',
     idx_footer_meta: '© 2026 Karya Ilmiah Remaja (KIR) · kirsman70@gmail.com',
@@ -445,7 +445,7 @@ const I18N = {
     profile_nickname_placeholder: 'Set a nickname...', profile_about_empty: 'Click to add something about yourself…',
     profile_about_placeholder: 'Tell people something about yourself…', profile_joined: 'Joined', profile_branch: 'Branch',
     profile_role: 'Role', profile_flags: 'flags', profile_delta: 'Delta', profile_change_picture: 'Change profile picture',
-    gallery_title: 'Gallery', gallery_desc: 'Documentation from club activities, organized into folders just like the files on your computer. Click a folder to open it, or ".." to go back.',
+    gallery_title: 'Gallery', gallery_desc: 'Gallery from club activities, organized into folders just like the files on your computer. Click a folder to open it, or ".." to go back.',
     gallery_up: '.. Back', gallery_empty: 'This folder is still empty. Photos are coming soon.',
     gallery_items_one: 'item', gallery_items_other: 'items',
     proker_eyebrow: '2025/2026 School Year',
@@ -455,7 +455,7 @@ const I18N = {
     proker_cta_btn: 'Register Now',
     wip_badge: 'Coming Soon',
     gallery_wip_eyebrow: 'Photo Gallery', gallery_wip_title: 'This page is being prepared',
-    gallery_wip_desc: 'We\u2019re gathering documentation from Robotics and Science activities to show here. Stay tuned for the photo gallery!',
+    gallery_wip_desc: 'We\u2019re gathering photos from Robotics and Science activities to show here. Stay tuned for the photo gallery!',
     proker_wip_eyebrow: '2025/2026 School Year', proker_wip_title: 'This page is being prepared',
     proker_wip_desc: 'The details of the Robotics and Science branch work programs for this school year are still being put together. Check back soon!',
     katalog_wip_eyebrow: 'KIR Showcase', katalog_wip_title: 'This page is being prepared',
@@ -1639,6 +1639,7 @@ function kirRenderSidebarNow(activeTab) {
   kirUpdateSidebarPositionModalUI();
   kirRenderUserChrome();
   kirInitSidebarDrag();
+  kirInitMobileSidebarSwipe();
   kirInitSidebarShortcuts();
   kirInitCropDrag();
   kirSettleNavPill();
@@ -1814,6 +1815,54 @@ function kirWatchTaskbarClearance() {
     window.__kirTaskbarClearanceResizeInit = true;
     window.addEventListener('resize', () => kirUpdateTaskbarClearance());
   }
+}
+
+function kirInitMobileSidebarSwipe() {
+  if (window.kirMobileSidebarSwipeInit) return;
+  window.kirMobileSidebarSwipeInit = true;
+
+  let startX = null;
+  let startY = null;
+  let isEdgeSwipe = false;
+  const EDGE_THRESHOLD = 30; // pixels from the left edge
+
+  document.addEventListener('touchstart', (e) => {
+    if (window.innerWidth >= 1024) return;
+    
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    
+    const sidebar = document.getElementById('sidebar');
+    const isOpen = sidebar && sidebar.classList.contains('kir-sidebar-open');
+    
+    // Register as an edge swipe if starting near the left screen edge
+    isEdgeSwipe = !isOpen && startX <= EDGE_THRESHOLD;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (startX === null || startY === null || window.innerWidth >= 1024) return;
+
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    
+    const sidebar = document.getElementById('sidebar');
+    const isOpen = sidebar && sidebar.classList.contains('kir-sidebar-open');
+
+    // Check if the gesture is predominantly horizontal and long enough
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 45) {
+      if (!isOpen && isEdgeSwipe && dx > 0) {
+        // Swipe right from the left edge -> Open
+        kirToggleMobileSidebar();
+      } else if (isOpen && dx < 0) {
+        // Swipe left anywhere while open -> Close
+        kirCloseMobileSidebar();
+      }
+    }
+
+    startX = null;
+    startY = null;
+    isEdgeSwipe = false;
+  }, { passive: true });
 }
 
 function kirInitSidebarDrag() {

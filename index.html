@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Orbit</title>
 
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
@@ -1382,7 +1382,7 @@
   </div>
 
   <div class="obt-scene-text" data-scene="galeri" id="obt-st-galeri">
-    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+    <h2 class="obt-st-heading obt-typehead" data-i18n="idx_gallery_heading">Galeri</h2>
     <p class="obt-st-body" data-i18n="idx_gallery_sub">Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.</p>
     <a href="gallery.html" class="obt-st-cta obt-st-cta-primary"><span data-i18n="idx_gallery_cta">Buka Galeri</span></a>
   </div>
@@ -1517,7 +1517,7 @@
       </div>
 
       <div class="obt-panel" data-scene="galeri">
-        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Dokumentasi</h2>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-4 obt-typehead" data-i18n="idx_gallery_heading">Galeri</h2>
         <p class="text-zinc-500 text-sm mb-7" data-i18n="idx_gallery_sub">Arsip foto kegiatan dan rekaman visual acara ekstrakurikuler dalam format direktori.</p>
         <a href="gallery.html" class="inline-flex items-center gap-2 w-fit rounded-lg px-5 py-2.5 font-semibold text-sm text-white bg-accent-gradient hover:brightness-110 shadow-glow-sm transition">
           <span data-i18n="idx_gallery_cta">Buka Galeri</span>
@@ -1578,6 +1578,18 @@
 // effectively the same moment as before, just without forcing
 // everything above it to sit blocked on the network first.
 kirOnReady(function () {
+  // Prevent trackpad and mouse wheel zooming across the entire page
+  document.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) e.preventDefault();
+  }, { passive: false });
+
+  // Prevent keyboard zooming shortcuts (Ctrl/Cmd + Plus/Minus)
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '-' || e.key === '+')) {
+      e.preventDefault();
+    }
+  });
+
   kirApplyTranslations();
 
   if (kirIsLoggedIn()) {
