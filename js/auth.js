@@ -3312,8 +3312,17 @@ async function kirOpenProfileModal(targetUserId = null) {
   const modal = document.getElementById('kir-profile-modal');
   if (!modal) return;
 
-  const { data: userData } = await supabaseClient.auth.getUser();
-  const currentUserId = userData?.user?.id;
+  kirLocalModalShow(modal);
+
+  const nameEl = document.getElementById('kir-profile-modal-name');
+  if (nameEl) nameEl.textContent = 'Memuat...';
+
+  let currentUserId = null;
+  if (window.supabaseClient) {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    currentUserId = userData?.user?.id;
+  }
+
   const isSelf = !targetUserId || targetUserId === currentUserId;
   const actualTargetId = targetUserId || currentUserId;
 
@@ -3334,16 +3343,22 @@ async function kirOpenProfileModal(targetUserId = null) {
     deltasTotal = kirDeltasTotal();
     flagsTotal = kirFlagsTotal();
     streakDays = kirStreakDays();
-    createdAt = userData?.user?.created_at;
+    if (window.supabaseClient) {
+      const { data: userData } = await supabaseClient.auth.getUser();
+      createdAt = userData?.user?.created_at;
+    }
   } else {
-    const { data: profile } = await supabaseClient
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', actualTargetId)
       .single();
-    
-    if (!profile) return;
-    
+
+    if (error || !profile) {
+      if (nameEl) nameEl.textContent = 'Gagal memuat profil';
+      return;
+    }
+
     name = profile.name;
     nickname = profile.nickname;
     avatar = profile.avatar_url;
