@@ -1433,24 +1433,36 @@ function kirRenderSidebarNow(activeTab) {
           </div>
         </div>
       </section>
-      <section class="glass rounded-xl p-5 mt-4 border border-red-500/20">
-        <h3 class="font-display text-sm font-semibold mb-1 text-red-400" data-i18n="danger_zone_title">Zona Berbahaya</h3>
-        <p class="text-zinc-500 text-xs mb-4" data-i18n="danger_zone_desc">Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan.</p>
-        <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/20 flex items-center justify-between gap-3">
+      <div class="glass rounded-xl mt-4 mb-6 border border-red-500/20">
+        <div class="p-5 flex items-center justify-between gap-4 cursor-pointer" onclick="const b=this.nextElementSibling;const c=this.querySelector('svg');if(b.style.gridTemplateRows==='0fr'){b.style.gridTemplateRows='1fr';c.style.transform='rotate(180deg)';}else{b.style.gridTemplateRows='0fr';c.style.transform='rotate(0deg)';}">
           <div>
-            <p class="text-sm font-medium text-zinc-200" data-i18n="reset_voyages_title">Reset Kursus</p>
-            <p class="text-xs text-zinc-500 mt-1" data-i18n="reset_voyages_desc">Menghapus semua progres kursus yang sudah kamu ambil dan mengatur ulang deltas kamu ke 0.</p>
+            <h3 class="font-display text-sm font-semibold mb-1 text-red-400" data-i18n="danger_zone_title">Zona Berbahaya</h3>
+            <p class="text-zinc-500 text-xs" data-i18n="danger_zone_desc">Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan.</p>
           </div>
-          <button type="button" onclick="openResetVoyagesModal()" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition" data-i18n="reset_voyages_btn">Reset</button>
+          <svg class="w-5 h-5 shrink-0 text-red-400/50 transition-transform duration-300" style="transform: rotate(0deg);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         </div>
-      </section>
+        <div class="grid transition-all duration-300 ease-in-out" style="grid-template-rows: 0fr;">
+          <div class="overflow-hidden">
+            <div class="px-5">
+              <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/20 flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-medium text-zinc-200" data-i18n="reset_voyages_title">Reset Kursus</p>
+                  <p class="text-xs text-zinc-500 mt-1" data-i18n="reset_voyages_desc">Menghapus semua progres kursus yang sudah kamu ambil dan mengatur ulang deltas kamu ke 0.</p>
+                </div>
+                <button type="button" onclick="openResetVoyagesModal()" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition" data-i18n="reset_voyages_btn">Reset</button>
+              </div>
+              <div class="h-5 w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="mt-4 space-y-2">
         <button onclick="kirLogout()" class="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-white/10 w-full transition">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           <span data-i18n="keluar">Keluar</span>
         </button>
         <button onclick="openLogoutAllModal()" class="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 w-full transition">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 4l16 16" /></svg>
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           <span data-i18n="logout_all_btn">Keluar dari Semua Perangkat</span>
         </button>
       </div>
