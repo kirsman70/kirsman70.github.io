@@ -1,11 +1,11 @@
 /* ==========================================================
    KIR (Karya Ilmiah Remaja) : auth + theme
    --------------------------------------------------------
-   I use Supabase for authentication and data storage. Session
-   management is handled through Supabase auth, with localStorage
-   used for UI preferences like theme, language, and sidebar
-   settings. These preferences are non-sensitive and only affect
-   how the interface looks and behaves.
+   I use Supabase for authentication and data storage. JWT session
+   tokens live in sessionStorage (tab-scoped). localStorage holds
+   only UI preferences (theme, language, sidebar) and a non-secret
+   kir_session flag for instant paint — never used as proof of auth.
+   Admin checks call the server is_admin() RPC; RLS enforces access.
 
    The auth functions below integrate with Supabase to handle
    login, logout, and session management. Every page calls these
@@ -15,10 +15,20 @@
 
 const SUPABASE_URL = 'https://qalkibuywgookvicnuhv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhbGtpYnV5d2dvb2t2aWNudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMjg5OTEsImV4cCI6MjA5OTgwNDk5MX0.P1d6Mf3xQITOIyFMLPdFnji0awZj38Sj1K7HZe2n4Zc';
-const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const KIR_AUTH_STORAGE_KEY = 'sb-qalkibuywgookvicnuhv-auth-token';
+try { localStorage.removeItem(KIR_AUTH_STORAGE_KEY); } catch (e) { /* ignore */ }
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: window.sessionStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+}) : null;
 window.supabaseClient = supabaseClient;
 
 const KIR_SESSION_KEY  = 'kir_session';
+const KIR_USER_ID_KEY  = 'kir_user_id';
 const KIR_NAME_KEY     = 'kir_user_name';
 const KIR_NICKNAME_KEY = 'kir_user_nickname';
 const KIR_ROLE_KEY     = 'kir_user_role';
@@ -1254,10 +1264,12 @@ function kirInjectSidebar(activeTab) {
   kirRenderSidebarNow(activeTab);
 
   if (window.__kirProfileReady) {
+    const beforeAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
     const before = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
     window.__kirProfileReady.then(() => {
+      const afterAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
       const after = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
-      if (after !== before) kirRenderSidebarNow(activeTab);
+      if (after !== before || afterAdmin !== beforeAdmin) kirRenderSidebarNow(activeTab);
     });
   }
 }
@@ -2321,14 +2333,26 @@ function kirLastKnownCabang() {
 
 async function kirLogout(scope = 'local') {
   await supabaseClient.auth.signOut({ scope });
-  localStorage.removeItem(KIR_SESSION_KEY);
-  localStorage.removeItem(KIR_NAME_KEY);
-  localStorage.removeItem(KIR_ROLE_KEY);
-  localStorage.removeItem(KIR_CABANG_KEY);
-  localStorage.removeItem(KIR_AVATAR_KEY);
+  kirClearAuthLocalState();
   document.documentElement.removeAttribute('data-cabang');
   kirApplyBrandAssets();
   window.location.href = 'index.html';
+}
+
+const KIR_LOGOUT_PRESERVE_KEYS = new Set([
+  KIR_LANG_KEY, KIR_THEME_KEY, KIR_LAST_CABANG_KEY, KIR_REDUCE_MOTION_KEY,
+  KIR_DISABLE_BRANCH_COLOR_KEY, KIR_SIDEBAR_COLLAPSED_KEY, KIR_SIDEBAR_POSITION_KEY,
+]);
+
+function kirClearAuthLocalState() {
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('kir_') && !KIR_LOGOUT_PRESERVE_KEYS.has(key)) {
+      localStorage.removeItem(key);
+    }
+  });
+  __kirAdminStatus = null;
+  window.__kirProfileReady = null;
+  kirLastProfileCheckAt = 0;
 }
 
 async function kirRequestPasswordReset(email) {
@@ -2386,10 +2410,12 @@ async function confirmLogoutAll() {
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT') {
-    localStorage.removeItem(KIR_SESSION_KEY);
+    kirClearAuthLocalState();
+    document.documentElement.removeAttribute('data-cabang');
   } else if (session && session.user) {
     localStorage.setItem(KIR_SESSION_KEY, 'true');
     kirSyncPublicHeaderAuth();
+    kirRefreshAdminStatus();
   }
 
   if (event === 'PASSWORD_RECOVERY') {
@@ -2409,25 +2435,42 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 });
 
 let kirLastProfileCheckAt = 0;
-const KIR_PROFILE_RECHECK_INTERVAL_MS = 60000;
+let __kirAdminStatus = null;
+
+async function kirRefreshAdminStatus() {
+  if (!supabaseClient) {
+    __kirAdminStatus = false;
+    return false;
+  }
+  try {
+    const { data, error } = await supabaseClient.rpc('is_admin');
+    __kirAdminStatus = !error && data === true;
+  } catch (e) {
+    __kirAdminStatus = false;
+  }
+  return __kirAdminStatus;
+}
 
 async function kirRequireAuth() {
-  if (kirIsLoggedIn()) {
-    const isFreshEnough = window.__kirProfileReady
-      && (Date.now() - kirLastProfileCheckAt < KIR_PROFILE_RECHECK_INTERVAL_MS);
-    if (!isFreshEnough) {
-      kirLastProfileCheckAt = Date.now();
-      window.__kirProfileReady = kirRefreshCurrentProfile();
-    }
-    await window.__kirProfileReady;
-    return;
-  }
-
   window.__kirProfileReady = kirRefreshCurrentProfile();
   const result = await window.__kirProfileReady;
   if (result !== 'approved' && result !== 'pending') {
     window.location.href = 'auth.html';
   }
+}
+
+async function kirRequireAdmin() {
+  await kirRequireAuth();
+  if (!kirIsAdmin()) {
+    window.location.href = 'dashboard.html';
+  }
+}
+
+async function kirHasValidLocalSession() {
+  if (!supabaseClient) return false;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session?.user || !session.expires_at) return false;
+  return session.expires_at * 1000 > Date.now() + 5000;
 }
 
 async function kirRefreshCurrentProfile() {
@@ -2436,13 +2479,20 @@ async function kirRefreshCurrentProfile() {
     const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
     if (userErr) {
       if (userErr.status === 0 || userErr.status >= 500) {
-        return kirIsLoggedIn() ? 'approved' : 'none';
+        if (await kirHasValidLocalSession()) {
+          kirLastProfileCheckAt = Date.now();
+          return 'approved';
+        }
+        localStorage.removeItem(KIR_SESSION_KEY);
+        return 'none';
       }
       localStorage.removeItem(KIR_SESSION_KEY);
+      __kirAdminStatus = false;
       return 'none';
     }
     if (!userData?.user) {
       localStorage.removeItem(KIR_SESSION_KEY);
+      __kirAdminStatus = false;
       return 'none';
     }
     const { data: profile, error: profileErr } = await supabaseClient
@@ -2461,7 +2511,7 @@ async function kirRefreshCurrentProfile() {
     }
 
     localStorage.setItem(KIR_SESSION_KEY, 'true');
-    localStorage.setItem('kir_user_id', userData.user.id);
+    localStorage.setItem(KIR_USER_ID_KEY, userData.user.id);
     localStorage.setItem(KIR_NAME_KEY, profile.name);
     localStorage.setItem(KIR_ROLE_KEY, profile.role || 'Anggota');
     localStorage.setItem(KIR_CABANG_KEY, profile.cabang);
@@ -2477,7 +2527,7 @@ async function kirRefreshCurrentProfile() {
     else localStorage.removeItem('kir_user_kelas');
     
     if (profile.dashboard_layout) localStorage.setItem('kir_dashboard_layout_v1', JSON.stringify(profile.dashboard_layout));
-    if (profile.dashboard_note) localStorage.setItem('kir_dashboard_note', profile.dashboard_note);
+    if (profile.dashboard_note) localStorage.setItem('kir_dashboard_note', kirSanitizeRichHtml(profile.dashboard_note));
     localStorage.setItem(KIR_DELTAS_KEY, String(profile.deltas_total || 0));
     localStorage.setItem(KIR_FLAGS_KEY, String(profile.flags_total || 0));
     if (typeof profile.streak_days === 'number') localStorage.setItem('kir_user_streak', String(profile.streak_days));
@@ -2519,6 +2569,8 @@ async function kirRefreshCurrentProfile() {
       localStorage.setItem(KIR_SIDEBAR_POSITION_KEY, profile.sidebar_position);
       document.documentElement.setAttribute('data-sidebar-pos', profile.sidebar_position);
     }
+    kirLastProfileCheckAt = Date.now();
+    await kirRefreshAdminStatus();
     return 'approved';
   } catch (e) {
     console.error('Failed to refresh current profile', e);
@@ -2569,10 +2621,7 @@ function kirCurrentUserKelas() {
 }
 
 function kirIsAdmin() {
-  const name = kirCurrentUserName();
-  const role = kirCurrentUserRole();
-  const userId = localStorage.getItem('kir_user_id');
-  return name === 'Admin' || role === 'Ketua Ekstrakurikuler' || userId === 'abfa38c4-960f-4ee0-b989-02a0f1c80c54' || name === 'Sultan Haikal';
+  return __kirAdminStatus === true;
 }
 
 function kirCurrentUserCabang() {
@@ -2932,6 +2981,24 @@ function kirEscapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function kirSanitizeRichHtml(html) {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(String(html), 'text/html');
+  doc.querySelectorAll('script, iframe, object, embed, form, link, meta, base').forEach(el => el.remove());
+  doc.querySelectorAll('*').forEach(el => {
+    [...el.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const val = (attr.value || '').trim().toLowerCase();
+      if (name.startsWith('on') || name === 'srcdoc') {
+        el.removeAttribute(attr.name);
+      } else if ((name === 'href' || name === 'src') && (val.startsWith('javascript:') || val.startsWith('data:text/html'))) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
 }
 
 function kirCommentsKey(scope, itemId) {

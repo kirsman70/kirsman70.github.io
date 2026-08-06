@@ -9,10 +9,7 @@
 <script src="js/auth.js"></script>
 <script>
   (async () => {
-    await kirRequireAuth();
-    if (!kirIsAdmin()) {
-      window.location.href = 'dashboard.html';
-    }
+    await kirRequireAdmin();
   })();
 </script>
 <script src="js/admin-shared.js"></script>

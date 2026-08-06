@@ -727,7 +727,7 @@ function handleResizeMove(e) {
 
     if (resizingWidget === 'notes') {
       const editor = resizeInnerEl.querySelector('[contenteditable]');
-      if (editor) localStorage.setItem('kir_dashboard_note', editor.innerHTML);
+      if (editor) saveDashboardNote(editor.innerHTML);
     }
     resizeInnerEl.innerHTML = renderWidgetContent(resizingWidget, bestSize[0], bestSize[1]);
 
@@ -1024,11 +1024,12 @@ function changeNoteFontSize() {
 }
 
 function saveDashboardNote(content) {
-  localStorage.setItem('kir_dashboard_note', content);
+  const safe = typeof kirSanitizeRichHtml === 'function' ? kirSanitizeRichHtml(content) : content;
+  localStorage.setItem('kir_dashboard_note', safe);
   if (window.supabaseClient) {
     supabaseClient.auth.getUser().then(({ data: userData }) => {
       if (userData?.user) {
-        supabaseClient.from('profiles').update({ dashboard_note: content }).eq('id', userData.user.id).then();
+        supabaseClient.from('profiles').update({ dashboard_note: safe }).eq('id', userData.user.id).then();
       }
     });
   }
@@ -1037,7 +1038,8 @@ function saveDashboardNote(content) {
 function renderNotesWidget(w, h) {
   const lang = localStorage.getItem('kir_lang') || 'id';
   const hasSavedNote = !!localStorage.getItem('kir_dashboard_note');
-  const savedNote = hasSavedNote ? localStorage.getItem('kir_dashboard_note') : I18N[lang].dash_notes_placeholder;
+  const rawNote = hasSavedNote ? localStorage.getItem('kir_dashboard_note') : I18N[lang].dash_notes_placeholder;
+  const savedNote = typeof kirSanitizeRichHtml === 'function' ? kirSanitizeRichHtml(rawNote) : rawNote;
   const compact = w === 1 || h === 1;
   return `
     <div class="relative h-full flex flex-col">
