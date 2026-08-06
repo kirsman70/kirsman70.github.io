@@ -125,10 +125,24 @@
   // if omitted). Called after any innerHTML write that may contain
   // $...$/$$...$$ so formulas actually render instead of sitting as
   // raw LaTeX text.
+  //
+  // Always routes through loadMathJax() (defined in workspace.html)
+  // rather than just checking whether window.MathJax.typesetPromise
+  // already happens to exist: this call can easily land before the
+  // ~hundreds-of-KB MathJax library has finished loading (it's fetched
+  // async), and a bare existence check had no way to retry once it did
+  // — that content just silently stayed as raw LaTeX forever. loadMathJax()
+  // is idempotent (safe to call on every render) and its promise doesn't
+  // resolve until MathJax has actually finished its own startup, so this
+  // either typesets immediately (already loaded) or queues up and
+  // typesets the moment it becomes ready — nothing gets dropped.
   function kirTypesetCourseMath(el) {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise(el ? [el] : undefined);
-    }
+    if (typeof loadMathJax !== 'function') return; // defensive: only pages with the MathJax <head> block define this
+    loadMathJax().then(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise(el ? [el] : undefined);
+      }
+    });
   }
 
   function kirFallbackSyntaxHighlight(codeBlock) {

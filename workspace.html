@@ -38,26 +38,73 @@
      material content can all contain $...$ / $$...$$, same as
      voyages.html) -->
 <script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['$', '$'], ['\\(', '\\)']],
-      displayMath: [['$$', '$$'], ['\\[', '\\]']]
-    }
-  };
+  // This config must be set before the MathJax library script loads —
+  // but this whole inline <head> script re-runs via eval() on every SPA
+  // revisit to this page (see router.js's header comment on inline
+  // <head> scripts; unlike <script src>, these are never deduped).
+  // Once MathJax has actually loaded, window.MathJax is no longer just
+  // this config object — it's the full runtime (typesetPromise, startup,
+  // etc.), and blindly reassigning it here on a revisit would silently
+  // wipe that out and break math for the rest of that visit. Only set it
+  // if MathJax hasn't started loading yet.
+  if (!window.MathJax) {
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  }
 </script>
 <script>
-  // Lazy load MathJax only when math content is detected
+  // Loads MathJax (idempotently — safe to call many times, only ever
+  // starts the download once) and resolves once it's actually ready to
+  // typeset, not just once the <script> tag has been appended to <head>.
+  //
+  // This used to be "lazy load only when math content is detected",
+  // triggered once from a DOMContentLoaded check below. Two problems
+  // with that: (1) node titles/descriptions here are fetched from
+  // Supabase AFTER DOMContentLoaded fires, so the "does the page contain
+  // $...$ right now" sniff almost always ran before any math content
+  // existed in the DOM yet, and came back false — meaning MathJax never
+  // loaded at all for the whole session if workspace.html happened to be
+  // the first page visited. (2) even when MathJax was loading, whatever
+  // called window.MathJax.typesetPromise() right after rendering new
+  // content (see kirTypesetCourseMath in workspace.js) had no way to
+  // know whether the library had actually finished loading yet — it
+  // just skipped the call if not, with nothing to retry it later, so
+  // that formula silently stayed as raw LaTeX text forever.
+  // Fix: kirTypesetCourseMath now calls this itself before every
+  // typeset attempt and awaits the returned promise, so loading is
+  // driven by real render calls instead of a one-time content guess,
+  // and no typeset request gets dropped on the floor.
   function loadMathJax() {
-    if (!window.mathJaxLoaded) {
-      window.mathJaxLoaded = true;
-      const script = document.createElement('script');
-      script.id = 'MathJax-script';
-      script.async = true;
-      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
-      document.head.appendChild(script);
+    if (!window.__kirMathJaxReady) {
+      window.__kirMathJaxReady = new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.id = 'MathJax-script';
+        script.async = true;
+        script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+        script.onload = () => {
+          // The script downloading is not the same as MathJax being
+          // ready — it still needs to run its own startup (fonts,
+          // config). MathJax.startup.promise resolves once that's done.
+          if (window.MathJax && window.MathJax.startup && window.MathJax.startup.promise) {
+            window.MathJax.startup.promise.then(resolve);
+          } else {
+            resolve();
+          }
+        };
+        script.onerror = () => resolve(); // don't hang callers forever on a failed CDN load
+        document.head.appendChild(script);
+      });
     }
+    return window.__kirMathJaxReady;
   }
-  // Check for math content on page load
+  // Best-effort early start only — gets MathJax's ~hundreds-of-KB
+  // download going sooner when there's an obvious hint at initial load,
+  // shaving a little latency off the first real typeset call. Whether
+  // this fires or not no longer affects correctness (see above).
   document.addEventListener('DOMContentLoaded', () => {
     const hasMath = document.body.innerHTML.includes('$') || document.body.innerHTML.includes('\\(');
     if (hasMath) {
