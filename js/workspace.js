@@ -3518,6 +3518,10 @@
   }
 
   function chartPointerDown(e) {
+    // Delegated from `document` now (see initChartInteractions below), so
+    // this has to check containment itself instead of relying on being
+    // bound directly to the #chart-viewport element.
+    if (!e.target.closest('#chart-viewport')) return;
     if (e.target.closest('.chart-ctrl-btn') || e.target.closest('.course-node') || e.target.closest('#course-inspector') || e.target.closest('.modal-overlay')) return;
     // #chart-viewport still exists (and is still listening) while
     // #course-empty-state is showing — see courseShowEmptyState() —
@@ -3558,8 +3562,22 @@
   }
 
   function initChartInteractions() {
-    const viewport = document.getElementById('chart-viewport');
-    viewport.addEventListener('mousedown', chartPointerDown);
+    // NOTE: mousedown/touchstart/touchmove/touchend/wheel are bound to
+    // `document`, not the #chart-viewport element — same reasoning as
+    // mousemove/mouseup already being on `window` below. This file only
+    // runs ONCE per SPA session (router.js dedupes script tags by URL —
+    // see the file header comment), but router.js's navigation swaps
+    // #chart-viewport itself for a brand-new element on every revisit to
+    // this page (document.body.replaceChildren). A listener attached
+    // directly to that first element goes stale the instant you navigate
+    // away and back: it's still "listening", just to a detached node
+    // nothing ever dispatches to again, so panning silently stops working
+    // with no error anywhere. `document` persists across navigations, so
+    // delegating here means the listener keeps finding whichever
+    // #chart-viewport is currently live. chartPointerDown/chartPointerMove
+    // already re-query #chart-viewport/#course-canvas-region fresh on
+    // every call, so the only change needed was where these get attached.
+    document.addEventListener('mousedown', chartPointerDown);
     window.addEventListener('mousemove', chartPointerMove);
     window.addEventListener('mouseup', chartPointerUp);
 
@@ -3575,12 +3593,13 @@
     });
 
     // Use passive: true for touchstart to allow browser optimizations
-    viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
+    document.addEventListener('touchstart', chartPointerDown, { passive: true });
     // Keep passive: false for touchmove to allow preventDefault during drag
-    viewport.addEventListener('touchmove', chartPointerMove, { passive: false });
-    viewport.addEventListener('touchend', chartPointerUp, { passive: true });
+    document.addEventListener('touchmove', chartPointerMove, { passive: false });
+    document.addEventListener('touchend', chartPointerUp, { passive: true });
 
-    viewport.addEventListener('wheel', (e) => {
+    document.addEventListener('wheel', (e) => {
+      if (!e.target.closest('#chart-viewport')) return;
       if (e.target.closest('#course-inspector') || e.target.closest('.modal-overlay')) {
         // Deliberately NOT calling chartZoom here — you're reading node
         // details (or scrolling a modal), not looking at the graph, so

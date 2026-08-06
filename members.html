@@ -342,12 +342,37 @@
   let panX = 0, panY = 0, scale = 1;
   let isDragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
   let didDrag = false;
+  let rafId = null;
+  let pendingTransform = false;
 
   function applyTransform() {
-    document.getElementById('chart-canvas').style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-    const viewport = document.getElementById('chart-viewport');
-    viewport.style.backgroundPosition = `${panX}px ${panY}px`;
-    viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+    // Batch transform updates using requestAnimationFrame instead of
+    // writing style.transform + backgroundPosition/backgroundSize
+    // synchronously on every single mousemove/touchmove — a fast drag can
+    // fire far more of those than the screen can actually paint, so each
+    // extra write past one-per-frame was pure wasted layout/paint work
+    // that just made dragging feel laggier. translate3d (vs. plain
+    // translate) also gets this promoted to its own compositor layer.
+    // Same fix as the course canvas in js/workspace.js.
+    if (rafId !== null) {
+      pendingTransform = true;
+      return;
+    }
+    rafId = requestAnimationFrame(() => {
+      const canvas = document.getElementById('chart-canvas');
+      const viewport = document.getElementById('chart-viewport');
+      canvas.style.setProperty('--pan-x', `${panX}px`);
+      canvas.style.setProperty('--pan-y', `${panY}px`);
+      canvas.style.setProperty('--scale', scale);
+      canvas.style.transform = `translate3d(var(--pan-x), var(--pan-y), 0) scale(var(--scale))`;
+      viewport.style.backgroundPosition = `${panX}px ${panY}px`;
+      viewport.style.backgroundSize = `${26 * scale}px ${26 * scale}px`;
+      rafId = null;
+      if (pendingTransform) {
+        pendingTransform = false;
+        applyTransform();
+      }
+    });
   }
 
   function chartZoom(factor) {
@@ -414,27 +439,51 @@
 
   function initChartInteractions() {
     const viewport = document.getElementById('chart-viewport');
+    // viewport/touch/wheel listeners below are bound to #chart-viewport
+    // itself, which is fine to leave as-is: the router (see js/router.js)
+    // replaces this element with a brand-new one on every SPA revisit to
+    // this page, so any old listeners just go with it to the garbage
+    // collector — no cleanup needed.
     viewport.addEventListener('mousedown', chartPointerDown);
-    window.addEventListener('mousemove', chartPointerMove);
-    window.addEventListener('mouseup', chartPointerUp);
-
     viewport.addEventListener('touchstart', chartPointerDown, { passive: true });
     viewport.addEventListener('touchmove', chartPointerMove, { passive: false });
     viewport.addEventListener('touchend', chartPointerUp);
-
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       chartZoom(e.deltaY < 0 ? 1.08 : 1 / 1.08);
     }, { passive: false });
 
+    // mousemove/mouseup/resize, on the other hand, are on `window` —
+    // window is NOT replaced on navigation, it's the same object for the
+    // whole SPA session. This whole <script> block re-runs via eval()
+    // every time you come back to this page (see router.js's header
+    // comment on why), so without explicit cleanup these three just kept
+    // piling up: one more mousemove/mouseup/resize handler added on top
+    // of the last, on every single revisit, each one still alive and
+    // still calling applyTransform(). That's what read as panning getting
+    // laggier the more you clicked around the site. router.js fires
+    // 'kir:teardown' on `window` right before it navigates away from
+    // whatever page is currently showing — listen for that once (so this
+    // listener also cleans up after itself) and remove exactly what this
+    // visit registered.
+    window.addEventListener('mousemove', chartPointerMove);
+    window.addEventListener('mouseup', chartPointerUp);
+
     let resizeTimer;
-    window.addEventListener('resize', () => {
+    function handleResize() {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         drawConnectors();
         centerCanvas();
       }, 150);
-    });
+    }
+    window.addEventListener('resize', handleResize);
+
+    window.addEventListener('kir:teardown', () => {
+      window.removeEventListener('mousemove', chartPointerMove);
+      window.removeEventListener('mouseup', chartPointerUp);
+      window.removeEventListener('resize', handleResize);
+    }, { once: true });
   }
 
   initChartInteractions();
