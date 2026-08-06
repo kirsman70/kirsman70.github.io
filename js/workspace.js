@@ -3542,7 +3542,15 @@
     const p = pointFromEvent(e);
     const dx = p.clientX - dragStartX;
     const dy = p.clientY - dragStartY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      if (!didDrag) {
+        // Only flip this on once real dragging starts (not on a plain
+        // click) — see the perf comment on #chart-canvas.is-panning in
+        // workspace.css for why.
+        document.getElementById('chart-canvas').classList.add('is-panning');
+      }
+      didDrag = true;
+    }
     panX = panStartX + dx;
     panY = panStartY + dy;
     applyTransform();
@@ -3559,6 +3567,7 @@
     }
     isDragging = false;
     document.getElementById('chart-viewport').classList.remove('dragging');
+    document.getElementById('chart-canvas').classList.remove('is-panning');
   }
 
   function initChartInteractions() {

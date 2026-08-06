@@ -327,6 +327,23 @@
   .course-node {
     position: absolute;
     width: 15rem;
+    /* Perf: with a large course, most nodes are off-screen at any given
+       pan/zoom position, but without this the browser still lays out and
+       paints every one of them, on-screen or not — cost that scales with
+       total node count instead of visible node count. content-visibility
+       skips that work for nodes the browser can tell aren't near the
+       viewport, and picks it back up automatically the moment one comes
+       into view. contain-intrinsic-size gives it a placeholder size to
+       reserve for a node it hasn't measured yet (first render, or one
+       that's never been on-screen); it's an approximation of the average
+       card height across node types (course/module/material/voyage/flag
+       each size .course-node-thumb differently) — an off, unmeasured node
+       having the "wrong" placeholder height doesn't cause any visible
+       jump since it's off-screen by definition, and connector drawing
+       (drawCourseConnectors) forces a real layout for any node it reads
+       offsetTop/offsetLeft from regardless of this. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 240px auto 320px;
   }
   .course-node-inner {
     background: #18181b;
@@ -347,6 +364,21 @@
   .course-node.is-selected .course-node-inner {
     border-color: rgba(255, 255, 255, 0.32);
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Perf, while actively panning only (see the 'is-panning' class toggle
+     in chartPointerDown/chartPointerUp in workspace.js): drop every
+     visible node's box-shadow and its `transform` transition. The
+     shadow's blur is expensive to repaint at scale as new nodes enter
+     view; the `transform` transition is what nudges Chrome into giving
+     hovered/selected nodes their own compositing layer, which turns
+     "recomposite one big #chart-canvas layer" into "recomposite N small
+     node layers" — a cost that gets worse the more nodes are on screen,
+     right when panning is already doing the most work. Both come straight
+     back the instant the drag ends; nothing here is visible while idle. */
+  #chart-canvas.is-panning .course-node-inner {
+    transition: none !important;
+    box-shadow: none !important;
   }
 
   /* Title bar — a soft frosted strip, tinted by node type */
