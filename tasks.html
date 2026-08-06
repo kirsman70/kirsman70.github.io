@@ -190,7 +190,7 @@
       clearBtn.classList.toggle('hidden', taskSearchQuery === '');
     }
     clearTimeout(taskSearchDebounceTimer);
-    taskSearchDebounceTimer = setTimeout(renderTaskList, 150);
+    taskSearchDebounceTimer = setTimeout(renderTaskList, 300);
   }
 
   function clearTaskSearch() {

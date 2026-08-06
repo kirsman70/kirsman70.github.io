@@ -931,9 +931,9 @@
     });
 
     const grid = document.getElementById('course-catalog-grid');
-    grid.innerHTML = filtered.length ? filtered.map(m => {
+    grid.innerHTML = filtered.length ? filtered.map((m, i) => {
       const cardHtml = `
-      <div onclick="openCourseDetailModal('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCourseDetailModal('${m.id}');}" tabindex="0" role="button" class="glass rounded-2xl p-5 cursor-pointer hover:bg-white/5 transition relative overflow-hidden h-full flex flex-col group">
+      <div onclick="openCourseDetailModal('${m.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCourseDetailModal('${m.id}');}" tabindex="0" role="button" style="animation-delay: ${i * 45}ms" class="animate-stagger-in glass rounded-2xl p-5 cursor-pointer hover:bg-white/5 transition relative overflow-hidden h-full flex flex-col group">
         ${COURSE_SNAPSHOTS[m.resource_url] ? `<div class="item-thumb-slot item-thumb-slot-dotted">${COURSE_SNAPSHOTS[m.resource_url]}</div>` : ''}
         <div class="relative z-10 flex flex-col flex-1">
           ${m.subject ? `<div class="flex items-center gap-2 flex-wrap mb-2">${courseSubjectBadgeHtml(m.subject, lang)}</div>` : ''}
@@ -949,7 +949,7 @@
         ? kirAdminWrapQuickActions(cardHtml, { onEdit: `editCourse('${m.id}')`, onDelete: `confirmDeleteCourse('${m.id}')` })
         : cardHtml;
     }).join('') : `
-      <div class="col-span-full text-center py-14">
+      <div class="col-span-full text-center py-14 animate-stagger-in">
         <p class="text-zinc-300 font-medium mb-1" data-i18n="course_catalog_empty">Belum ada kursus di sini!</p>
         <p class="text-zinc-500 text-sm" data-i18n="course_catalog_empty_desc">Pengurus belum mengunggah kursus. Mohon bersabar, ya!</p>
       </div>`;
@@ -1004,7 +1004,7 @@
   document.getElementById('course-catalog-search-input')?.addEventListener('input', (e) => {
     COURSE_CATALOG_SEARCH = e.target.value;
     clearTimeout(courseSearchDebounce);
-    courseSearchDebounce = setTimeout(renderCourseCatalogGrid, 150);
+    courseSearchDebounce = setTimeout(renderCourseCatalogGrid, 300);
   });
 
   // 'robotik'/'sains' reuse the same badge-* colors as the catalog's

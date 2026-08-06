@@ -635,6 +635,33 @@
      pure CSS so it can't drift out of sync with the JS-driven character
      timing. .obt-typing is still toggled by JS purely to mark when a
      heading is mid-type/mid-erase, in case anything else hooks into it. */
+
+  /* Whatever sits below a typed heading is in normal flow, so when the
+     typewriter (below, syncTypeHeadHeight) wraps the heading onto an
+     extra line, that content would otherwise get shoved down/pulled up
+     *instantly* by the reflow. syncTypeHeadHeight pins an explicit
+     pixel `height` on the heading itself after every character step;
+     this transition is what turns that pin into a smooth ease instead
+     of a snap. overflow:hidden is required for the mid-transition
+     frames (where the box is briefly shorter/taller than its content)
+     to clip cleanly instead of letting text spill out.
+
+     Duration matters here more than it looks: a keystroke lands every
+     ~20-50ms (typeDelay/eraseDelay), but a wrap/unwrap only happens on
+     the *specific* character that crosses the line boundary. If the
+     transition takes noticeably longer than that per-character cadence,
+     the box is still easing toward last step's target when the next
+     several steps have already moved on — so mid-erase it visibly lags
+     a line behind the actual (now-shorter) text, showing dead space
+     under it, and mid-type it can look like it's chasing the caret
+     instead of tracking it. 0.16s keeps the ease feeling deliberate
+     (not a hard snap) while actually finishing before the next few
+     keystrokes land, so the box stays honest to what's really on
+     screen. */
+  .obt-typehead {
+    overflow: hidden;
+    transition: height 0.16s cubic-bezier(.3,.7,.3,1);
+  }
   .obt-typehead::after {
     content: '';
     display: inline;
@@ -1692,6 +1719,64 @@ kirOnReady(function () {
                             // always picks up from what the user can actually see, not from
                             // wherever a stale timer thought it was.
 
+    /* Pins el's own `height` to its natural content size so the CSS
+       transition on .obt-typehead (see above) can ease it, instead of
+       leaving `height` at 'auto' where a line-wrap snaps instantly.
+       scrollHeight reports the element's true content height even
+       while it's already pinned to an explicit px height with
+       overflow:hidden — so there's no need to release back to 'auto'
+       to remeasure (that FLIP-style approach doesn't reliably work
+       here: it needs a real *painted* frame at the "from" value before
+       flipping to "to", and a requestAnimationFrame scheduled on one
+       keystroke routinely gets superseded by the next keystroke's call
+       before that frame ever lands). Just writing the new pixel value
+       directly is enough — the browser sees it differ from the
+       previously-set inline value and animates between them itself.
+       animate=false (initial seed, a freshly-revealed heading, window
+       resize) briefly disables the transition so that write is instant. */
+    function syncTypeHeadHeight(el, animate) {
+      if (!el) return;
+      // Reading el.scrollHeight straight off the currently-pinned element is
+      // only trustworthy while content is growing. With overflow:hidden, an
+      // element's scrollHeight never reports *smaller* than whatever explicit
+      // height is already pinned on it — it only ever reports the larger of
+      // "current box height" and "content's natural height", since the
+      // content isn't overflowing the box to begin with. So once a heading
+      // has been pinned to e.g. a 2-line height and its text then shrinks to
+      // something that only needs 1 line, scrollHeight keeps reporting the
+      // stale 2-line number forever (nothing is overflowing, so there's
+      // nothing to reveal that the content got shorter) and the box never
+      // shrinks back down — that's the leftover empty line seen when a scene
+      // with a 2-line heading is followed by one with a 1-line heading.
+      // Releasing to 'auto' first forces a real remeasurement against the
+      // content alone. This is safe to do unconditionally (even for animated
+      // steps) because it never gets painted: everything below runs
+      // synchronously in this same call, so the browser never renders a
+      // frame at height:auto before it's overwritten with the real target.
+      el.style.height = 'auto';
+      const natural = el.scrollHeight;
+      if (animate === false) {
+        const prevTransition = el.style.transition;
+        el.style.transition = 'none';
+        el.style.height = natural + 'px';
+        void el.offsetHeight; // flush so the no-transition write commits before transition is restored
+        el.style.transition = prevTransition;
+        return;
+      }
+      el.style.height = natural + 'px';
+    }
+    typeHeads.forEach(el => syncTypeHeadHeight(el, false));
+    let typeHeadResizeTimer = null;
+    window.addEventListener('resize', () => {
+      // Viewport width changes can change wrapping on their own (no
+      // character typed) — resync immediately, no transition, so a
+      // heading dragged wider/narrower doesn't visibly lag behind.
+      clearTimeout(typeHeadResizeTimer);
+      typeHeadResizeTimer = setTimeout(() => {
+        typeHeads.forEach(el => syncTypeHeadHeight(el, false));
+      }, 80);
+    });
+
     // Small per-character jitter so the type/erase cadence reads as a
     // person typing rather than a metronome: a randomized base pace,
     // longer breaths after spaces/punctuation, and an occasional brief
@@ -1703,7 +1788,11 @@ kirOnReady(function () {
       if (Math.random() < 0.06) return base + 70 + Math.random() * 130; // rare hesitation
       return base;
     }
-    function eraseDelay() { return 9 + Math.random() * 10; }
+    // Floor raised from 9ms to 20ms: below ~1 frame (16.7ms @ 60fps), the
+    // browser can receive two height writes before it ever paints the first
+    // one, so the transition's "from" value is skipped over the corresponding
+    // erase step, and it renders as a jump instead of a glide.
+    function eraseDelay() { return 20 + Math.random() * 12; }
 
     function typeIntoHead(el, gen, startIndex) {
       const text = typeHeadText.get(el) || '';
@@ -1716,6 +1805,7 @@ kirOnReady(function () {
         const shown = text.slice(0, i);
         el.textContent = shown;
         visibleText = shown;
+        syncTypeHeadHeight(el);
         const justTyped = text[i - 1] || '';
         i++;
         typeTimer = window.setTimeout(step, typeDelay(justTyped));
@@ -1742,11 +1832,16 @@ kirOnReady(function () {
       const targetText = typeHeadText.get(nextEl) || '';
       if (reduceMotion) { nextEl.textContent = targetText; visibleText = targetText; return; }
 
-      if (!startText) { nextEl.textContent = ''; visibleText = ''; typeIntoHead(nextEl, gen); return; }
+      if (!startText) { nextEl.textContent = ''; visibleText = ''; syncTypeHeadHeight(nextEl, false); typeIntoHead(nextEl, gen); return; }
 
       nextEl.classList.add('obt-typing');
       nextEl.textContent = startText;
       visibleText = startText;
+      // No transition here — nextEl was just revealed this tick (its
+      // parent panel/scene flipped visible right before this ran), so
+      // this is an instant placeholder swap, not a size the user
+      // watched change. The erase/type steps below are what animate.
+      syncTypeHeadHeight(nextEl, false);
 
       // Two different ways to clear the old heading, picked at random
       // each transition: hold backspace (character by character, as
@@ -1766,6 +1861,7 @@ kirOnReady(function () {
           text = text.slice(0, -1);
           nextEl.textContent = text;
           visibleText = text;
+          syncTypeHeadHeight(nextEl);
           typeTimer = window.setTimeout(eraseStep, eraseDelay());
         })();
       } else {
@@ -1775,6 +1871,7 @@ kirOnReady(function () {
           nextEl.classList.remove('obt-selected');
           nextEl.textContent = '';
           visibleText = '';
+          syncTypeHeadHeight(nextEl);
           nextEl.classList.remove('obt-typing');
           typeIntoHead(nextEl, gen);
         }, 260 + Math.random() * 140);

@@ -294,7 +294,7 @@
   document.getElementById('apply-search-input').addEventListener('input', (e) => {
     applySearch = e.target.value.trim().toLowerCase();
     clearTimeout(applySearchDebounce);
-    applySearchDebounce = setTimeout(renderApplicants, 150);
+    applySearchDebounce = setTimeout(renderApplicants, 300);
   });
 
   function applicantMatchesFilter(a) {

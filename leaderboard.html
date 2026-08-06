@@ -333,7 +333,7 @@
   let lbSearchDebounceTimer = null;
   function handleLbSearchInput() {
     clearTimeout(lbSearchDebounceTimer);
-    lbSearchDebounceTimer = setTimeout(handleFilterChange, 150);
+    lbSearchDebounceTimer = setTimeout(handleFilterChange, 300);
   }
 
   updateFilterChipsUI();
