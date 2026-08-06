@@ -956,7 +956,14 @@
     }
 
     if (targetStep > 2 && regStep === 2) {
-      const name = document.getElementById('reg-name').value.trim();
+      const nameInput = document.getElementById('reg-name');
+      let name = nameInput.value.trim();
+      
+      if (name === name.toUpperCase() && /[A-Z]/.test(name)) {
+        name = name.toLowerCase().replace(/(?:^|\s|-)\S/g, match => match.toUpperCase());
+        nameInput.value = name;
+      }
+      
       const nameRegex = /^[A-Z][A-Za-z'-]*(?:\s+[A-Z][A-Za-z'-]*)*$/;
       if (!name) {
         setFieldError('reg-name', 'Isi nama lengkap terlebih dahulu.');
@@ -1059,7 +1066,12 @@
 
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
-    const name = document.getElementById('reg-name').value.trim();
+    let name = document.getElementById('reg-name').value.trim();
+    
+    if (name === name.toUpperCase() && /[A-Z]/.test(name)) {
+      name = name.toLowerCase().replace(/(?:^|\s|-)\S/g, match => match.toUpperCase());
+    }
+    
     const cabang = resolveCabangValue();
 
     const tingkat = document.getElementById('reg-kelas-tingkat').value;

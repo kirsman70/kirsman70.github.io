@@ -1628,6 +1628,36 @@ function kirRenderSidebarNow(activeTab) {
         <div id="profile-comments-root" class="comment-panel-inner flex-1 overflow-hidden"></div>
       </div>
     </div>
+    <div id="kir-profile-lightbox" class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" onclick="kirClosePfpLightbox(event)">
+      <div id="kir-profile-lightbox-img" class="kir-profile-avatar w-[300px] h-[300px] text-[6.75rem] sm:w-[500px] sm:h-[500px] sm:text-[11.25rem] border-0 shadow-2xl scale-90"></div>
+    </div>
+    <style>
+      #kir-profile-modal.lightbox-active {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      #kir-profile-lightbox {
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      #kir-profile-modal.lightbox-active #kir-profile-lightbox {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      #kir-profile-lightbox-img {
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      #kir-profile-modal.lightbox-active #kir-profile-lightbox-img {
+        transform: scale(1);
+      }
+      #kir-profile-modal label.cursor-pointer.other-pfp::after {
+        background: rgba(0, 0, 0, 0.5) !important;
+      }
+    </style>
   </div>
   `;
 
@@ -2496,12 +2526,20 @@ async function kirRefreshCurrentProfile() {
   }
 }
 
+function kirFormatProperName(name) {
+  if (!name) return name;
+  if (name === name.toUpperCase() && /[A-Z]/.test(name)) {
+    return name.toLowerCase().replace(/(?:^|\s|-)\S/g, match => match.toUpperCase());
+  }
+  return name;
+}
+
 function kirCurrentUserName() {
   return localStorage.getItem(KIR_NAME_KEY) || 'Anggota';
 }
 
 function kirSetUserName(name) {
-  localStorage.setItem(KIR_NAME_KEY, name || 'Anggota');
+  localStorage.setItem(KIR_NAME_KEY, kirFormatProperName(name) || 'Anggota');
 }
 
 function kirCurrentUserNickname() {
@@ -3418,6 +3456,8 @@ async function kirOpenProfileModal(targetUserId = null) {
     if (avatarLabel) {
       avatarLabel.classList.add('cursor-pointer');
       avatarLabel.title = "Change profile picture";
+      avatarLabel.classList.remove('other-pfp');
+      avatarLabel.onclick = null;
     }
     if (avatarInput) avatarInput.disabled = false;
   } else {
@@ -3432,8 +3472,12 @@ async function kirOpenProfileModal(targetUserId = null) {
       aboutView.title = "";
     }
     if (avatarLabel) {
-      avatarLabel.classList.remove('cursor-pointer');
-      avatarLabel.title = "";
+      avatarLabel.classList.add('cursor-pointer', 'other-pfp');
+      avatarLabel.title = "View profile picture";
+      avatarLabel.onclick = (e) => {
+        e.preventDefault();
+        kirOpenPfpLightbox(avatar, nickname || name);
+      };
     }
     if (avatarInput) avatarInput.disabled = true;
   }
@@ -3489,10 +3533,34 @@ async function kirOpenProfileModal(targetUserId = null) {
   kirLocalModalShow(modal);
 }
 
+function kirOpenPfpLightbox(avatarUrl, name) {
+  const modal = document.getElementById('kir-profile-modal');
+  const lightboxImg = document.getElementById('kir-profile-lightbox-img');
+  if (!modal || !lightboxImg) return;
+
+  if (avatarUrl) {
+    lightboxImg.style.backgroundImage = '';
+    lightboxImg.innerHTML = `<img src="${kirEscapeHtml(avatarUrl)}" alt="Profile" class="w-full h-full object-cover rounded-full pointer-events-auto" />`;
+  } else {
+    lightboxImg.innerHTML = '';
+    lightboxImg.style.backgroundImage = '';
+    lightboxImg.textContent = name ? name.charAt(0).toUpperCase() : 'A';
+  }
+
+  modal.classList.add('lightbox-active');
+}
+
+function kirClosePfpLightbox(e) {
+  if (e) e.stopPropagation();
+  const modal = document.getElementById('kir-profile-modal');
+  if (modal) modal.classList.remove('lightbox-active');
+}
+
 function kirCloseProfileModal() {
   if (typeof kirCloseAllCustomSelects === 'function') kirCloseAllCustomSelects();
   kirCancelProfileAboutEdit();
   kirCancelProfileNameEdit();
+  kirClosePfpLightbox();
   kirLocalModalHide(document.getElementById('kir-profile-modal'));
 }
 
