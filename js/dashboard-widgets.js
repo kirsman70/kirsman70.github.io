@@ -331,7 +331,6 @@ function undoLayout() {
   if (!editMode || historyIndex <= 0) return;
   historyIndex--;
   dashLayout = JSON.parse(layoutHistory[historyIndex]);
-  saveDashLayout();
   renderWidgetGrid();
   updateUndoRedoUI();
 }
@@ -340,7 +339,6 @@ function redoLayout() {
   if (!editMode || historyIndex >= layoutHistory.length - 1) return;
   historyIndex++;
   dashLayout = JSON.parse(layoutHistory[historyIndex]);
-  saveDashLayout();
   renderWidgetGrid();
   updateUndoRedoUI();
 }
@@ -445,6 +443,7 @@ function toggleDashboardEdit() {
     layoutHistory = [JSON.stringify(dashLayout)];
     historyIndex = 0;
   } else {
+    saveDashLayout();
     layoutHistory = [];
     historyIndex = -1;
   }
@@ -455,7 +454,6 @@ function toggleDashboardEdit() {
 
 function resetDashboardLayout() {
   dashLayout = DEFAULT_LAYOUT.map(w => ({ ...w }));
-  saveDashLayout();
   pushHistory();
   renderWidgetGrid();
 }
@@ -516,7 +514,18 @@ function handleGridDragOver(e) {
 function handleGridDrop(e) { e.preventDefault(); }
 
 function syncWidgetDOM() {
-  dashLayout.forEach(item => {
+  const cols = currentCols();
+  const positioned = (cols < 4)
+    ? computeCompactLayout(dashLayout, cols)
+    : dashLayout.map(item => ({
+        type: item.type,
+        w: Math.min(item.w, cols),
+        h: item.h,
+        x: Math.min(item.x || 1, cols - Math.min(item.w, cols) + 1),
+        y: item.y || 1,
+      }));
+
+  positioned.forEach(item => {
     const el = document.querySelector(`.widget-wrap[data-type="${item.type}"]`);
     if (el) {
       el.style.gridColumn = `${item.x} / span ${item.w}`;
@@ -546,7 +555,6 @@ function handleWidgetDragEnd(e) {
       item.x = parseInt(phantomEl.dataset.x, 10);
       item.y = parseInt(phantomEl.dataset.y, 10);
       resolveCollisions(item);
-      saveDashLayout();
       pushHistory();
     }
   }
@@ -747,7 +755,6 @@ function stopResize(e) {
       item.w = resizeStart.bestW; item.h = resizeStart.bestH;
       item.x = resizeStart.bestX; item.y = resizeStart.bestY;
       resolveCollisions(item);
-      saveDashLayout();
       pushHistory();
     }
   }
@@ -798,7 +805,6 @@ function stopResize(e) {
 function removeWidget(type) {
   closeSizePicker();
   dashLayout = dashLayout.filter(w => w.type !== type);
-  saveDashLayout();
   pushHistory();
   renderWidgetGrid();
 }
@@ -832,7 +838,6 @@ async function addWidget(type) {
   const def = WIDGET_CATALOG[type];
   const maxRow = dashLayout.reduce((max, w) => Math.max(max, w.y + w.h), 1);
   dashLayout.push({ type, w: def.default[0], h: def.default[1], x: 1, y: maxRow });
-  saveDashLayout();
   pushHistory();
   closeAddWidgetModal();
   renderWidgetGrid();

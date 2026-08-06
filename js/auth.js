@@ -1757,10 +1757,13 @@ function kirPositionNavPill(animate) {
     pill.style.transition = 'none';
   }
 
-  pill.style.top = active.offsetTop + 'px';
-  pill.style.left = active.offsetLeft + 'px';
-  pill.style.width = active.offsetWidth + 'px';
-  pill.style.height = active.offsetHeight + 'px';
+  const activeRect = active.getBoundingClientRect();
+  const scrollRect = navScroll.getBoundingClientRect();
+
+  pill.style.top = (activeRect.top - scrollRect.top + navScroll.scrollTop) + 'px';
+  pill.style.left = (activeRect.left - scrollRect.left + navScroll.scrollLeft) + 'px';
+  pill.style.width = activeRect.width + 'px';
+  pill.style.height = activeRect.height + 'px';
   pill.style.opacity = '1';
 
   if (!animate) {
@@ -1777,17 +1780,16 @@ function kirWatchNavPill() {
   if (!sidebar || !window.ResizeObserver) return;
   if (sidebar.__kirPillObserver) sidebar.__kirPillObserver.disconnect();
   
-  let lastWidth = sidebar.offsetWidth;
+  const active = sidebar.querySelector('.nav-link.active');
   
   const ro = new ResizeObserver(() => {
-    const currentWidth = sidebar.offsetWidth;
-    if (currentWidth === 0) return;
-    if (currentWidth !== lastWidth) {
-      lastWidth = currentWidth;
-      kirPositionNavPill(false);
-    }
+    if (sidebar.offsetWidth === 0) return;
+    kirPositionNavPill(false);
   });
+  
   ro.observe(sidebar);
+  if (active) ro.observe(active);
+  
   sidebar.__kirPillObserver = ro;
 }
 
@@ -1823,45 +1825,127 @@ function kirInitMobileSidebarSwipe() {
 
   let startX = null;
   let startY = null;
-  let isEdgeSwipe = false;
-  const EDGE_THRESHOLD = 30; // pixels from the left edge
+  let isHorizontalSwipe = null;
+  let isSidebarOpenAtStart = false;
+  let sidebarWidth = 0;
+  let sidebar = null;
+  let backdrop = null;
+
+  // Helper to construct the backdrop safely if dragging before opening
+  function ensureBackdrop() {
+    let bd = document.getElementById('sidebar-mobile-backdrop');
+    if (!bd) {
+      bd = document.createElement('div');
+      bd.id = 'sidebar-mobile-backdrop';
+      bd.className = 'kir-sidebar-backdrop';
+      bd.onclick = () => kirCloseMobileSidebar();
+      const shell = document.querySelector('.kir-app-shell') || document.body;
+      shell.appendChild(bd);
+    }
+    return bd;
+  }
 
   document.addEventListener('touchstart', (e) => {
     if (window.innerWidth >= 1024) return;
+    if (e.target.closest('.resize-handle')) return;
     
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    
-    const sidebar = document.getElementById('sidebar');
-    const isOpen = sidebar && sidebar.classList.contains('kir-sidebar-open');
-    
-    // Register as an edge swipe if starting near the left screen edge
-    isEdgeSwipe = !isOpen && startX <= EDGE_THRESHOLD;
+    isHorizontalSwipe = null;
+    sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+      isSidebarOpenAtStart = sidebar.classList.contains('kir-sidebar-open');
+      sidebarWidth = sidebar.offsetWidth || 272; // default 17rem
+    }
   }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (startX === null || startY === null || !sidebar || window.innerWidth >= 1024) return;
+    
+    // Do not intercept interactions with sliders or widget resize handles
+    if (e.target.closest('input[type="range"]') || e.target.closest('.resize-handle')) return;
+
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+
+    // Determine the direction of the swipe on the first few pixels of movement
+    if (isHorizontalSwipe === null) {
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+        // If sidebar is closed, only hijack left-to-right (dx > 0)
+        // This preserves admin quick actions (right-to-left) when closed.
+        if (!isSidebarOpenAtStart && dx < 0) {
+          isHorizontalSwipe = false; 
+        } else {
+          isHorizontalSwipe = true;
+          backdrop = ensureBackdrop();
+          // Disable CSS transitions so it strictly follows the finger without lag
+          sidebar.style.transition = 'none';
+          backdrop.style.transition = 'none';
+          // Force visibility during the drag so it doesn't stay hidden when closed
+          sidebar.style.visibility = 'visible';
+        }
+      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+        isHorizontalSwipe = false;
+      }
+    }
+
+    if (isHorizontalSwipe) {
+      if (e.cancelable) e.preventDefault();
+
+      let tx;
+      if (isSidebarOpenAtStart) {
+        // Dragging left to close
+        tx = Math.max(-sidebarWidth, Math.min(0, dx));
+      } else {
+        // Dragging right to open
+        tx = Math.max(-sidebarWidth, Math.min(0, dx - sidebarWidth));
+      }
+
+      // Calculate opacity for the backdrop (0 to 1) based on drag percentage
+      const progress = 1 - (Math.abs(tx) / sidebarWidth);
+      sidebar.style.transform = `translate3d(${tx}px, 0, 0)`;
+      backdrop.style.opacity = progress.toString();
+    }
+  }, { passive: false });
 
   document.addEventListener('touchend', (e) => {
     if (startX === null || startY === null || window.innerWidth >= 1024) return;
 
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    
-    const sidebar = document.getElementById('sidebar');
-    const isOpen = sidebar && sidebar.classList.contains('kir-sidebar-open');
+    if (isHorizontalSwipe && sidebar) {
+      const dx = e.changedTouches[0].clientX - startX;
+      
+      // Clear inline styles so the CSS stylesheet classes/transitions take over again
+      sidebar.style.transition = '';
+      sidebar.style.transform = '';
+      sidebar.style.visibility = '';
+      if (backdrop) {
+        backdrop.style.transition = '';
+        backdrop.style.opacity = '';
+      }
 
-    // Check if the gesture is predominantly horizontal and long enough
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 45) {
-      if (!isOpen && isEdgeSwipe && dx > 0) {
-        // Swipe right from the left edge -> Open
-        kirToggleMobileSidebar();
-      } else if (isOpen && dx < 0) {
-        // Swipe left anywhere while open -> Close
-        kirCloseMobileSidebar();
+      // Snap logic: Did they swipe at least 1/3 of the sidebar's width?
+      const threshold = sidebarWidth / 3;
+
+      if (!isSidebarOpenAtStart) {
+        if (dx > threshold) {
+          kirToggleMobileSidebar();
+        } else {
+          // Snap back closed
+          if (backdrop) backdrop.classList.remove('visible');
+        }
+      } else {
+        if (dx < -threshold) {
+          kirCloseMobileSidebar();
+        } else {
+          // Snap back open
+          if (backdrop) backdrop.classList.add('visible');
+        }
       }
     }
 
     startX = null;
     startY = null;
-    isEdgeSwipe = false;
+    isHorizontalSwipe = null;
   }, { passive: true });
 }
 
