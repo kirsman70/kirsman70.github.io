@@ -219,8 +219,9 @@
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
     const clickAttr = m.id ? `onclick="if(!didDrag) kirOpenProfileModal('${m.id}')"` : '';
     const cursorClass = m.id ? 'cursor-pointer hover:border-white/20 hover:scale-[1.03] transition-all duration-200' : '';
+    const youAttr = m.isYou ? ' id="org-card-you"' : '';
     return `
-      <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg ${cursorClass}" ${clickAttr}>
+      <div class="org-card glass rounded-xl p-4 flex flex-col items-center gap-2 text-center relative z-10 shadow-lg ${cursorClass}" ${clickAttr}${youAttr}>
         <div class="w-12 h-12 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center font-display font-semibold shrink-0"${m.avatar ? ` style="background-image:url('${m.avatar}');background-size:cover;background-position:center;"` : ''}>
           ${m.avatar ? '' : m.name.charAt(0).toUpperCase()}
         </div>
@@ -360,8 +361,17 @@
     scale = 1;
     const vw = viewport.clientWidth, vh = viewport.clientHeight;
     const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
-    panX = Math.max(16, (vw - cw) / 2);
-    panY = Math.max(16, (vh - ch) / 2);
+
+    const youCard = document.getElementById('org-card-you');
+    if (youCard) {
+      const cardCenterX = youCard.offsetLeft + youCard.offsetWidth / 2;
+      const cardCenterY = youCard.offsetTop + youCard.offsetHeight / 2;
+      panX = (vw / 2) - cardCenterX * scale;
+      panY = (vh / 2) - cardCenterY * scale;
+    } else {
+      panX = Math.max(16, (vw - cw) / 2);
+      panY = Math.max(16, (vh - ch) / 2);
+    }
     applyTransform();
   }
 

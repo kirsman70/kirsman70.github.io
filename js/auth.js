@@ -1847,7 +1847,7 @@ function kirInitMobileSidebarSwipe() {
 
   document.addEventListener('touchstart', (e) => {
     if (window.innerWidth >= 1024) return;
-    if (e.target.closest('.resize-handle')) return;
+    if (e.target.closest('.resize-handle') || e.target.closest('#chart-viewport')) return;
     
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
@@ -1862,8 +1862,8 @@ function kirInitMobileSidebarSwipe() {
   document.addEventListener('touchmove', (e) => {
     if (startX === null || startY === null || !sidebar || window.innerWidth >= 1024) return;
     
-    // Do not intercept interactions with sliders or widget resize handles
-    if (e.target.closest('input[type="range"]') || e.target.closest('.resize-handle')) return;
+    // Do not intercept interactions with sliders, widget resize handles, or pannable canvases
+    if (e.target.closest('input[type="range"]') || e.target.closest('.resize-handle') || e.target.closest('#chart-viewport')) return;
 
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
