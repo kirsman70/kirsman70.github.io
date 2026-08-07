@@ -22,7 +22,8 @@
       https://cdn.jsdelivr.net; \
     img-src 'self' data: blob: \
       https://avatars.githubusercontent.com \
-      https://i.imgur.com; \
+      https://i.imgur.com \
+      https://qalkibuywgookvicnuhv.supabase.co; \
     connect-src 'self' \
       https://qalkibuywgookvicnuhv.supabase.co \
       https://candaan-api.vercel.app \

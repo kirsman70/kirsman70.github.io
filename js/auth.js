@@ -40,7 +40,7 @@ const KIR_USER_ID_KEY  = 'kir_user_id';
    preferences only.
    ========================================================== */
 function kirGetCookie(name) {
-  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/([.$?*|{}()\\[\\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$&') + '=([^;]*)'));
   return match ? decodeURIComponent(match[1]) : null;
 }
 
