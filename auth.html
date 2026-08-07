@@ -1049,7 +1049,7 @@
 
     // Approved (or an older row from before the status column existed)
     // This is the "instantly logged in" path: no credentials re-entered.
-    localStorage.setItem('kir_session', 'true');
+    kirSetSessionCookie('true');
     localStorage.setItem('kir_user_name', profile.name);
     localStorage.setItem('kir_user_role', profile.role || 'Anggota');
     localStorage.setItem('kir_user_cabang', profile.cabang);
@@ -1131,7 +1131,7 @@
         btn.disabled = false;
 
         // Cleanup the orphaned auth user so they aren't stuck in limbo
-        localStorage.removeItem('kir_session');
+        kirClearSessionCookie();
         await supabaseClient.auth.signOut();
         return;
       }
@@ -1198,7 +1198,7 @@
     }
 
     if (profile) {
-      localStorage.setItem('kir_session', 'true');
+      kirSetSessionCookie('true');
       localStorage.setItem('kir_user_name', profile.name);
       localStorage.setItem('kir_user_role', profile.role || 'Anggota');
       localStorage.setItem('kir_user_cabang', profile.cabang);

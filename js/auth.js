@@ -4,7 +4,7 @@
    I use Supabase for authentication and data storage. JWT session
    tokens live in sessionStorage (tab-scoped). localStorage holds
    only UI preferences (theme, language, sidebar) and a non-secret
-   kir_session flag for instant paint — never used as proof of auth.
+   kir_session cookie for instant paint — never used as proof of auth.
    Admin checks call the server is_admin() RPC; RLS enforces access.
 
    The auth functions below integrate with Supabase to handle
@@ -29,6 +29,34 @@ window.supabaseClient = supabaseClient;
 
 const KIR_SESSION_KEY  = 'kir_session';
 const KIR_USER_ID_KEY  = 'kir_user_id';
+
+/* ==========================================================
+   Cookie-based session helpers
+   ----------------------------------------------------------
+   We use HTTP cookies (not localStorage) for the kir_session
+   flag so it survives across tabs, persists after browser
+   restarts, and can be inspected server-side (e.g. by _headers
+   or edge functions). localStorage continues to hold UI
+   preferences only.
+   ========================================================== */
+function kirGetCookie(name) {
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/([.$?*|{}()\\[\\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function kirSetSessionCookie(value) {
+  document.cookie = KIR_SESSION_KEY + '=' + encodeURIComponent(value) +
+    '; path=/; max-age=86400; SameSite=Lax';
+}
+
+function kirClearSessionCookie() {
+  document.cookie = KIR_SESSION_KEY + '=; path=/; max-age=0; SameSite=Lax';
+  try { localStorage.removeItem(KIR_SESSION_KEY); } catch (e) {}
+}
+
+function kirHasSessionCookie() {
+  return kirGetCookie(KIR_SESSION_KEY) === 'true';
+}
 const KIR_NAME_KEY     = 'kir_user_name';
 const KIR_NICKNAME_KEY = 'kir_user_nickname';
 const KIR_ROLE_KEY     = 'kir_user_role';
@@ -2164,7 +2192,7 @@ function kirApplyPageTitle(lang = null) {
 }
 
 function resolveBrandAssetName(type = 'icon') {
-  const loggedIn = localStorage.getItem(KIR_SESSION_KEY) === 'true';
+  const loggedIn = kirHasSessionCookie() || localStorage.getItem(KIR_SESSION_KEY) === 'true';
   const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
   const theme = localStorage.getItem(KIR_THEME_KEY) || 'dark';
   const suffix = type === 'glow' ? '_glow' : '';
@@ -2297,7 +2325,7 @@ function kirIsMobileDevice() {
   const sidebarPos = localStorage.getItem(KIR_SIDEBAR_POSITION_KEY) || 'left';
   document.documentElement.setAttribute('data-sidebar-pos', sidebarPos);
 
-  if (localStorage.getItem(KIR_SESSION_KEY) === 'true') {
+  if (kirHasSessionCookie() || localStorage.getItem(KIR_SESSION_KEY) === 'true') {
     const cabang = localStorage.getItem(KIR_CABANG_KEY) || 'robotik';
     document.documentElement.setAttribute('data-cabang', cabang);
   } else {
@@ -2314,12 +2342,15 @@ window.addEventListener('load', () => {
 });
 
 function kirIsLoggedIn() {
+  // Cookie is the source of truth; localStorage is kept as a fallback for
+  // sessions set before cookies were introduced.
+  if (kirHasSessionCookie()) return true;
   return localStorage.getItem(KIR_SESSION_KEY) === 'true';
 }
 
 function kirLogin(name, cabang) {
   const resolvedCabang = cabang || kirLastKnownCabang();
-  localStorage.setItem(KIR_SESSION_KEY, 'true');
+  kirSetSessionCookie('true');
   localStorage.setItem(KIR_NAME_KEY, name || 'Anggota');
   localStorage.setItem(KIR_CABANG_KEY, resolvedCabang);
   localStorage.setItem(KIR_LAST_CABANG_KEY, resolvedCabang);
@@ -2350,6 +2381,7 @@ function kirClearAuthLocalState() {
       localStorage.removeItem(key);
     }
   });
+  kirClearSessionCookie();
   __kirAdminStatus = null;
   window.__kirProfileReady = null;
   kirLastProfileCheckAt = 0;
@@ -2413,7 +2445,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     kirClearAuthLocalState();
     document.documentElement.removeAttribute('data-cabang');
   } else if (session && session.user) {
-    localStorage.setItem(KIR_SESSION_KEY, 'true');
+    kirSetSessionCookie('true');
     kirSyncPublicHeaderAuth();
     kirRefreshAdminStatus();
   }
@@ -2494,17 +2526,18 @@ async function kirRefreshCurrentProfile() {
       if (userErr.status === 0 || userErr.status >= 500) {
         if (await kirHasValidLocalSession()) {
           kirLastProfileCheckAt = Date.now();
+          kirSetSessionCookie('true');
           return 'approved';
         }
-        localStorage.removeItem(KIR_SESSION_KEY);
+        kirClearSessionCookie();
         return 'none';
       }
-      localStorage.removeItem(KIR_SESSION_KEY);
+      kirClearSessionCookie();
       __kirAdminStatus = false;
       return 'none';
     }
     if (!userData?.user) {
-      localStorage.removeItem(KIR_SESSION_KEY);
+      kirClearSessionCookie();
       __kirAdminStatus = false;
       return 'none';
     }
@@ -2516,14 +2549,14 @@ async function kirRefreshCurrentProfile() {
     if (profileErr || !profile) return 'none';
 
     if (profile.status && profile.status !== 'approved') {
-      localStorage.removeItem(KIR_SESSION_KEY);
+      kirClearSessionCookie();
       if (!/\/?auth\.html/.test(window.location.pathname)) {
         window.location.href = 'auth.html?pending=1';
       }
       return 'pending';
     }
 
-    localStorage.setItem(KIR_SESSION_KEY, 'true');
+    kirSetSessionCookie('true');
     localStorage.setItem(KIR_USER_ID_KEY, userData.user.id);
     localStorage.setItem(KIR_NAME_KEY, profile.name);
     localStorage.setItem(KIR_ROLE_KEY, profile.role || 'Anggota');
