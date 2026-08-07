@@ -1273,17 +1273,14 @@ function kirInjectSidebar(activeTab) {
     kirRefreshAdminPingBadge();
     const cabangBadge = document.getElementById('sidebar-cabang-badge');
     if (cabangBadge) cabangBadge.textContent = kirCabangLabel(kirCurrentUserCabang());
+    
+    kirToggleAdminLinks();
 
     if (window.__kirProfileReady) {
       window.__kirProfileReady.then(() => {
-        const nowAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
-        const hasAdminLink = !!existingSidebar.querySelector('.nav-link[data-tab="admin"]');
-        if (nowAdmin !== hasAdminLink) {
-          kirRenderSidebarNow(activeTab);
-        } else {
-          kirRenderUserChrome();
-          if (cabangBadge) cabangBadge.textContent = kirCabangLabel(kirCurrentUserCabang());
-        }
+        kirToggleAdminLinks();
+        kirRenderUserChrome();
+        if (cabangBadge) cabangBadge.textContent = kirCabangLabel(kirCurrentUserCabang());
       });
     }
     return;
@@ -1295,11 +1292,21 @@ function kirInjectSidebar(activeTab) {
     const beforeAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
     const before = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
     window.__kirProfileReady.then(() => {
-      const afterAdmin = typeof kirIsAdmin === 'function' && kirIsAdmin();
+      kirToggleAdminLinks();
       const after = JSON.stringify([kirCurrentUserName(), kirCurrentUserRole(), kirCurrentUserCabang()]);
-      if (after !== before || afterAdmin !== beforeAdmin) kirRenderSidebarNow(activeTab);
+      if (after !== before) kirRenderSidebarNow(activeTab);
     });
   }
+}
+
+function kirToggleAdminLinks() {
+  const role = localStorage.getItem(KIR_ROLE_KEY);
+  const adminRoles = ['Ketua Ekstrakurikuler', 'Wakil Ketua', 'Bendahara'];
+  const isAdmin = role && adminRoles.includes(role);
+  
+  document.querySelectorAll('[data-admin-only="true"]').forEach(el => {
+    el.classList.toggle('hidden', !isAdmin);
+  });
 }
 
 function kirRenderSidebarNow(activeTab) {
@@ -1343,14 +1350,13 @@ function kirRenderSidebarNow(activeTab) {
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
         <span class="nav-label" data-i18n="anggota">Anggota</span>
       </a>
-      ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
-      <a href="admin.html" data-tab="admin" class="nav-link ${activeTab === 'admin' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="admin.html" data-tab="admin" data-admin-only="true" class="nav-link ${activeTab === 'admin' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300 hidden">
         <span class="relative shrink-0 inline-flex">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <span id="admin-ping-badge" class="nav-ping-badge hidden"></span>
         </span>
         <span class="nav-label" data-i18n="admin_title">Admin Panel</span>
-      </a>` : ''}
+      </a>
       </nav>
     <nav class="flex flex-col gap-1.5 mt-6">
       <p class="text-[11px] font-medium text-zinc-600 uppercase tracking-wider px-3 mb-1" data-i18n="course_category">Course</p>
@@ -1373,14 +1379,13 @@ function kirRenderSidebarNow(activeTab) {
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         <span class="nav-label" data-i18n="pengaturan">Pengaturan</span>
       </button>
-      ${typeof kirIsAdmin === 'function' && kirIsAdmin() ? `
-      <a href="inbox.html" data-tab="inbox" class="nav-link ${activeTab === 'inbox' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300">
+      <a href="inbox.html" data-tab="inbox" data-admin-only="true" class="nav-link ${activeTab === 'inbox' ? 'active' : ''} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300 hidden">
         <span class="relative shrink-0 inline-flex">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           <span id="sidebar-inbox-badge" class="nav-ping-badge">3</span>
         </span>
         <span class="nav-label" data-i18n="inbox">Kotak Masuk</span>
-      </a>` : ''}
+      </a>
     </nav>
     </div>
     <div class="mt-auto pt-6 border-t border-white/10 hidden lg:flex lg:flex-col">
@@ -1394,6 +1399,8 @@ function kirRenderSidebarNow(activeTab) {
     </div>
   </aside>
   `;
+  document.getElementById('sidebar-root').innerHTML = sidebarHtml;
+  kirToggleAdminLinks();
   const settingsModalHtml = `
   <div id="global-settings-modal" class="modal-overlay hidden" onclick="if(event.target===this) toggleSettingsModal()">
     <div class="modal-card p-6">
@@ -2506,7 +2513,16 @@ async function kirRequireAuth() {
 
 async function kirRequireAdmin() {
   await kirRequireAuth();
-  if (!kirIsAdmin()) {
+  if (!supabaseClient) {
+    window.location.href = 'dashboard.html';
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient.rpc('is_admin');
+    if (error || data !== true) {
+      window.location.href = 'dashboard.html';
+    }
+  } catch (e) {
     window.location.href = 'dashboard.html';
   }
 }
@@ -2667,6 +2683,11 @@ function kirCurrentUserKelas() {
 }
 
 function kirIsAdmin() {
+  const role = localStorage.getItem(KIR_ROLE_KEY);
+  const adminRoles = ['Ketua Ekstrakurikuler', 'Wakil Ketua', 'Bendahara'];
+  if (role && adminRoles.includes(role)) {
+    return true;
+  }
   return __kirAdminStatus === true;
 }
 

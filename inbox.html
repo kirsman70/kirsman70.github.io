@@ -19,13 +19,7 @@
 <!-- auth.js's applyThemeImmediately() IIFE runs the instant this parses,
      so theme/lang/cabang are applied before anything paints. -->
 <script src="js/auth.js"></script>
-<script>
-  kirRequireAuth().then(() => {
-    if (typeof kirIsAdmin === 'function' && !kirIsAdmin()) {
-      window.location.href = 'dashboard.html';
-    }
-  });
-</script>
+<script>kirRequireAdmin();</script>
 </head>
 <body class="min-h-screen antialiased relative overflow-x-hidden">
 
