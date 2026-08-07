@@ -2419,6 +2419,19 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
 
   if (event === 'PASSWORD_RECOVERY') {
+    // Only act on a real password recovery flow if the URL hash actually
+    // carries a recovery token (type=recovery). Supabase's
+    // detectSessionInUrl can fire this event on any page if there's a
+    // leftover recovery hash — guard against that so public pages like
+    // index.html don't get hijacked into the reset-password panel.
+    const hash = window.location.hash || '';
+    const hasRecoveryToken = /type=recovery/i.test(hash);
+    if (!hasRecoveryToken) {
+      // Clear any stale recovery flag that might have been left behind
+      localStorage.removeItem('kir_password_recovery_mode');
+      return;
+    }
+
     localStorage.setItem('kir_password_recovery_mode', 'true');
     if (window.location.pathname.indexOf('auth.html') === -1) {
       let basePath = window.location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '').replace(/\/$/, '');

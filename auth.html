@@ -1346,9 +1346,15 @@
   // pending screen immediately instead of flashing the carousel first.
   if (new URLSearchParams(window.location.search).get('pending') === '1') {
     showPendingPanel(undefined, true);
-  } else if (localStorage.getItem('kir_password_recovery_mode') === 'true') {
+  } else if (
+    localStorage.getItem('kir_password_recovery_mode') === 'true' &&
+    /type=recovery/i.test(window.location.hash)
+  ) {
     document.getElementById('auth-tabs').classList.add('hidden');
     switchAuthPanel('update', { instant: true });
+  } else {
+    // Stale recovery flag with no real recovery hash — clear it
+    localStorage.removeItem('kir_password_recovery_mode');
   }
 
   // Either way, verify against the real session, which is also what
